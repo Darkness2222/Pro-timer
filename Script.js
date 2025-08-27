@@ -947,5 +947,431 @@ try{if(mainDigits) drawMain();}catch(e){}
 try{if(pomoDigits) drawPomo();}catch(e){}
 try{if(swDigits) drawSW();}catch(e){}
 });
+/* ––––– Pro Timer Enhanced Fix ––––– */
+// Add this code to the end of your script.js file, just before the closing })();
 
+// Enhanced Pro Timer functions
+function createProTimer() {
+const nameInput = $(’#proTimerName’);
+const presenterInput = $(’#proPresenterName’);
+const durationInput = $(’#proDuration’);
+
+if(!nameInput || !presenterInput || !durationInput) return;
+
+const name = nameInput.value.trim();
+const presenter = presenterInput.value.trim();
+const duration = parseInt(durationInput.value) || 5;
+
+if(!name || !presenter || duration <= 0) {
+alert(‘Please fill in all fields with valid values’);
+return;
+}
+
+const newTimer = {
+id: Date.now().toString(),
+name: name,
+presenter: presenter,
+duration: duration * 60,
+created: new Date().toLocaleString()
+};
+
+proTimers.push(newTimer);
+saveProTimers();
+
+nameInput.value = ‘’;
+presenterInput.value = ‘’;
+durationInput.value = ‘5’;
+
+proView = ‘admin’;
+renderProTimerFull();
+}
+
+function startProTimer(timer) {
+activeProTimer = timer;
+proCurrentTime = timer.duration;
+proIsRunning = false;
+proMessages = [];
+saveProMessages();
+renderProTimerFull();
+}
+
+function toggleProTimer() {
+if(!activeProTimer) return;
+
+proIsRunning = !proIsRunning;
+
+if(proIsRunning) {
+proTick = setInterval(() => {
+proCurrentTime = Math.max(0, proCurrentTime - 1);
+renderProTimerFull();
+
+```
+  if(proCurrentTime <= 0) {
+    proIsRunning = false;
+    clearInterval(proTick);
+    renderProTimerFull();
+  }
+}, 1000);
+```
+
+} else {
+clearInterval(proTick);
+}
+
+renderProTimerFull();
+}
+
+function stopProTimer() {
+proIsRunning = false;
+clearInterval(proTick);
+proCurrentTime = 0;
+renderProTimerFull();
+}
+
+function resetProTimer() {
+proIsRunning = false;
+clearInterval(proTick);
+if(activeProTimer) {
+proCurrentTime = activeProTimer.duration;
+}
+renderProTimerFull();
+}
+
+function sendProMessage() {
+const input = $(’#proMessageInput’);
+if(!input || !activeProTimer) return;
+
+const text = input.value.trim();
+if(!text) return;
+
+const message = {
+id: Date.now(),
+text: text,
+timestamp: new Date().toLocaleTimeString()
+};
+
+proMessages.push(message);
+saveProMessages();
+input.value = ‘’;
+renderProTimerFull();
+}
+
+function sendQuickMessage(text) {
+if(!activeProTimer) return;
+
+const message = {
+id: Date.now(),
+text: text,
+timestamp: new Date().toLocaleTimeString()
+};
+
+proMessages.push(message);
+saveProMessages();
+renderProTimerFull();
+}
+
+function formatProTime(seconds) {
+const mins = Math.floor(seconds / 60);
+const secs = seconds % 60;
+return `${pad(mins)}:${pad(secs)}`;
+}
+
+function getPresenterUrl() {
+const baseUrl = window.location.origin + window.location.pathname;
+return `${baseUrl}?view=presenter&timer=${activeProTimer?.id || 'demo'}`;
+}
+
+function copyPresenterUrl() {
+const url = getPresenterUrl();
+navigator.clipboard.writeText(url).then(() => {
+const btn = $(’#proCopyUrl’);
+if(btn) {
+const originalText = btn.textContent;
+btn.textContent = ‘Copied!’;
+btn.style.backgroundColor = ‘#059669’;
+setTimeout(() => {
+btn.textContent = originalText;
+btn.style.backgroundColor = ‘’;
+}, 2000);
+}
+}).catch(() => {
+// Fallback
+alert(’Copied to clipboard: ’ + url);
+});
+}
+
+function toggleQRCode() {
+showQR = !showQR;
+renderProTimerFull();
+}
+
+function generateQRCode(text) {
+return `data:image/svg+xml;base64,${btoa(`
+<svg width="160" height="160" xmlns="http://www.w3.org/2000/svg">
+<rect width="160" height="160" fill="white" stroke="#e5e7eb" stroke-width="2" rx="8"/>
+<rect x="20" y="20" width="20" height="20" fill="#000"/>
+<rect x="120" y="20" width="20" height="20" fill="#000"/>
+<rect x="20" y="120" width="20" height="20" fill="#000"/>
+<rect x="60" y="60" width="40" height="40" fill="#000"/>
+<text x="80" y="100" text-anchor="middle" font-size="8" fill="#666">QR Code</text>
+<text x="80" y="115" text-anchor="middle" font-size="6" fill="#999">Pro Timer</text>
+</svg>
+`)}`;
+}
+
+function renderProTimerFull() {
+const container = $(’#proTimer’);
+if(!container) return;
+
+if(proView === ‘presenter’) {
+renderPresenterViewFull(container);
+} else if(proView === ‘create’) {
+renderCreateViewFull(container);
+} else {
+renderAdminViewFull(container);
+}
+}
+
+function renderPresenterViewFull(container) {
+const progress = activeProTimer ? ((activeProTimer.duration - proCurrentTime) / activeProTimer.duration) * 100 : 0;
+
+container.innerHTML = `
+<div style="min-height: 100vh; background: var(--bg-primary); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 2rem; position: relative;">
+<button onclick="proView='admin'; renderProTimerFull();" style="position: fixed; top: 1rem; left: 1rem; background: var(--bg-card); color: var(--text-secondary); border: 1px solid var(--border-color); padding: 0.75rem 1rem; border-radius: 8px; cursor: pointer; font-size: 0.875rem; z-index: 100;">
+← Back to Admin
+</button>
+
+```
+  <div style="margin-bottom: 3rem;">
+    <div style="font-size: clamp(4rem, 12vw, 8rem); font-weight: bold; color: #e53935; font-family: 'Courier New', monospace; margin-bottom: 2rem; text-shadow: 0 0 20px rgba(229, 57, 53, 0.3); line-height: 1;">
+      ${formatProTime(proCurrentTime)}
+    </div>
+    
+    <div style="width: 100%; max-width: 800px; height: 16px; background: var(--bg-secondary); border-radius: 8px; overflow: hidden; margin: 2rem auto; box-shadow: inset 0 2px 4px var(--shadow);">
+      <div style="height: 100%; background: linear-gradient(to right, #10b981 0%, #f59e0b 70%, #ef4444 100%); transition: width 1s ease-linear; border-radius: 8px; width: ${progress}%;"></div>
+    </div>
+
+    ${activeProTimer ? `<div style="font-size: 1.5rem; color: var(--text-secondary); margin-top: 1rem; font-weight: 500;">Presenter: ${activeProTimer.presenter}</div>` : ''}
+  </div>
+  
+  ${proMessages.length > 0 ? `
+    <div style="background: var(--bg-card); border-radius: 12px; padding: 2rem; max-width: 700px; width: 100%; margin-top: 2rem; box-shadow: 0 4px 6px var(--shadow); border: 1px solid var(--border-color);">
+      <h3 style="color: #60a5fa; margin-bottom: 1.5rem; font-size: 1.25rem; font-weight: 600;">Messages from Control</h3>
+      <div style="max-height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 1rem;">
+        ${proMessages.slice(-5).reverse().map(msg => `
+          <div style="background: var(--bg-secondary); border-radius: 8px; padding: 1rem; text-align: left; border-left: 4px solid #60a5fa;">
+            <div style="color: var(--text-primary); margin-bottom: 0.5rem; font-size: 1.1rem;">${msg.text}</div>
+            <div style="font-size: 0.75rem; color: var(--text-secondary);">${msg.timestamp}</div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  ` : ''}
+</div>
+```
+
+`;
+}
+
+function renderCreateViewFull(container) {
+container.innerHTML = `
+<div style="padding: 2rem; max-width: 600px; margin: 0 auto;">
+<button onclick="proView='admin'; renderProTimerFull();" style="color: #60a5fa; background: none; border: none; margin-bottom: 2rem; cursor: pointer; font-size: 0.875rem;">
+← Back to Dashboard
+</button>
+
+```
+  <h2 style="font-size: 2rem; font-weight: bold; color: var(--text-primary); margin-bottom: 2rem; text-align: center;">Create New Timer</h2>
+  
+  <div style="background: var(--bg-card); padding: 2rem; border-radius: 12px; border: 1px solid var(--border-color);">
+    <div style="margin-bottom: 1.5rem;">
+      <label style="display: block; color: var(--text-primary); margin-bottom: 0.5rem; font-weight: 500; font-size: 0.875rem;">Timer Name</label>
+      <input type="text" id="proTimerName" placeholder="e.g., Morning Presentation" style="width: 100%; padding: 0.875rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); font-size: 1rem;">
+    </div>
+    
+    <div style="margin-bottom: 1.5rem;">
+      <label style="display: block; color: var(--text-primary); margin-bottom: 0.5rem; font-weight: 500; font-size: 0.875rem;">Presenter Name</label>
+      <input type="text" id="proPresenterName" placeholder="e.g., Bob" style="width: 100%; padding: 0.875rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); font-size: 1rem;">
+    </div>
+    
+    <div style="margin-bottom: 1.5rem;">
+      <label style="display: block; color: var(--text-primary); margin-bottom: 0.5rem; font-weight: 500; font-size: 0.875rem;">Duration (minutes)</label>
+      <input type="number" id="proDuration" value="5" min="1" style="width: 100%; padding: 0.875rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); font-size: 1rem;">
+    </div>
+    
+    <button onclick="createProTimer()" style="width: 100%; background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; border: none; padding: 1rem 1.5rem; border-radius: 8px; font-weight: 500; cursor: pointer; font-size: 1rem; transition: all 0.2s ease;">
+      Create Timer
+    </button>
+  </div>
+</div>
+```
+
+`;
+}
+
+function renderAdminViewFull(container) {
+const progress = activeProTimer ? ((activeProTimer.duration - proCurrentTime) / activeProTimer.duration) * 100 : 0;
+
+container.innerHTML = `
+<div style="padding: 2rem; max-width: 1400px; margin: 0 auto;">
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color);">
+<h2 style="font-size: 2rem; font-weight: bold; color: var(--text-primary); margin: 0;">Pro Timer Dashboard</h2>
+<button onclick="proView='create'; renderProTimerFull();" style="background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 500; cursor: pointer; transition: all 0.2s ease;">
++ Create Timer
+</button>
+</div>
+
+```
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; align-items: start;">
+    <div>
+      <div style="background: var(--bg-card); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; border: 1px solid var(--border-color); box-shadow: 0 2px 4px var(--shadow);">
+        <h3 style="color: var(--text-primary); margin-bottom: 1rem; font-size: 1.25rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem;">
+          🎯 Your Timers
+        </h3>
+        ${proTimers.length === 0 ? `
+          <div style="color: var(--text-secondary); text-align: center; padding: 3rem 2rem; font-style: italic; background: var(--bg-secondary); border-radius: 8px; border: 2px dashed var(--border-color);">
+            No timers created yet. Create your first timer to get started.
+          </div>
+        ` : `
+          <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+            ${proTimers.map(timer => `
+              <div onclick="startProTimer(${JSON.stringify(timer).replace(/"/g, '&quot;')})" style="padding: 1.25rem; background: ${activeProTimer?.id === timer.id ? 'rgba(59, 130, 246, 0.1)' : 'var(--bg-secondary)'}; border: 2px solid ${activeProTimer?.id === timer.id ? '#3b82f6' : 'var(--border-color)'}; border-radius: 8px; cursor: pointer; transition: all 0.2s ease; position: relative;">
+                <div>
+                  <h4 style="color: var(--text-primary); margin: 0 0 0.25rem 0; font-size: 1.1rem; font-weight: 600;">${timer.name}</h4>
+                  <p style="color: var(--text-secondary); margin: 0; font-size: 0.875rem; line-height: 1.4;">Presenter: ${timer.presenter}</p>
+                  <p style="color: var(--text-muted); font-size: 0.75rem; margin: 0;">Duration: ${Math.floor(timer.duration / 60)} minutes • Created: ${timer.created}</p>
+                </div>
+                ${activeProTimer?.id === timer.id ? '<span style="position: absolute; top: 1rem; right: 1rem; background: #3b82f6; color: white; padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600;">Active</span>' : ''}
+              </div>
+            `).join('')}
+          </div>
+        `}
+      </div>
+      
+      ${activeProTimer ? `
+        <div style="background: var(--bg-card); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; border: 1px solid var(--border-color); box-shadow: 0 2px 4px var(--shadow);">
+          <h3 style="color: var(--text-primary); margin-bottom: 1rem; font-size: 1.25rem; font-weight: 600;">⏱️ Timer Controls</h3>
+          <div style="text-align: center; margin-bottom: 1.5rem; padding: 1rem; background: rgba(0,0,0,0.05); border-radius: 8px;">
+            <div style="font-size: clamp(2rem, 6vw, 3rem); font-weight: bold; color: #e53935; font-family: 'Courier New', monospace; margin-bottom: 0.5rem; line-height: 1;">
+              ${formatProTime(proCurrentTime)}
+            </div>
+            <div style="color: var(--text-secondary); margin-bottom: 1rem; font-size: 1rem;">${activeProTimer.name}</div>
+            <div style="margin: 1rem 0;">
+              <div style="width: 100%; height: 8px; background: var(--bg-secondary); border-radius: 4px; overflow: hidden;">
+                <div style="height: 100%; background: linear-gradient(to right, #10b981 0%, #f59e0b 70%, #ef4444 100%); transition: width 1s ease-linear; border-radius: 4px; width: ${progress}%;"></div>
+              </div>
+            </div>
+          </div>
+          
+          <div style="display: flex; justify-content: center; gap: 0.75rem; flex-wrap: wrap;">
+            <button onclick="toggleProTimer()" style="padding: 0.75rem 1.5rem; background: ${proIsRunning ? '#f59e0b' : 'linear-gradient(135deg, #3b82f6, #1d4ed8)'}; color: white; border: none; border-radius: 8px; font-weight: 500; cursor: pointer; transition: all 0.2s ease; display: inline-flex; align-items: center; gap: 0.5rem;">
+              ${proIsRunning ? '⏸️ Pause' : '▶️ Start'}
+            </button>
+            <button onclick="stopProTimer()" style="padding: 0.75rem 1.5rem; background: #ef4444; color: white; border: none; border-radius: 8px; font-weight: 500; cursor: pointer; transition: all 0.2s ease; display: inline-flex; align-items: center; gap: 0.5rem;">
+              ⏹️ Stop
+            </button>
+            <button onclick="resetProTimer()" style="padding: 0.75rem 1.5rem; background: #6b7280; color: white; border: none; border-radius: 8px; font-weight: 500; cursor: pointer; transition: all 0.2s ease; display: inline-flex; align-items: center; gap: 0.5rem;">
+              🔄 Reset
+            </button>
+          </div>
+        </div>
+      ` : ''}
+    </div>
+    
+    <div>
+      ${activeProTimer ? `
+        <div style="background: var(--bg-card); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; border: 1px solid var(--border-color); box-shadow: 0 2px 4px var(--shadow);">
+          <h3 style="color: var(--text-primary); margin-bottom: 1rem; font-size: 1.25rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem;">
+            💬 Send Message to ${activeProTimer.presenter}
+          </h3>
+          
+          <div style="display: flex; gap: 0.75rem; margin-bottom: 1rem;">
+            <input type="text" id="proMessageInput" placeholder="Type a message for the presenter..." onkeypress="if(event.key==='Enter') sendProMessage()" style="flex: 1; padding: 0.875rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); font-size: 1rem; min-width: 0;">
+            <button onclick="sendProMessage()" style="padding: 0.875rem 1.5rem; background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; border: none; border-radius: 8px; font-weight: 500; cursor: pointer;">Send</button>
+          </div>
+          
+          <div style="margin-top: 1.5rem;">
+            <label style="display: block; color: var(--text-primary); margin-bottom: 0.75rem; font-size: 0.875rem; font-weight: 500;">Quick Messages:</label>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.5rem;">
+              ${['5 minutes remaining', '2 minutes left', 'Please wrap up', 'Great job!', 'Take your time', 'Questions coming up'].map(msg => `
+                <button onclick="sendQuickMessage('${msg.replace(/'/g, "\\'")}')" style="padding: 0.625rem 1rem; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 6px; font-size: 0.875rem; cursor: pointer; transition: all 0.2s; white-space: nowrap;">
+                  ${msg}
+                </button>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+        
+        <div style="background: var(--bg-card); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; border: 1px solid var(--border-color); box-shadow: 0 2px 4px var(--shadow);">
+          <h3 style="color: var(--text-primary); margin-bottom: 1rem; font-size: 1.25rem; font-weight: 600;">🔗 Share Presenter View</h3>
+          
+          <div style="display: flex; flex-direction: column; gap: 1rem;">
+            <div>
+              <label style="display: block; color: var(--text-primary); margin-bottom: 0.5rem; font-size: 0.875rem; font-weight: 500;">Presenter URL:</label>
+              <div style="display: flex; gap: 0.5rem;">
+                <input type="text" value="${getPresenterUrl()}" readonly style="flex: 1; padding: 0.875rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); font-family: 'Courier New', monospace; font-size: 0.875rem; min-width: 0;">
+                <button onclick="copyPresenterUrl()" id="proCopyUrl" style="padding: 0.875rem 1.5rem; background: #6b7280; color: white; border: none; border-radius: 8px; font-weight: 500; cursor: pointer; transition: all 0.2s ease;">Copy</button>
+              </div>
+            </div>
+            
+            <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+              <button onclick="toggleQRCode()" style="display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1.5rem; background: #10b981; color: white; border: none; border-radius: 8px; font-weight: 500; cursor: pointer; transition: all 0.2s ease;">
+                🔗 ${showQR ? 'Hide QR Code' : 'Generate QR Code'}
+              </button>
+              <button onclick="proView='presenter'; renderProTimerFull();" style="display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1.5rem; background: #8b5cf6; color: white; border: none; border-radius: 8px; font-weight: 500; cursor: pointer; transition: all 0.2s ease;">
+                👁️ Preview
+              </button>
+            </div>
+            
+            ${showQR ? `
+              <div style="text-align: center; padding: 1.5rem; background: var(--bg-secondary); border-radius: 8px; border: 1px solid var(--border-color);">
+                <img src="${generateQRCode(getPresenterUrl())}" alt="QR Code" style="max-width: 160px; height: auto; border-radius: 8px; box-shadow: 0 2px 8px var(--shadow);">
+                <p style="margin-top: 1rem; color: var(--text-secondary); font-size: 0.875rem;">
+                  Scan to open presenter view
+                </p>
+              </div>
+            ` : ''}
+          </div>
+        </div>
+        
+        <div style="background: var(--bg-card); border-radius: 12px; padding: 1.5rem; border: 1px solid var(--border-color); box-shadow: 0 2px 4px var(--shadow);">
+          <h3 style="color: var(--text-primary); margin-bottom: 1rem; font-size: 1.25rem; font-weight: 600;">📋 Message History</h3>
+          ${proMessages.length === 0 ? `
+            <div style="color: var(--text-secondary); text-align: center; padding: 3rem 2rem; font-style: italic; background: var(--bg-secondary); border-radius: 8px; border: 2px dashed var(--border-color);">
+              No messages sent yet.
+            </div>
+          ` : `
+            <div style="max-height: 320px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.75rem;">
+              ${proMessages.slice(-10).reverse().map(msg => `
+                <div style="background: var(--bg-secondary); border-radius: 8px; padding: 1rem; border-left: 3px solid #60a5fa;">
+                  <div style="color: var(--text-primary); margin-bottom: 0.5rem; font-size: 1rem;">${msg.text}</div>
+                  <div style="color: var(--text-secondary); font-size: 0.75rem;">Sent at ${msg.timestamp}</div>
+                </div>
+              `).join('')}
+            </div>
+          `}
+        </div>
+      ` : `
+        <div style="background: var(--bg-card); border-radius: 12px; padding: 1.5rem; border: 1px solid var(--border-color); box-shadow: 0 2px 4px var(--shadow);">
+          <h3 style="color: var(--text-primary); margin-bottom: 1rem; font-size: 1.25rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem;">
+            🚀 How It Works
+          </h3>
+          <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+            <div style="display: flex; gap: 1rem; align-items: flex-start;">
+              <span style="width: 32px; height: 32px; background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.875rem; font-weight: bold; flex-shrink: 0; margin-top: 0.125rem; box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);">1</span>
+              <div>
+                <h4 style="color: var(--text-primary); margin: 0 0 0.25rem 0; font-size: 1rem; font-weight: 600;">Create a Timer</h4>
+                <p style="color: var(--text-secondary); margin: 0; font-size: 0.875rem; line-height: 1.5;">Set up a named timer with presenter details and duration.</p>
+              </div>
+            </div>
+            <div style="display: flex; gap: 1rem; align-items: flex-start;">
+              <span style="width: 32px; height: 32px; background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.875rem; font-weight: bold; flex-shrink: 0; margin-top: 0.125rem; box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);">2</span>
+              <div>
+                <h4 style="color: var(--text-primary); margin: 0 0 0.25rem 0; font-size: 1rem; font-weight: 600;">Share with Presenter</h4>
+                <p style="color: var(--text-secondary); margin: 0; font-size: 0.875rem; line-height: 1.5;">Generate a QR code or share the URL for the presenter display.</p>
+              </div>
+            </div>
+            <div style="display: flex; gap: 1rem; align-items: flex-start;">
+              <span style="width: 32px; height: 32px; background: linear-gradient(135deg, #3b82f
+```
 })();
