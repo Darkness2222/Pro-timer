@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SyncCue - Professional Timer Suite</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="dark">
+    <header class="header">
+        <div class="container">
+            <h1 class="logo">SyncCue</h1>
+            <button id="themeToggle" class="theme-toggle">🌙</button>
+        </div>
+    </header>
+
+```
+<nav class="tab-navigation">
+    <button class="tab active" data-tab="mainTimer" aria-selected="true">
+        <span>⏱️ Main Timer</span>
+    </button>
+    <button class="tab" data-tab="pomodoro" aria-selected="false">
+        <span>🍅 Pomodoro</span>
+    </button>
+    <button class="tab" data-tab="stopwatch" aria-selected="false">
+        <span>⏱️ Stopwatch</span>
+    </button>
+    <button class="tab" data-tab="proTimer" aria-selected="false">
+        <span>🎯 Pro Timer</span>
+    </button>
+</nav>
+
+<main class="main-content">
+    <!-- Main Timer Section -->
+    <section id="mainTimer" class="screen active">
+        <div class="timer-container">
+            <div class="timer-display">
+                <div id="mainTime" class="time-digits">05:00</div>
+                <div class="progress-container">
+                    <div class="progress-background">
+                        <div id="mainBar" class="progress-bar"></div>
+                        <div id="mainElapsed" class="progress-elapsed"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="timer-controls">
+                <button id="mainStart" class="btn btn-primary">▶️ Start</button>
+                <button id="mainPause" class="btn btn-warning">⏸️ Pause</button>
+                <button id="mainStop" class="btn btn-danger">⏹️ Stop</button>
+                <button id="mainReset" class="btn btn-secondary">🔄 Reset</button>
+                <button id="mainFullscreen" class="btn btn-info">⛶ Fullscreen</button>
+            </div>
+
+            <div class="timer-input">
+                <input type="text" id="mainInput" placeholder="mm:ss" pattern="[0-9]{1,3}:[0-5][0-9]">
+                <button id="mainSet" class="btn btn-primary">Set</button>
+            </div>
+
+            <div class="preset-buttons">
+                <button class="preset-btn" data-preset="30">30s</button>
+                <button class="preset-btn" data-preset="60">1m</button>
+                <button class="preset-btn" data-preset="120">2m</button>
+                <button class="preset-btn" data-preset="300">5m</button>
+                <button class="preset-btn" data-preset="600">10m</button>
+                <button class="preset-btn" data-preset="900">15m</button>
+                <button class="preset-btn" data-preset="1200">20m</button>
+            </div>
+
+            <div class="adjust-buttons">
+                <button class="adjust-btn" data-adjust="-60">-1:00</button>
+                <button class="adjust-btn" data-adjust="+60">+1:00</button>
+            </div>
+
+            <div class="timer-options">
+                <button id="mainSettings" class="btn btn-secondary">⚙️ Settings</button>
+                <button id="mainToggleLog" class="btn btn-secondary">📋 Log</button>
+            </div>
+
+            <div id="mainLogCard" class="log-card hidden">
+                <div class="log-header">
+                    <h3>Timer Log</h3>
+                    <div class="log-controls">
+                        <button id="mainClearLog" class="btn btn-small">Clear</button>
+                        <button id="mainExportCSV" class="btn btn-small">Export CSV</button>
+                    </div>
+                </div>
+                <ul id="mainLog" class="log-list"></ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pomodoro Section -->
+    <section id="pomodoro" class="screen">
+        <div class="timer-container">
+            <div class="timer-display">
+                <div id="pomoTime" class="time-digits">25:00</div>
+                <div class="progress-container">
+                    <div class="progress-background">
+                        <div id="pomoBar" class="progress-bar"></div>
+                        <div id="pomoElapsed" class="progress-elapsed"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="timer-controls">
+                <button id="pomoStart" class="btn btn-primary">▶️ Start</button>
+                <button id="pomoPause" class="btn btn-warning">⏸️ Pause</button>
+                <button id="pomoStop" class="btn btn-danger">⏹️ Stop</button>
+                <button id="pomoReset" class="btn btn-secondary">🔄 Reset</button>
+                <button id="pomoFullscreen" class="btn btn-info">⛶ Fullscreen</button>
+            </div>
+
+            <div class="preset-buttons">
+                <button class="preset-btn" data-preset-pomo="1500">25m Work</button>
+                <button class="preset-btn" data-preset-pomo="300">5m Break</button>
+                <button class="preset-btn" data-preset-pomo="900">15m Break</button>
+            </div>
+
+            <div class="combo-buttons">
+                <button class="combo-btn" data-pomo-combo="25|5">25/5</button>
+                <button class="combo-btn" data-pomo-combo="45|15">45/15</button>
+                <button class="combo-btn" data-pomo-combo="90|20">90/20</button>
+            </div>
+
+            <div class="timer-options">
+                <button id="pomoSettings" class="btn btn-secondary">⚙️ Settings</button>
+                <button id="pomoToggleLog" class="btn btn-secondary">📋 Log</button>
+            </div>
+
+            <div id="pomoLogCard" class="log-card hidden">
+                <div class="log-header">
+                    <h3>Pomodoro Log</h3>
+                    <div class="log-controls">
+                        <button id="pomoClearLog" class="btn btn-small">Clear</button>
+                        <button id="pomoExportCSV" class="btn btn-small">Export CSV</button>
+                    </div>
+                </div>
+                <ul id="pomoLog" class="log-list"></ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- Stopwatch Section -->
+    <section id="stopwatch" class="screen">
+        <div class="timer-container">
+            <div class="timer-display">
+                <div id="swTime" class="time-digits">00:00.00</div>
+            </div>
+
+            <div class="timer-controls">
+                <button id="swStart" class="btn btn-primary">▶️ Start</button>
+                <button id="swPause" class="btn btn-warning">⏸️ Pause</button>
+                <button id="swReset" class="btn btn-danger">🔄 Reset</button>
+                <button id="swLap" class="btn btn-secondary">🏁 Lap</button>
+                <button id="swFullscreen" class="btn btn-info">⛶ Fullscreen</button>
+            </div>
+
+            <div class="timer-options">
+                <button id="swSettings" class="btn btn-secondary">⚙️ Settings</button>
+                <button id="swToggleLog" class="btn btn-secondary">📋 Laps</button>
+            </div>
+
+            <div id="swLogCard" class="log-card">
+                <div class="log-header">
+                    <h3>Lap Times</h3>
+                    <div class="log-controls">
+                        <button id="swExportCSV" class="btn btn-small">Export CSV</button>
+                    </div>
+                </div>
+                <ul id="swLaps" class="log-list"></ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pro Timer Section -->
+    <section id="proTimer" class="screen">
+        <div class="pro-timer-container">
+            <div class="loading-state">
+                <div class="loading-content">
+                    <h2>🎯 Pro Timer</h2>
+                    <p>Professional presentation timers with admin control</p>
+                    <div class="loading-spinner"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+</main>
+
+<!-- Fullscreen Overlay -->
+<div id="fs" class="fullscreen-overlay hidden">
+    <button id="fsExit" class="fs-exit">✕</button>
+    <div class="fs-content">
+        <div id="fsDigits" class="fs-time">00:00</div>
+        <div id="fsBarWrap" class="fs-progress-wrap">
+            <div class="fs-progress-bg">
+                <div id="fsBar" class="fs-progress-bar"></div>
+                <div id="fsElapsed" class="fs-progress-elapsed"></div>
+            </div>
+        </div>
+        <div id="fsStatus" class="fs-status hidden">PAUSED</div>
+    </div>
+</div>
+
+<!-- Settings Modals -->
+<div id="mtSettings" class="modal hidden">
+    <div class="modal-content">
+        <h3>Main Timer Settings</h3>
+        <div class="setting-group">
+            <label><input type="checkbox" id="optHours"> Show Hours</label>
+            <label><input type="checkbox" id="optHundredths"> Show Hundredths</label>
+        </div>
+        <div class="setting-group">
+            <label>Digit Color: <input type="color" id="digitColor" value="#e53935"></label>
+        </div>
+        <div class="modal-buttons">
+            <button id="mtExport" class="btn btn-secondary">Export Log</button>
+            <button id="mtCancel" class="btn btn-secondary">Cancel</button>
+            <button id="mtClose" class="btn btn-primary">Save</button>
+        </div>
+    </div>
+</div>
+
+<div id="pmSettings" class="modal hidden">
+    <div class="modal-content">
+        <h3>Pomodoro Settings</h3>
+        <div class="setting-group">
+            <label><input type="checkbox" id="pomoHours"> Show Hours</label>
+            <label><input type="checkbox" id="pomoHundredths"> Show Hundredths</label>
+        </div>
+        <div class="setting-group">
+            <label>Digit Color: <input type="color" id="pomoColor" value="#e53935"></label>
+        </div>
+        <div class="modal-buttons">
+            <button id="pmExport" class="btn btn-secondary">Export Log</button>
+            <button id="pmCancel" class="btn btn-secondary">Cancel</button>
+            <button id="pmClose" class="btn btn-primary">Save</button>
+        </div>
+    </div>
+</div>
+
+<div id="swSettingsModal" class="modal hidden">
+    <div class="modal-content">
+        <h3>Stopwatch Settings</h3>
+        <div class="setting-group">
+            <label><input type="checkbox" id="swHours"> Show Hours</label>
+            <label><input type="checkbox" id="swHundredths" checked> Show Hundredths</label>
+        </div>
+        <div class="setting-group">
+            <label>Digit Color: <input type="color" id="swColor" value="#e53935"></label>
+        </div>
+        <div class="modal-buttons">
+            <button id="swExport2" class="btn btn-secondary">Export Laps</button>
+            <button id="swCancel" class="btn btn-secondary">Cancel</button>
+            <button id="swClose" class="btn btn-primary">Save</button>
+        </div>
+    </div>
+</div>
+
+<script src="script.js"></script>
+```
+
+</body>
+</html>
