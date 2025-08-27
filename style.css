@@ -1,344 +1,771 @@
-(()=>{
-const $=s=>document.querySelector(s), $$=s=>document.querySelectorAll(s);
-const pad=n=>String(n).padStart(2,‘0’);
-const LS={
-theme:‘synccue.theme’,
-mH:‘synccue.main.hours’,
-mHs:‘synccue.main.hundredths’,
-mC:‘synccue.main.color’,
-pH:‘synccue.pomo.hours’,
-pHs:‘synccue.pomo.hundredths’,
-pC:‘synccue.pomo.color’,
-sH:‘synccue.sw.hours’,
-sHs:‘synccue.sw.hundredths’,
-sC:‘synccue.sw.color’,
-proTimers:‘synccue.pro.timers’,
-proMessages:‘synccue.pro.messages’
-};
+/* CSS Variables for Light/Dark Theme */
+:root {
+–bg-primary: #ffffff;
+–bg-secondary: #f8fafc;
+–bg-card: #ffffff;
+–text-primary: #1f2937;
+–text-secondary: #6b7280;
+–text-muted: #9ca3af;
+–border-color: #e5e7eb;
+–shadow: rgba(0, 0, 0, 0.1);
+}
 
-// Supabase Configuration - Add your credentials here
-const SUPABASE_URL = ‘’; // Your Supabase URL
-const SUPABASE_ANON_KEY = ‘’; // Your Supabase anon key
+.dark {
+–bg-primary: #111827;
+–bg-secondary: #1f2937;
+–bg-card: #374151;
+–text-primary: #ffffff;
+–text-secondary: #d1d5db;
+–text-muted: #9ca3af;
+–border-color: #4b5563;
+–shadow: rgba(0, 0, 0, 0.3);
+}
 
-const screens=[‘mainTimer’,‘pomodoro’,‘stopwatch’,‘proTimer’];
-let si=0;
+/* Reset and Base Styles */
 
-function show(i){
-si=(i+screens.length)%screens.length;
-screens.forEach((id,idx)=>{
-const el = $(’#’+id);
-if(el) el.classList.toggle(‘active’, idx===si);
-});
-syncTabs();
+- {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  }
 
-if(screens[si] === ‘proTimer’) {
-initProTimer();
+body {
+font-family: -apple-system, BlinkMacSystemFont, ‘Segoe UI’, ‘Roboto’, sans-serif;
+background: var(–bg-primary);
+color: var(–text-primary);
+min-height: 100vh;
+transition: all 0.3s ease;
+}
+
+.container {
+max-width: 1200px;
+margin: 0 auto;
+padding: 0 1rem;
+}
+
+/* Header */
+.header {
+background: var(–bg-card);
+border-bottom: 1px solid var(–border-color);
+padding: 1rem 0;
+}
+
+.header .container {
+display: flex;
+justify-content: space-between;
+align-items: center;
+}
+
+.logo {
+font-size: 1.5rem;
+font-weight: bold;
+color: var(–text-primary);
+}
+
+.theme-toggle {
+background: var(–bg-secondary);
+border: 1px solid var(–border-color);
+color: var(–text-primary);
+padding: 0.5rem 1rem;
+border-radius: 8px;
+cursor: pointer;
+transition: all 0.2s;
+}
+
+.theme-toggle:hover {
+background: var(–border-color);
+}
+
+/* Navigation */
+.tab-navigation {
+display: flex;
+background: var(–bg-card);
+border-bottom: 1px solid var(–border-color);
+overflow-x: auto;
+}
+
+.tab {
+background: none;
+border: none;
+color: var(–text-secondary);
+padding: 1rem 1.5rem;
+cursor: pointer;
+border-bottom: 2px solid transparent;
+transition: all 0.2s;
+white-space: nowrap;
+font-size: 0.875rem;
+}
+
+.tab:hover {
+color: var(–text-primary);
+background: var(–bg-secondary);
+}
+
+.tab.active {
+color: #3b82f6;
+border-bottom-color: #3b82f6;
+background: var(–bg-secondary);
+}
+
+/* Main Content */
+.main-content {
+padding: 2rem 0;
+min-height: calc(100vh - 120px);
+}
+
+.screen {
+display: none;
+min-height: 100%;
+}
+
+.screen.active {
+display: block;
+}
+
+/* Timer Container */
+.timer-container {
+max-width: 800px;
+margin: 0 auto;
+padding: 2rem;
+}
+
+/* Timer Display */
+.timer-display {
+text-align: center;
+margin-bottom: 3rem;
+}
+
+.time-digits {
+font-size: clamp(3rem, 8vw, 6rem);
+font-weight: bold;
+font-family: ‘Courier New’, monospace;
+color: #e53935;
+margin-bottom: 2rem;
+text-shadow: 0 0 20px rgba(229, 57, 53, 0.3);
+line-height: 1;
+}
+
+/* Progress Bar */
+.progress-container {
+margin: 2rem 0;
+}
+
+.progress-background {
+width: 100%;
+height: 12px;
+background: var(–bg-secondary);
+border-radius: 6px;
+overflow: hidden;
+position: relative;
+box-shadow: inset 0 2px 4px var(–shadow);
+}
+
+.progress-bar {
+height: 100%;
+background: linear-gradient(to right, #10b981, #f59e0b, #ef4444);
+transform-origin: left;
+transition: transform 1s linear;
+}
+
+.progress-elapsed {
+position: absolute;
+top: 0;
+right: 0;
+height: 100%;
+background: rgba(239, 68, 68, 0.8);
+transition: width 1s linear;
+}
+
+/* Button Styles */
+.btn {
+padding: 0.75rem 1.5rem;
+border: none;
+border-radius: 8px;
+font-weight: 500;
+cursor: pointer;
+transition: all 0.2s ease;
+font-size: 0.875rem;
+display: inline-flex;
+align-items: center;
+gap: 0.5rem;
+text-decoration: none;
+}
+
+.btn:hover {
+transform: translateY(-1px);
+box-shadow: 0 4px 8px var(–shadow);
+}
+
+.btn:active {
+transform: translateY(0);
+}
+
+.btn-primary {
+background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+color: white;
+}
+
+.btn-primary:hover {
+background: linear-gradient(135deg, #2563eb, #1e40af);
+}
+
+.btn-secondary {
+background: #6b7280;
+color: white;
+}
+
+.btn-secondary:hover {
+background: #4b5563;
+}
+
+.btn-warning {
+background: #f59e0b;
+color: white;
+}
+
+.btn-warning:hover {
+background: #d97706;
+}
+
+.btn-danger {
+background: #ef4444;
+color: white;
+}
+
+.btn-danger:hover {
+background: #dc2626;
+}
+
+.btn-info {
+background: #8b5cf6;
+color: white;
+}
+
+.btn-info:hover {
+background: #7c3aed;
+}
+
+.btn-success {
+background: #10b981;
+color: white;
+}
+
+.btn-success:hover {
+background: #059669;
+}
+
+.btn-small {
+padding: 0.5rem 1rem;
+font-size: 0.75rem;
+}
+
+/* Timer Controls */
+.timer-controls {
+display: flex;
+justify-content: center;
+gap: 1rem;
+margin-bottom: 2rem;
+flex-wrap: wrap;
+}
+
+/* Timer Input */
+.timer-input {
+display: flex;
+justify-content: center;
+gap: 1rem;
+margin-bottom: 2rem;
+align-items: center;
+}
+
+.timer-input input {
+padding: 0.75rem;
+background: var(–bg-card);
+border: 1px solid var(–border-color);
+border-radius: 8px;
+color: var(–text-primary);
+font-family: ‘Courier New’, monospace;
+text-align: center;
+width: 120px;
+font-size: 1rem;
+}
+
+.timer-input input:focus {
+outline: none;
+border-color: #3b82f6;
+box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Preset Buttons */
+.preset-buttons, .adjust-buttons, .combo-buttons {
+display: flex;
+justify-content: center;
+gap: 0.5rem;
+margin-bottom: 1rem;
+flex-wrap: wrap;
+}
+
+.preset-btn, .adjust-btn, .combo-btn {
+padding: 0.5rem 1rem;
+background: var(–bg-card);
+border: 1px solid var(–border-color);
+border-radius: 6px;
+color: var(–text-primary);
+cursor: pointer;
+transition: all 0.2s;
+font-size: 0.875rem;
+}
+
+.preset-btn:hover, .adjust-btn:hover, .combo-btn:hover {
+background: var(–bg-secondary);
+transform: translateY(-1px);
+}
+
+/* Timer Options */
+.timer-options {
+display: flex;
+justify-content: center;
+gap: 1rem;
+margin-bottom: 2rem;
+flex-wrap: wrap;
+}
+
+/* Log Card */
+.log-card {
+background: var(–bg-card);
+border: 1px solid var(–border-color);
+border-radius: 12px;
+padding: 1.5rem;
+margin-top: 2rem;
+}
+
+.log-header {
+display: flex;
+justify-content: space-between;
+align-items: center;
+margin-bottom: 1rem;
+padding-bottom: 0.5rem;
+border-bottom: 1px solid var(–border-color);
+}
+
+.log-header h3 {
+color: var(–text-primary);
+font-size: 1.1rem;
+}
+
+.log-controls {
+display: flex;
+gap: 0.5rem;
+}
+
+.log-list {
+list-style: none;
+max-height: 300px;
+overflow-y: auto;
+}
+
+.log-list li {
+padding: 0.5rem 0;
+color: var(–text-secondary);
+font-size: 0.875rem;
+border-bottom: 1px solid var(–border-color);
+}
+
+.log-list li:last-child {
+border-bottom: none;
+}
+
+/* Fullscreen Overlay */
+.fullscreen-overlay {
+position: fixed;
+top: 0;
+left: 0;
+width: 100vw;
+height: 100vh;
+background: #000000;
+color: white;
+display: flex;
+align-items: center;
+justify-content: center;
+z-index: 1000;
+}
+
+.fullscreen-overlay.hidden {
+display: none;
+}
+
+.fs-exit {
+position: absolute;
+top: 2rem;
+right: 2rem;
+background: rgba(255, 255, 255, 0.1);
+border: 1px solid rgba(255, 255, 255, 0.3);
+color: white;
+padding: 1rem;
+border-radius: 50%;
+cursor: pointer;
+font-size: 1.5rem;
+width: 4rem;
+height: 4rem;
+display: flex;
+align-items: center;
+justify-content: center;
+transition: all 0.2s;
+}
+
+.fs-exit:hover {
+background: rgba(255, 255, 255, 0.2);
+}
+
+.fs-content {
+text-align: center;
+width: 100%;
+}
+
+.fs-time {
+font-size: 20vw;
+font-weight: bold;
+font-family: ‘Courier New’, monospace;
+color: #e53935;
+margin-bottom: 2rem;
+cursor: pointer;
+user-select: none;
+line-height: 1;
+}
+
+.fs-progress-wrap {
+max-width: 80vw;
+margin: 0 auto 2rem;
+}
+
+.fs-progress-bg {
+width: 100%;
+height: 2vh;
+background: #374151;
+border-radius: 1vh;
+overflow: hidden;
+position: relative;
+}
+
+.fs-progress-bar {
+height: 100%;
+background: linear-gradient(to right, #10b981, #f59e0b, #ef4444);
+transform-origin: left;
+transition: transform 1s linear;
+}
+
+.fs-progress-elapsed {
+position: absolute;
+top: 0;
+right: 0;
+height: 100%;
+background: rgba(239, 68, 68, 0.8);
+transition: width 1s linear;
+}
+
+.fs-status {
+font-size: 4vw;
+color: #f59e0b;
+font-weight: bold;
+margin-top: 2rem;
+}
+
+/* Modal Styles */
+.modal {
+position: fixed;
+top: 0;
+left: 0;
+width: 100vw;
+height: 100vh;
+background: rgba(0, 0, 0, 0.5);
+display: flex;
+align-items: center;
+justify-content: center;
+z-index: 999;
+}
+
+.modal.hidden {
+display: none;
+}
+
+.modal-content {
+background: var(–bg-card);
+border-radius: 12px;
+padding: 2rem;
+max-width: 500px;
+width: 90%;
+max-height: 80vh;
+overflow-y: auto;
+border: 1px solid var(–border-color);
+}
+
+.modal-content h3 {
+color: var(–text-primary);
+margin-bottom: 1.5rem;
+font-size: 1.25rem;
+}
+
+.setting-group {
+margin-bottom: 1.5rem;
+}
+
+.setting-group label {
+display: block;
+color: var(–text-primary);
+margin-bottom: 0.5rem;
+cursor: pointer;
+display: flex;
+align-items: center;
+}
+
+.setting-group input[type=“checkbox”] {
+margin-right: 0.5rem;
+}
+
+.setting-group input[type=“color”] {
+margin-left: 0.5rem;
+width: 3rem;
+height: 2rem;
+border: none;
+border-radius: 4px;
+cursor: pointer;
+}
+
+.modal-buttons {
+display: flex;
+justify-content: flex-end;
+gap: 1rem;
+margin-top: 2rem;
+flex-wrap: wrap;
+}
+
+/* Hidden Utility */
+.hidden {
+display: none !important;
+}
+
+/* Pro Timer Styles */
+.pro-timer-container {
+background: var(–bg-primary);
+color: var(–text-primary);
+min-height: 100vh;
+padding: 1rem;
+}
+
+.pro-admin {
+padding: 2rem;
+max-width: 1200px;
+margin: 0 auto;
+}
+
+.pro-admin h2 {
+color: var(–text-primary);
+}
+
+.pro-admin p {
+color: var(–text-secondary);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+.timer-container {
+padding: 1rem;
+}
+
+.timer-controls {
+flex-direction: column;
+align-items: center;
+}
+
+.timer-controls .btn {
+width: 100%;
+max-width: 200px;
+justify-content: center;
+}
+
+.timer-input {
+flex-direction: column;
+align-items: center;
+}
+
+.timer-input input {
+width: 150px;
+margin-bottom: 1rem;
+}
+
+.preset-buttons, .adjust-buttons, .combo-buttons {
+gap: 0.25rem;
+}
+
+.preset-btn, .adjust-btn, .combo-btn {
+padding: 0.5rem 0.75rem;
+font-size: 0.75rem;
+}
+
+.timer-options {
+flex-direction: column;
+align-items: center;
+}
+
+.timer-options .btn {
+width: 100%;
+max-width: 200px;
+justify-content: center;
+}
+
+.modal-buttons {
+flex-direction: column;
+}
+
+.modal-buttons .btn {
+width: 100%;
 }
 }
 
-function syncTabs(){
-$$(’.tab’).forEach(b=>{
-const a=b.dataset.tab===screens[si];
-b.classList.toggle(‘active’,a);
-b.setAttribute(‘aria-selected’,a?‘true’:‘false’);
-});
+@media (max-width: 480px) {
+.time-digits {
+font-size: 2.5rem;
 }
 
-$$(’.tab’).forEach(btn=>btn.addEventListener(‘click’,()=>{
-const id=btn.dataset.tab;
-const idx=screens.indexOf(id);
-if(idx>=0) show(idx);
-}));
-
-function applyTheme(v){
-document.body.classList.toggle(‘dark’, v===‘dark’);
-localStorage.setItem(LS.theme,v);
-const toggle = $(’#themeToggle’);
-if(toggle) toggle.textContent = v===‘dark’ ? ‘☀️’ : ‘🌙’;
+.tab {
+padding: 0.75rem 1rem;
+font-size: 0.75rem;
 }
 
-const themeToggle = $(’#themeToggle’);
-if(themeToggle) {
-themeToggle.addEventListener(‘click’, ()=>
-applyTheme(document.body.classList.contains(‘dark’)?‘light’:‘dark’)
-);
+.fs-time {
+font-size: 25vw;
 }
 
-applyTheme(localStorage.getItem(LS.theme)||‘dark’);
-syncTabs();
-
-function exportListToCSV(el, filename, header=‘timestamp,event’){
-if(!el) return;
-const rows=[header];
-el.querySelectorAll(‘li’).forEach(li=>{
-const t=li.textContent.split(’ — ‘);
-if(t.length>=2) rows.push(`"${t[0].replace(/"/g,'""')}","${t.slice(1).join(' — ').replace(/"/g,'""')}"`);
-else rows.push(`,"${li.textContent.replace(/"/g,'""')}"`);
-});
-const blob=new Blob([rows.join(’\n’)],{type:‘text/csv;charset=utf-8;’});
-const a=document.createElement(‘a’);
-a.href=URL.createObjectURL(blob);
-a.download=filename;
-a.click();
-setTimeout(()=>URL.revokeObjectURL(a.href),500);
+.header .container {
+padding: 0 0.5rem;
 }
 
-function fmtTime(ms, showH, showHund){
-const hundredths = Math.floor((ms%1000)/10);
-let totalSec = Math.floor(ms/1000);
-const s = totalSec % 60;
-totalSec = Math.floor(totalSec/60);
-const m = totalSec % 60;
-const h = Math.floor(totalSec/60);
-const base = (showH || h>0) ? `${pad(h)}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
-return showHund ? `${base}.${pad(hundredths)}` : base;
+.logo {
+font-size: 1.25rem;
 }
 
-/* ––––– Fullscreen overlay ––––– */
-const fs=$(’#fs’), fsDigits=$(’#fsDigits’), fsBar=$(’#fsBar’), fsElapsed=$(’#fsElapsed’), fsBarWrap=$(’#fsBarWrap’), fsStatus=$(’#fsStatus’);
-let fsMode=null;
-
-function setFsFont(text){
-if(!fsDigits) return;
-const len=text.length;
-let size=‘20vw’;
-if(len>=12) size=‘12vw’;
-else if(len>=10) size=‘15vw’;
-else if(len>=9) size=‘18vw’;
-fsDigits.style.fontSize=size;
-}
-
-function openFS(mode, text, ratio, paused, color, showBar){
-if(!fs || !fsDigits) return;
-fsMode=mode;
-fsDigits.textContent=text;
-fsDigits.style.color=color||’’;
-setFsFont(text);
-if(fsBarWrap) fsBarWrap.style.display=showBar?‘block’:‘none’;
-const r=Math.max(0,Math.min(1,ratio||0));
-if(fsBar) fsBar.style.transform=`scaleX(${r})`;
-if(fsElapsed) fsElapsed.style.width=`${(1-r)*100}%`;
-if(fsStatus) fsStatus.style.display = paused?‘block’:‘none’;
-fs.classList.remove(‘hidden’);
-}
-
-function closeFS(){
-fsMode=null;
-if(fs) fs.classList.add(‘hidden’);
-}
-
-const fsExit = $(’#fsExit’);
-if(fsExit) fsExit.addEventListener(‘click’, closeFS);
-
-window.addEventListener(‘resize’,()=>{
-if(!fsMode || !fsDigits) return;
-setFsFont(fsDigits.textContent);
-});
-
-/* ––––– Main Timer ––––– */
-let mainDur=300000, mainRemain=300000, mainRunning=false, mainTick=null, mainStep=1000;
-const mainDigits=$(’#mainTime’), mainBar=$(’#mainBar’), mainElapsed=$(’#mainElapsed’), mainLog=$(’#mainLog’);
-const optHours=$(’#optHours’), optHund=$(’#optHundredths’), digitColor=$(’#digitColor’);
-const mtModal=$(’#mtSettings’);
-
-const mainSettings = $(’#mainSettings’);
-if(mainSettings) mainSettings.addEventListener(‘click’, ()=>mtModal?.classList.remove(‘hidden’));
-const mtClose = $(’#mtClose’);
-if(mtClose) mtClose.addEventListener(‘click’, ()=>mtModal?.classList.add(‘hidden’));
-const mtCancel = $(’#mtCancel’);
-if(mtCancel) mtCancel.addEventListener(‘click’, ()=>mtModal?.classList.add(‘hidden’));
-const mainToggleLog = $(’#mainToggleLog’);
-if(mainToggleLog) mainToggleLog.addEventListener(‘click’, ()=>$(’#mainLogCard’)?.classList.toggle(‘hidden’));
-
-if(optHours) optHours.checked=(localStorage.getItem(LS.mH)||‘false’)===‘true’;
-if(optHund) optHund.checked =(localStorage.getItem(LS.mHs)||‘false’)===‘true’;
-if(digitColor) {
-digitColor.value = localStorage.getItem(LS.mC) || ‘#e53935’;
-if(mainDigits) mainDigits.style.color = digitColor.value;
-}
-
-if(optHours) optHours.onchange=()=>{ localStorage.setItem(LS.mH,optHours.checked?‘true’:‘false’); drawMain(); };
-if(optHund) optHund.onchange =()=>{ localStorage.setItem(LS.mHs,optHund.checked?‘true’:‘false’); setMainCadence(); drawMain(); };
-if(digitColor) digitColor.oninput=e=>{ localStorage.setItem(LS.mC,e.target.value); if(mainDigits) mainDigits.style.color=e.target.value; if(fsMode===‘main’ && fsDigits) fsDigits.style.color=e.target.value; };
-
-const mainInput=$(’#mainInput’);
-
-function fmtMain(){ return fmtTime(mainRemain, optHours?.checked, optHund?.checked); }
-function setMainCadence(){ const step=optHund?.checked?10:1000; if(step!==mainStep){ mainStep=step; if(mainRunning){ clearInterval(mainTick); mainTick=setInterval(tickMain, mainStep); } } }
-function drawMain(){
-if(!mainDigits) return;
-mainDigits.textContent=fmtMain();
-const r=(mainDur?mainRemain/mainDur:0);
-const rr=Math.max(0,Math.min(1,r));
-if(mainBar) mainBar.style.transform=`scaleX(${rr})`;
-if(mainElapsed) mainElapsed.style.width=`${(1-rr)*100}%`;
-updateFS(‘main’, r, !mainRunning && mainRemain>0 && mainRemain<mainDur, mainDigits.textContent, digitColor?.value, true);
-}
-function tickMain(){ mainRemain=Math.max(0,mainRemain-mainStep); drawMain(); if(mainRemain<=0){ mainPause(); log(mainLog,‘Finished’); } }
-function mainStart(){ if(mainRunning) return; if(mainRemain<=0){ if(mainDur<=0) return; mainRemain=mainDur; } setMainCadence(); mainRunning=true; mainTick=setInterval(tickMain, mainStep); log(mainLog,`Started (${fmtMain()})`); }
-function mainPause(){ if(!mainRunning) return; mainRunning=false; clearInterval(mainTick); drawMain(); log(mainLog,`Paused at ${fmtMain()}`); }
-function mainStop(){ mainRunning=false; clearInterval(mainTick); mainRemain=0; drawMain(); log(mainLog,‘Stopped’); }
-function mainReset(){ mainRunning=false; clearInterval(mainTick); mainRemain=mainDur; drawMain(); log(mainLog,‘Reset’); }
-
-function setMainFromInput(){
-if(!mainInput) return;
-const v=mainInput.value.trim();
-const mm=/^(\d+):(\d{2})$/.exec(v);
-if(!mm){ alert(‘Use mm:ss format’); return; }
-const m=+mm[1], s=+mm[2];
-mainDur=(m*60+s)*1000;
-mainRemain=mainDur;
-drawMain();
-log(mainLog,`Set to ${fmtMain()}`);
-}
-
-function log(el,text){
-if(!el) return;
-const li=document.createElement(‘li’);
-li.textContent=new Date().toLocaleTimeString()+’ — ’+text;
-el.prepend(li);
-}
-
-// Main Timer Event Listeners
-const mainStart_btn = $(’#mainStart’);
-if(mainStart_btn) mainStart_btn.addEventListener(‘click’, mainStart);
-const mainPause_btn = $(’#mainPause’);
-if(mainPause_btn) mainPause_btn.addEventListener(‘click’, mainPause);
-const mainStop_btn = $(’#mainStop’);
-if(mainStop_btn) mainStop_btn.addEventListener(‘click’, mainStop);
-const mainReset_btn = $(’#mainReset’);
-if(mainReset_btn) mainReset_btn.addEventListener(‘click’, mainReset);
-const mainSet_btn = $(’#mainSet’);
-if(mainSet_btn) mainSet_btn.addEventListener(‘click’, setMainFromInput);
-const mainClearLog_btn = $(’#mainClearLog’);
-if(mainClearLog_btn) mainClearLog_btn.addEventListener(‘click’, ()=>mainLog && (mainLog.innerHTML=’’));
-const mainExportCSV_btn = $(’#mainExportCSV’);
-if(mainExportCSV_btn) mainExportCSV_btn.addEventListener(‘click’, ()=>exportListToCSV(mainLog,‘main_timer_log.csv’));
-const mtExport_btn = $(’#mtExport’);
-if(mtExport_btn) mtExport_btn.addEventListener(‘click’, ()=>exportListToCSV(mainLog,‘main_timer_log.csv’));
-
-$$(’[data-preset]’).forEach(b=>b.addEventListener(‘click’, ()=>{
-const s=parseInt(b.dataset.preset,10);
-mainDur=s*1000;
-mainRemain=mainDur;
-drawMain();
-log(mainLog,`Preset ${b.textContent}`);
-}));
-
-$$(’[data-adjust]’).forEach(b=>b.addEventListener(‘click’, ()=>{
-const d=parseInt(b.dataset.adjust,10)*1000;
-mainRemain=Math.max(0,mainRemain+d);
-if(mainRemain>mainDur) mainDur=mainRemain;
-drawMain();
-log(mainLog,`Adjust ${b.textContent} → ${fmtMain()}`);
-}));
-
-const mainFullscreen_btn = $(’#mainFullscreen’);
-if(mainFullscreen_btn) {
-mainFullscreen_btn.addEventListener(‘click’, ()=>
-openFS(‘main’, mainDigits?.textContent||‘00:00’, (mainDur?mainRemain/mainDur:0), !mainRunning && mainRemain>0 && mainRemain<mainDur, digitColor?.value, true)
-);
-}
-
-/* ––––– Pro Timer (Simplified for now) ––––– */
-let proTimers = [], activeProTimer = null, proCurrentTime = 0, proIsRunning = false, proMessages = [], proTick = null;
-let proView = ‘admin’, showQR = false;
-
-function loadProTimers() {
-try {
-const saved = localStorage.getItem(LS.proTimers);
-proTimers = saved ? JSON.parse(saved) : [];
-} catch(e) {
-proTimers = [];
+.theme-toggle {
+padding: 0.5rem 0.75rem;
+font-size: 0.875rem;
 }
 }
 
-function saveProTimers() {
-localStorage.setItem(LS.proTimers, JSON.stringify(proTimers));
+/* Print Styles */
+@media print {
+.header, .tab-navigation, .timer-controls, .timer-options, .btn {
+display: none;
 }
 
-function loadProMessages() {
-try {
-const saved = localStorage.getItem(LS.proMessages);
-proMessages = saved ? JSON.parse(saved) : [];
-} catch(e) {
-proMessages = [];
+.time-digits {
+color: #000 !important;
+text-shadow: none;
 }
 }
 
-function saveProMessages() {
-localStorage.setItem(LS.proMessages, JSON.stringify(proMessages));
+/* High Contrast Mode */
+@media (prefers-contrast: high) {
+.time-digits {
+text-shadow: none;
+font-weight: 900;
 }
 
-function initProTimer() {
-loadProTimers();
-loadProMessages();
-
-// Check URL parameters for presenter mode
-const urlParams = new URLSearchParams(window.location.search);
-if(urlParams.get(‘view’) === ‘presenter’) {
-const timerId = urlParams.get(‘timer’);
-if(timerId && timerId !== ‘demo’) {
-const timer = proTimers.find(t => t.id === timerId);
-if(timer) {
-activeProTimer = timer;
-proCurrentTime = timer.duration;
-loadProMessages();
+.btn {
+border: 2px solid currentColor;
 }
 }
-proView = ‘presenter’;
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+.progress-bar,
+.progress-elapsed {
+transition: none;
 }
 
-renderProTimer();
+.btn:hover {
+transform: none;
 }
 
-function renderProTimer() {
-const container = $(’#proTimer’);
-if(!container) return;
+- {
+  transition: none !important;
+  animation: none !important;
+  }
+  }
 
-container.innerHTML = `<div class="pro-admin" style="padding: 2rem; text-align: center;"> <h2 style="font-size: 2rem; margin-bottom: 2rem;">🎯 Pro Timer</h2> <p style="font-size: 1.25rem; color: #9ca3af; margin-bottom: 2rem;">Professional presentation timers with admin control</p> <div style="background: #374151; padding: 2rem; border-radius: 12px; margin: 2rem auto; max-width: 600px;"> <div style="margin-bottom: 1.5rem;"> <div style="font-size: 3rem; font-family: 'Courier New', monospace; color: #e53935; margin-bottom: 1rem;">05:00</div> <div style="width: 100%; height: 8px; background: #4b5563; border-radius: 4px; margin-bottom: 1rem;"> <div style="width: 100%; height: 100%; background: linear-gradient(to right, #10b981, #f59e0b, #ef4444); border-radius: 4px;"></div> </div> <p style="color: #d1d5db; margin-bottom: 1.5rem;">Demo Timer - Full features coming soon!</p> </div> <div style="display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap;"> <button onclick="alert('Pro Timer features coming soon!')" style="padding: 0.75rem 1.5rem; background: #3b82f6; color: white; border: none; border-radius: 8px; cursor: pointer;">▶️ Start Demo</button> <button onclick="alert('Create timer feature coming soon!')" style="padding: 0.75rem 1.5rem; background: #10b981; color: white; border: none; border-radius: 8px; cursor: pointer;">+ Create Timer</button> <button onclick="alert('Share feature coming soon!')" style="padding: 0.75rem 1.5rem; background: #8b5cf6; color: white; border: none; border-radius: 8px; cursor: pointer;">🔗 Share</button> </div> </div> <div style="margin-top: 2rem; padding: 1.5rem; background: #1f2937; border-radius: 8px; border-left: 4px solid #60a5fa;"> <h3 style="color: #60a5fa; margin-bottom: 1rem;">Coming Soon Features:</h3> <ul style="text-align: left; color: #d1d5db; line-height: 1.6;"> <li>✨ Admin control panel</li> <li>📱 QR code sharing</li> <li>💬 Real-time messaging</li> <li>☁️ Cloud synchronization</li> <li>👥 Multi-device support</li> </ul> </div> </div>`;
+/* Focus Styles for Accessibility */
+.btn:focus,
+.tab:focus,
+input:focus,
+.preset-btn:focus,
+.adjust-btn:focus,
+.combo-btn:focus {
+outline: 2px solid #3b82f6;
+outline-offset: 2px;
 }
 
-/* ––––– FS update while open ––––– */
-function updateFS(mode, ratio, paused, text, color, showBar){
-if(fsMode!==mode) return;
-if(!fsDigits) return;
-fsDigits.textContent=text;
-fsDigits.style.color=color||’’;
-setFsFont(text);
-if(fsBarWrap) fsBarWrap.style.display=showBar?‘block’:‘none’;
-if(showBar && fsBar && fsElapsed){
-const r=Math.max(0,Math.min(1,ratio||0));
-fsBar.style.transform=`scaleX(${r})`;
-fsElapsed.style.width=`${(1-r)*100}%`;
-}
-if(fsStatus) fsStatus.style.display=paused?‘block’:‘none’;
+/* Dark Mode Specific Overrides */
+.dark .progress-background {
+background: #374151;
 }
 
-if(fsDigits) {
-fsDigits.addEventListener(‘click’, ()=>{
-if(fsMode===‘main’){ if(mainRunning) mainPause(); else mainStart(); }
-});
+.dark .fs-progress-bg {
+background: #374151;
 }
 
-/* ––––– Init ––––– */
-function init(){
-// Check for presenter mode on page load
-const urlParams = new URLSearchParams(window.location.search);
-if(urlParams.get(‘view’) === ‘presenter’) {
-show(screens.indexOf(‘proTimer’));
-} else {
-show(0);
+/* Light Mode Specific Overrides */
+body:not(.dark) .time-digits {
+color: #dc2626;
+text-shadow: 0 0 20px rgba(220, 38, 38, 0.3);
 }
 
-if(mainDigits) drawMain();
+body:not(.dark) .fs-time {
+color: #dc2626;
 }
 
-init();
+/* Custom Scrollbars */
+.log-list::-webkit-scrollbar {
+width: 6px;
+}
 
-// Enhanced resize handler
-window.addEventListener(‘resize’, ()=>{
-try{if(mainDigits) drawMain();}catch(e){}
-});
+.log-list::-webkit-scrollbar-track {
+background: var(–bg-secondary);
+border-radius: 3px;
+}
 
-})();
+.log-list::-webkit-scrollbar-thumb {
+background: var(–border-color);
+border-radius: 3px;
+}
+
+.log-list::-webkit-scrollbar-thumb:hover {
+background: var(–text-muted);
+}
+
+/* Animation for smooth transitions */
+@keyframes fadeIn {
+from { opacity: 0; }
+to { opacity: 1; }
+}
+
+.screen.active {
+animation: fadeIn 0.3s ease-in;
+}
+
+/* Ensure proper spacing and alignment */
+.timer-display .progress-container {
+max-width: 600px;
+margin: 2rem auto;
+}
+
+/* Make sure buttons are properly sized */
+.timer-controls .btn,
+.timer-options .btn {
+min-width: fit-content;
+white-space: nowrap;
+}
+
+/* Improve touch targets for mobile */
+@media (max-width: 768px) {
+.btn, .preset-btn, .adjust-btn, .combo-btn, .tab {
+min-height: 44px;
+touch-action: manipulation;
+}
+}
