@@ -378,8 +378,53 @@ openFS(‘sw’, swDigits?.textContent||‘00:00’, 0, !swRunning && swElapsed>
 }
 
 /* ––––– Pro Timer ––––– */
+// Supabase Configuration - Add your credentials here later
+const SUPABASE_URL = ‘’; // Add your Supabase URL here (e.g., ‘https://your-project-id.supabase.co’)
+const SUPABASE_ANON_KEY = ‘’; // Add your Supabase anon key here (starts with ‘eyJ0eXAi…’)
+
 let proTimers = [], activeProTimer = null, proCurrentTime = 0, proIsRunning = false, proMessages = [], proTick = null;
 let proView = ‘admin’, showQR = false;
+
+// Simple Supabase client (only used if credentials are provided)
+class SupabaseClient {
+constructor(url, key) {
+this.url = url;
+this.key = key;
+this.headers = {
+‘Content-Type’: ‘application/json’,
+‘Authorization’: `Bearer ${key}`,
+‘apikey’: key
+};
+}
+
+async query(table, method = ‘GET’, data = null, params = ‘’) {
+if (!this.url || !this.key) return null;
+
+```
+const url = `${this.url}/rest/v1/${table}${params}`;
+const options = {
+  method,
+  headers: this.headers
+};
+
+if (data && (method === 'POST' || method === 'PATCH')) {
+  options.body = JSON.stringify(data);
+}
+
+try {
+  const response = await fetch(url, options);
+  return await response.json();
+} catch (error) {
+  console.error('Supabase query error:', error);
+  return null;
+}
+```
+
+}
+}
+
+// Initialize Supabase client (will work when credentials are added)
+const supabase = new SupabaseClient(https://rjitcfqsjjsptbchvmxj.supabase.co, eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJqaXRjZnFzampzcHRiY2h2bXhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU5ODMwMTIsImV4cCI6MjA3MTU1OTAxMn0.IYH0Ee4AR_TgRmwc-GVepmS8eXWxVQeildXUKQpH0Tg);
 
 function loadProTimers() {
 try {
@@ -585,5 +630,322 @@ document.body.removeChild(input);
 const btn = $('#proCopyUrl');
 if(btn) {
   btn.textContent = 'Copied!';
-  setTimeout(() => btn.textContent = 'Copy',
+  setTimeout(() => btn.textContent = 'Copy', 2000);
+}
 ```
+
+});
+}
+
+function generateQRCode(text) {
+return `data:image/svg+xml;base64,${btoa(`
+<svg width="160" height="160" xmlns="http://www.w3.org/2000/svg">
+<rect width="160" height="160" fill="white" stroke="#e5e7eb" stroke-width="2" rx="8"/>
+<rect x="20" y="20" width="20" height="20" fill="#000"/>
+<rect x="120" y="20" width="20" height="20" fill="#000"/>
+<rect x="20" y="120" width="20" height="20" fill="#000"/>
+<rect x="60" y="60" width="40" height="40" fill="#000"/>
+<text x="80" y="100" text-anchor="middle" font-size="8" fill="#666">QR Code</text>
+<text x="80" y="115" text-anchor="middle" font-size="6" fill="#999">Pro Timer</text>
+</svg>
+`)}`;
+}
+
+function toggleQRCode() {
+showQR = !showQR;
+renderProTimer();
+}
+
+function renderProTimer() {
+const container = $(’#proTimer’);
+if(!container) return;
+
+if(proView === ‘presenter’) {
+renderPresenterView(container);
+} else if(proView === ‘create’) {
+renderCreateView(container);
+} else {
+renderAdminView(container);
+}
+}
+
+function renderPresenterView(container) {
+const progress = activeProTimer ? ((activeProTimer.duration - proCurrentTime) / activeProTimer.duration) * 100 : 0;
+
+container.innerHTML = `<div class="presenter-view"> <div class="presenter-timer"> <div class="presenter-time">${formatProTime(proCurrentTime)}</div> <div class="presenter-progress"> <div class="presenter-progress-bar" style="width: ${progress}%"></div> </div> ${activeProTimer ?`<div class="presenter-name">Presenter: ${activeProTimer.presenter}</div>` : ‘’}
+</div>
+
+```
+  ${proMessages.length > 0 ? `
+    <div class="presenter-messages">
+      <h3>Messages from Control</h3>
+      <div class="message-list">
+        ${proMessages.slice(-5).reverse().map(msg => `
+          <div class="message-item">
+            <div class="message-text">${msg.text}</div>
+            <div class="message-time">${msg.timestamp}</div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  ` : ''}
+  
+  <button onclick="proView='admin'; renderProTimer();" class="back-btn">← Back to Admin</button>
+</div>
+```
+
+`;
+}
+
+function renderCreateView(container) {
+container.innerHTML = `
+<div class="pro-create">
+<button onclick="proView='admin'; renderProTimer();" class="back-btn">← Back to Dashboard</button>
+
+```
+  <h2>Create New Timer</h2>
+  
+  <div class="form-group">
+    <label>Timer Name</label>
+    <input type="text" id="proTimerName" placeholder="e.g., Morning Presentation">
+  </div>
+  
+  <div class="form-group">
+    <label>Presenter Name</label>
+    <input type="text" id="proPresenterName" placeholder="e.g., Bob">
+  </div>
+  
+  <div class="form-group">
+    <label>Duration (minutes)</label>
+    <input type="number" id="proDuration" value="5" min="1">
+  </div>
+  
+  <button onclick="createProTimer()" class="btn btn-primary">Create Timer</button>
+</div>
+```
+
+`;
+}
+
+function renderAdminView(container) {
+const progress = activeProTimer ? ((activeProTimer.duration - proCurrentTime) / activeProTimer.duration) * 100 : 0;
+
+container.innerHTML = `
+<div class="pro-admin">
+<div class="admin-header">
+<h2>Pro Timer Dashboard</h2>
+<button onclick="proView='create'; renderProTimer();" class="btn btn-primary">+ Create Timer</button>
+</div>
+
+```
+  <div class="admin-grid">
+    <div class="admin-left">
+      <div class="card">
+        <h3>🎯 Your Timers</h3>
+        ${proTimers.length === 0 ? `
+          <div class="empty-state">No timers created yet. Create your first timer to get started.</div>
+        ` : `
+          <div class="timer-list">
+            ${proTimers.map(timer => `
+              <div class="timer-item ${activeProTimer?.id === timer.id ? 'active' : ''}" 
+                   onclick="startProTimer(${JSON.stringify(timer).replace(/"/g, '&quot;')})">
+                <div class="timer-info">
+                  <h4>${timer.name}</h4>
+                  <p>Presenter: ${timer.presenter}</p>
+                  <p class="timer-meta">Duration: ${Math.floor(timer.duration / 60)} minutes • Created: ${timer.created}</p>
+                </div>
+                ${activeProTimer?.id === timer.id ? '<span class="active-badge">Active</span>' : ''}
+              </div>
+            `).join('')}
+          </div>
+        `}
+      </div>
+      
+      ${activeProTimer ? `
+        <div class="card">
+          <h3>⏱️ Timer Controls</h3>
+          <div class="timer-display">
+            <div class="time-large">${formatProTime(proCurrentTime)}</div>
+            <div class="timer-name">${activeProTimer.name}</div>
+            <div class="progress-wrapper">
+              <div class="progress-bar">
+                <div class="progress-fill" style="width: ${progress}%"></div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="control-buttons">
+            <button onclick="toggleProTimer()" class="btn ${proIsRunning ? 'btn-warning' : 'btn-primary'}">
+              ${proIsRunning ? '⏸️ Pause' : '▶️ Start'}
+            </button>
+            <button onclick="stopProTimer()" class="btn btn-danger">⏹️ Stop</button>
+            <button onclick="resetProTimer()" class="btn btn-secondary">🔄 Reset</button>
+          </div>
+        </div>
+      ` : ''}
+    </div>
+    
+    <div class="admin-right">
+      ${activeProTimer ? `
+        <div class="card">
+          <h3>💬 Send Message to ${activeProTimer.presenter}</h3>
+          
+          <div class="message-input">
+            <input type="text" id="proMessageInput" placeholder="Type a message for the presenter..." 
+                   onkeypress="if(event.key==='Enter') sendProMessage()">
+            <button onclick="sendProMessage()" class="btn btn-primary">Send</button>
+          </div>
+          
+          <div class="quick-messages">
+            <label>Quick Messages:</label>
+            <div class="quick-btn-grid">
+              ${['5 minutes remaining', '2 minutes left', 'Please wrap up', 'Great job!', 'Take your time', 'Questions coming up'].map(msg => `
+                <button onclick="sendQuickMessage('${msg.replace(/'/g, "\\'")}')" class="quick-btn">${msg}</button>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+        
+        <div class="card">
+          <h3>🔗 Share Presenter View</h3>
+          
+          <div class="share-options">
+            <div class="url-section">
+              <label>Presenter URL:</label>
+              <div class="url-input">
+                <input type="text" value="${getPresenterUrl()}" readonly>
+                <button onclick="copyPresenterUrl()" id="proCopyUrl" class="btn btn-secondary">Copy</button>
+              </div>
+            </div>
+            
+            <div class="share-buttons">
+              <button onclick="toggleQRCode()" class="btn btn-success">
+                ${showQR ? '🔗 Hide QR Code' : '🔗 Generate QR Code'}
+              </button>
+              <button onclick="proView='presenter'; renderProTimer();" class="btn btn-info">👁️ Preview</button>
+            </div>
+            
+            ${showQR ? `
+              <div class="qr-container">
+                <img src="${generateQRCode(getPresenterUrl())}" alt="QR Code" class="qr-image">
+                <p style="margin-top: 1rem; color: var(--text-secondary); font-size: 0.875rem;">
+                  Scan to open presenter view
+                </p>
+              </div>
+            ` : ''}
+          </div>
+        </div>
+        
+        <div class="card">
+          <h3>📋 Message History</h3>
+          ${proMessages.length === 0 ? `
+            <div class="empty-state">No messages sent yet.</div>
+          ` : `
+            <div class="message-history">
+              ${proMessages.slice(-10).reverse().map(msg => `
+                <div class="history-item">
+                  <div class="message-text">${msg.text}</div>
+                  <div class="message-timestamp">Sent at ${msg.timestamp}</div>
+                </div>
+              `).join('')}
+            </div>
+          `}
+        </div>
+      ` : `
+        <div class="card">
+          <h3>🚀 How It Works</h3>
+          <div class="guide-steps">
+            <div class="step">
+              <span class="step-number">1</span>
+              <div>
+                <h4>Create a Timer</h4>
+                <p>Set up a named timer with presenter details and duration.</p>
+              </div>
+            </div>
+            <div class="step">
+              <span class="step-number">2</span>
+              <div>
+                <h4>Share with Presenter</h4>
+                <p>Generate a QR code or share the URL for the presenter display.</p>
+              </div>
+            </div>
+            <div class="step">
+              <span class="step-number">3</span>
+              <div>
+                <h4>Control & Communicate</h4>
+                <p>Start the timer and send real-time messages to the presenter.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      `}
+    </div>
+  </div>
+</div>
+```
+
+`;
+}
+
+// Global functions for onclick handlers
+window.createProTimer = createProTimer;
+window.startProTimer = (timerData) => {
+startProTimer(timerData);
+};
+window.toggleProTimer = toggleProTimer;
+window.stopProTimer = stopProTimer;
+window.resetProTimer = resetProTimer;
+window.sendProMessage = sendProMessage;
+window.sendQuickMessage = sendQuickMessage;
+window.copyPresenterUrl = copyPresenterUrl;
+window.toggleQRCode = toggleQRCode;
+
+/* ––––– FS update while open ––––– */
+function updateFS(mode, ratio, paused, text, color, showBar){
+if(fsMode!==mode) return;
+if(!fsDigits) return;
+fsDigits.textContent=text;
+fsDigits.style.color=color||’’;
+setFsFont(text);
+if(fsBarWrap) fsBarWrap.style.display=showBar?‘block’:‘none’;
+if(showBar && fsBar && fsElapsed){
+const r=Math.max(0,Math.min(1,ratio||0));
+fsBar.style.transform=`scaleX(${r})`;
+fsElapsed.style.width=`${(1-r)*100}%`;
+}
+if(fsStatus) fsStatus.style.display=paused?‘block’:‘none’;
+}
+
+if(fsDigits) {
+fsDigits.addEventListener(‘click’, ()=>{
+if(fsMode===‘main’){ if(mainRunning) mainPause(); else mainStart(); }
+else if(fsMode===‘pomo’){ if(pomoRunning) pomoPause(); else pomoStart(); }
+else if(fsMode===‘sw’){ if(swRunning) swPause(); else swStart(); }
+});
+}
+
+/* ––––– Init ––––– */
+function init(){
+// Check for presenter mode on page load
+const urlParams = new URLSearchParams(window.location.search);
+if(urlParams.get(‘view’) === ‘presenter’) {
+show(screens.indexOf(‘proTimer’));
+} else {
+show(0);
+}
+
+if(mainDigits) drawMain();
+if(pomoDigits) drawPomo();
+if(swDigits) drawSW();
+}
+
+init();
+
+// Enhanced resize handler
+window.addEventListener(‘resize’, ()=>{
+try{if(mainDigits) drawMain();}catch(e){}
+try{if(pomoDigits) drawPomo();}catch(e){}
+try{if(swDigits) drawSW();}catch(e){}
+});
+
+})();
