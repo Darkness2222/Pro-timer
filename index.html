@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SyncCue — Timers that stay in sync</title>
+  <meta name="description" content="SyncCue keeps timers in perfect sync across devices. Run a presenter timer, control it remotely, send stage cues, and customize every detail." />
+  <meta name="theme-color" content="#0f172a" />
+  <style>
+    :root{
+      --bg:#0b0c10;
+      --card:#10131a;
+      --text:#e6edf7;
+      --muted:#a2acc0;
+      --brand:#5b9cff;
+      --brand-2:#22d3ee;
+      --line:#1f2531;
+      --accent:#e53935;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0}
+    body{
+      font-family:ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, Noto Sans, sans-serif;
+      background:linear-gradient(180deg,#0b0c10,#0b0f16 40%, #0b0c10);
+      color:var(--text);
+    }
+    a{color:inherit;text-decoration:none}
+    .container{max-width:1100px;margin:0 auto;padding:24px}
+    header{position:sticky;top:0;z-index:50;background:linear-gradient(180deg,rgba(11,14,18,.9),rgba(11,14,18,.6));backdrop-filter:saturate(130%) blur(8px);border-bottom:1px solid var(--line)}
+    .nav{display:flex;align-items:center;justify-content:space-between;padding:14px 0;}
+    .brand{display:flex;gap:10px;align-items:center;font-weight:900;letter-spacing:.2px}
+    .logo{width:34px;height:34px;border-radius:8px;background: radial-gradient(120% 160% at 0% 0%, var(--brand), var(--brand-2) 60%, #6ee7b7 100%); display:grid;place-items:center;box-shadow:0 6px 30px rgba(34,211,238,.24), inset 0 0 18px rgba(255,255,255,.1)}
+    .logo::after{content:"⏱";filter:drop-shadow(0 2px 4px rgba(0,0,0,.35))}
+    .links{display:flex;gap:18px;align-items:center}
+    .links a{color:var(--muted)}
+    .links a:hover{color:#fff}
+    .btn{display:inline-flex;align-items:center;gap:10px;padding:12px 16px;border-radius:12px;border:1px solid var(--line);background:linear-gradient(180deg,#10141c,#0c1118);color:#fff;font-weight:700;box-shadow:0 10px 30px rgba(0,0,0,.25);}
+    .btn.primary{background:linear-gradient(180deg,#5b9cff,#2563eb);border-color:#3b82f6}
+    .btn.ghost{background:transparent}
+    .hero{display:grid;grid-template-columns:1.1fr .9fr;gap:28px;align-items:center;padding:40px 0 22px}
+    .title{font-size:clamp(28px,4vw,54px);line-height:1.08;margin:8px 0}
+    .subtitle{color:var(--muted);font-size:clamp(15px,2.1vw,18px)}
+    .ctaRow{display:flex;gap:12px;flex-wrap:wrap;margin-top:18px}
+    .card{background:linear-gradient(180deg,#10131a,#0e1118);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 10px 40px rgba(0,0,0,.35)}
+    .heroShot{aspect-ratio: 16/10; border-radius:16px; border:1px solid var(--line); background:
+      radial-gradient(120% 120% at 0% 0%, rgba(91,156,255,.15), transparent 60%),
+      linear-gradient(180deg,#0e1118,#0b0d12);
+      position:relative; overflow:hidden;
+    }
+    .digits{position:absolute;inset:0;display:grid;place-items:center;font-weight:1000;font-size:min(18vw,120px);color:var(--accent);opacity:.95;text-shadow:0 12px 40px rgba(229,57,53,.25)}
+    .bar{position:absolute;left:4%;right:4%;bottom:18px;height:16px;background:#0b0f16;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+    .fill{position:absolute;top:0;bottom:0;right:0;background:linear-gradient(90deg,#22c55e,#f59e0b 55%, #ef4444 100%);width:72%}
+    .features{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:26px}
+    .feat{padding:14px;border:1px dashed var(--line);border-radius:14px;background:linear-gradient(180deg,#0f1219,#0d1016)}
+    .feat h4{margin:0 0 6px}
+    .split{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:34px}
+    .pricing{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:18px}
+    .plan{padding:18px;border-radius:16px;border:1px solid var(--line);background:linear-gradient(180deg,#10131a,#0e1118)}
+    .price{font-size:34px;margin:0 0 6px}
+    .tick{color:#86efac;margin-right:6px}
+    .muted{color:var(--muted)}
+    .sectionTitle{font-size:26px;margin:28px 0 8px}
+    .faq{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    details{background:linear-gradient(180deg,#0f1218,#0c1016);padding:12px;border-radius:12px;border:1px solid var(--line)}
+    footer{margin-top:40px;border-top:1px solid var(--line);padding:18px 0;color:var(--muted)}
+    .tag{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;background:linear-gradient(180deg,#0e1624,#0b1018);border:1px solid var(--line);color:#c7d2fe;font-weight:800;letter-spacing:.02em}
+    .badge{display:inline-grid;place-items:center;min-width:28px;height:28px;border-radius:8px;background:radial-gradient(120% 150% at 0% 0%, var(--brand), var(--brand-2));color:#000;font-weight:800}
+    form{display:flex;gap:8px;flex-wrap:wrap}
+    input[type="email"]{flex:1;min-width:220px;padding:12px;border-radius:10px;border:1px solid var(--line);background:#0e1219;color:#fff}
+    @media (max-width:900px){ .hero{grid-template-columns:1fr} .features{grid-template-columns:1fr 1fr} .split, .pricing, .faq{grid-template-columns:1fr} }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container nav">
+      <div class="brand">
+        <div class="logo"></div>
+        <div>SyncCue</div>
+      </div>
+      <div class="links">
+        <a href="#features">Features</a>
+        <a href="#pricing">Pricing</a>
+        <a href="#faq">FAQ</a>
+        <a class="btn ghost" href="/app">Open App</a>
+        <a class="btn primary" href="#get-started">Get Started</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <div>
+        <span class="tag"><span class="badge">◷</span> Real-time Presenter Mode</span>
+        <h1 class="title">Keep the clock in sync. Send cues without saying a word.</h1>
+        <p class="subtitle">SyncCue is the cross-device timer suite for teams and presenters. Run a timer on stage, control it from another device, and send messages that appear right under the countdown — big and clear.</p>
+        <div class="ctaRow">
+          <a class="btn primary" href="/app">Launch App</a>
+          <a class="btn" href="#pricing">See Pricing</a>
+        </div>
+      </div>
+      <div class="card heroShot" aria-hidden="true">
+        <div class="digits">12:34</div>
+        <div class="bar"><div class="fill"></div></div>
+      </div>
+    </section>
+
+    <section id="features">
+      <h2 class="sectionTitle">Why SyncCue?</h2>
+      <div class="features">
+        <div class="feat">
+          <h4>Pro Presenter & Admin</h4>
+          <p class="muted">Control the timer remotely. Presenter goes fullscreen while Admin adjusts time and sends messages.</p>
+        </div>
+        <div class="feat">
+          <h4>Countdown, Stopwatch & Pomodoro</h4>
+          <p class="muted">Multiple modes with logs, laps, presets, and progress bars that shift from green → yellow → red.</p>
+        </div>
+        <div class="feat">
+          <h4>Messages & Stage Cues</h4>
+          <p class="muted">Send “Wrap up”, “Louder”, “Faster”, or custom cues that appear beneath the time.</p>
+        </div>
+        <div class="feat">
+          <h4>Haptics & Sound</h4>
+          <p class="muted">Optional beeps and device vibration on finish, laps, or phase changes.</p>
+        </div>
+        <div class="feat">
+          <h4>Clean, Large Digits</h4>
+          <p class="muted">Auto-fit in fullscreen with toggle options for hours and hundredths.</p>
+        </div>
+        <div class="feat">
+          <h4>Accounts & Pro</h4>
+          <p class="muted">Built to integrate with Supabase auth and Stripe for subscriptions.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="split" id="get-started">
+      <div class="card">
+        <h3>Built for events, classes, and creators</h3>
+        <p class="muted">Whether you’re presenting a keynote, coaching a class, or recording a show, SyncCue keeps everyone on time — without hand signals or interruptions.</p>
+        <ul>
+          <li>Fullscreen presenter display</li>
+          <li>Remote admin control</li>
+          <li>Quick cue buttons + custom messages</li>
+          <li>Per-timer settings (sound, haptics, color, size)</li>
+        </ul>
+        <div class="ctaRow">
+          <a class="btn primary" href="/app">Use the Web App</a>
+          <a class="btn" href="#faq">Read FAQ</a>
+        </div>
+      </div>
+      <div class="card">
+        <h3>What’s inside</h3>
+        <ul>
+          <li>Countdown timer with logs</li>
+          <li>Stopwatch with laps</li>
+          <li>Pomodoro with cycles & goals</li>
+          <li>Color-coded progress bars</li>
+          <li>Dark UI, keyboard shortcuts</li>
+        </ul>
+        <p class="muted">Pro Mode adds shared rooms, admin PIN protection, and presenter messaging.</p>
+      </div>
+    </section>
+
+    <section id="pricing">
+      <h2 class="sectionTitle">Pricing</h2>
+      <div class="pricing">
+        <div class="plan">
+          <h3>Free</h3>
+          <p class="price">$0</p>
+          <p class="muted">For individuals trying SyncCue.</p>
+          <ul>
+            <li><span class="tick">✔</span> Countdown, Pomodoro, Stopwatch</li>
+            <li><span class="tick">✔</span> Fullscreen & progress bars</li>
+            <li><span class="tick">✔</span> Logs & laps</li>
+          </ul>
+          <a class="btn" href="/app">Start Free</a>
+        </div>
+        <div class="plan">
+          <h3>Pro</h3>
+          <p class="price">$—/mo</p>
+          <p class="muted">For teams, events, and studios.</p>
+          <ul>
+            <li><span class="tick">✔</span> Presenter/Admin remote sync</li>
+            <li><span class="tick">✔</span> Room PIN & quick cue buttons</li>
+            <li><span class="tick">✔</span> Priority updates & support</li>
+          </ul>
+          <a class="btn primary" href="/app">Get Pro</a>
+        </div>
+      </div>
+    </section>
+
+    <section id="faq">
+      <h2 class="sectionTitle">FAQ</h2>
+      <div class="faq">
+        <details>
+          <summary>How do the presenter and admin stay in sync?</summary>
+          <p class="muted">Pro Mode uses a real-time backend so both screens share a room. Admin adjusts the timer; the presenter display updates instantly.</p>
+        </details>
+        <details>
+          <summary>Does it work on iPad or phones?</summary>
+          <p class="muted">Yes. SyncCue is mobile-first and supports iPadOS and modern phones. Fullscreen auto-fits the digits.</p>
+        </details>
+        <details>
+          <summary>Can I disable sound and haptics?</summary>
+          <p class="muted">Absolutely. Each timer has a gear menu with toggles for sound and haptics.</p>
+        </details>
+        <details>
+          <summary>How does Pro billing work?</summary>
+          <p class="muted">We plan to offer monthly and yearly options via Stripe. Your access ties to your account email.</p>
+        </details>
+      </div>
+    </section>
+
+    <section class="split" id="newsletter">
+      <div class="card">
+        <h3>Get product updates</h3>
+        <p class="muted">We’ll only email when we ship useful features.</p>
+        <form name="signup" method="POST" data-netlify="true">
+          <input type="hidden" name="form-name" value="signup" />
+          <input type="email" name="email" placeholder="you@company.com" required />
+          <button class="btn primary" type="submit">Notify me</button>
+        </form>
+      </div>
+      <div class="card">
+        <h3>Developers & roadmap</h3>
+        <p class="muted">We’re building in the open. If you’re curious about the roadmap or want to collaborate, say hello.</p>
+        <div class="ctaRow">
+          <a class="btn" href="mailto:hello@synccue.io">hello@synccue.io</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+      <div class="brand"><div class="logo" style="width:24px;height:24px"></div><div>SyncCue</div></div>
+      <div class="muted">© <span id="y"></span> SyncCue. All rights reserved.</div>
+    </div>
+  </footer>
+  <script>
+    document.getElementById('y').textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>
