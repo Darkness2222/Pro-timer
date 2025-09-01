@@ -1,5 +1,6 @@
 {
   "name": "pro-timer-app",
+   "homepage": "/app",
   "version": "0.1.0",
   "private": true,
   "dependencies": {
@@ -39,3 +40,10 @@
     ]
   }
 }
+{
+  "name": "pro-timer-app",
+  "homepage": "/app",
+  "private": true,
+  "dependencies": {
+    // (leave your deps as-is)
+  }
