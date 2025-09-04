@@ -40,10 +40,3 @@
     ]
   }
 }
-{
-  "name": "pro-timer-app",
-  "homepage": "/app",
-  "private": true,
-  "dependencies": {
-    // (leave your deps as-is)
-  }
