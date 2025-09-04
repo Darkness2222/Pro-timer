@@ -951,6 +951,7 @@ const ProTimerApp = () => {
               {Math.round((status.timeLeft / activeTimer.duration) * 100)}% remaining
             </div>
           </div>
+        </div>
 
           {/* Status */}
           <div className="mb-8">
