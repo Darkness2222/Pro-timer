@@ -171,7 +171,7 @@ const ProTimerApp = () => {
         color: {
           dark: '#000000',
           light: '#FFFFFF'
-        }
+          }
       });
       setQrCodeUrl(qrDataUrl);
       setShowQR(true);
