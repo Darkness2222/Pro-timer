@@ -250,6 +250,15 @@ const ProTimerApp = () => {
               <div className="text-6xl font-mono font-bold text-red-500 mb-4">
                 {formatTime(activeTimer?.timeLeft || 0)}
               </div>
+              <div className="text-xl font-medium mb-4">
+                {activeTimer?.isRunning ? (
+                  <span className="text-green-400">▶️ Running</span>
+                ) : activeTimer?.timeLeft === 0 ? (
+                  <span className="text-red-400">⏹️ Stopped</span>
+                ) : (
+                  <span className="text-yellow-400">⏸️ Paused</span>
+                )}
+              </div>
               <div className="w-full bg-gray-700 rounded-full h-3 mb-4">
                 <div 
                   className="bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 h-3 rounded-full transition-all duration-1000" 
@@ -478,6 +487,15 @@ const ProTimerApp = () => {
                 }}>
                   {formatTime(timer.timeLeft)}
                 </div>
+                <div className="text-sm font-medium mb-3">
+                  {timer.isRunning ? (
+                    <span className="text-green-400">▶️ Running</span>
+                  ) : timer.timeLeft === 0 ? (
+                    <span className="text-red-400">⏹️ Stopped</span>
+                  ) : (
+                    <span className="text-yellow-400">⏸️ Paused</span>
+                  )}
+                </div>
                 <div className="w-full bg-gray-800 rounded-full h-2 mb-3">
                   <div 
                     className="bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 h-2 rounded-full transition-all duration-1000" 
@@ -570,9 +588,18 @@ const ProTimerApp = () => {
           <div className="text-2xl font-semibold text-blue-400 mb-4">
             {activeTimer?.name} - {activeTimer?.presenterName}
           </div>
+          <div className="text-xl font-medium mb-4">
+            Status: {activeTimer?.isRunning ? (
+              <span className="text-green-400">▶️ Running</span>
+            ) : activeTimer?.timeLeft === 0 ? (
+              <span className="text-red-400">⏹️ Stopped</span>
+            ) : (
+              <span className="text-yellow-400">⏸️ Paused</span>
+            )}
+          </div>
           <div className="text-4xl font-semibold text-yellow-400 mb-4">📢 Message from Admin</div>
           <p className="text-3xl font-bold">
-            {currentMessage || (activeTimer?.isRunning ? 'Timer is running' : activeTimer?.timeLeft === 0 ? 'Time is up!' : 'Timer is paused')}
+            {currentMessage || 'No message'}
           </p>
         </div>
       </div>
