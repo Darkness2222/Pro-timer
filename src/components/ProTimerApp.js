@@ -936,21 +936,22 @@ const ProTimerApp = () => {
             <div className="text-9xl font-mono text-white mb-6 tracking-wider">
               {formatTime(status.timeLeft)}
             </div>
-              <button
-                onClick={() => {
-                  setCustomMessages([
-                    "⏰ 5 minutes remaining",
-                    "⚡ Please wrap up", 
-                    "🎯 Final slide please",
-                    "👏 Thank you!"
-                  ]);
+            
+            {/* Progress Bar */}
+            <div className="bg-white/20 rounded-full h-4 mb-4 max-w-2xl mx-auto">
+              <div
+                className="h-4 rounded-full transition-all duration-300 bg-gradient-to-r from-green-400 via-yellow-400 to-red-500"
+                style={{
+                  width: `${Math.max(0, (status.timeLeft / activeTimer.duration) * 100)}%`
                 }}
-                className="w-full bg-slate-600 hover:bg-slate-700 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 text-sm"
-              >
-                Reset to Defaults
-              </button>
+              />
+            </div>
+            
+            <div className="text-xl text-white/80">
+              {Math.round((status.timeLeft / activeTimer.duration) * 100)}% remaining
             </div>
           </div>
+        </div>
 
           {/* Status */}
           <div className="mb-8">
