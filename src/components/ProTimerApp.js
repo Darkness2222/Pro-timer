@@ -30,6 +30,8 @@ const ProTimerApp = () => {
   const [currentMessage, setCurrentMessage] = useState('');
   const [customMessage, setCustomMessage] = useState('');
   const [qrCodeUrl, setQrCodeUrl] = useState('');
+  const [showCustomTime, setShowCustomTime] = useState(false);
+  const [customTimeInput, setCustomTimeInput] = useState('');
   const intervalRef = useRef(null);
 
   // Get active timer
@@ -190,6 +192,23 @@ const ProTimerApp = () => {
     }
   };
 
+  const setCustomTime = () => {
+    const timeMatch = customTimeInput.match(/^(\d{1,3}):([0-5]\d)$/);
+    if (timeMatch) {
+      const minutes = parseInt(timeMatch[1]);
+      const seconds = parseInt(timeMatch[2]);
+      const totalSeconds = minutes * 60 + seconds;
+      updateTimer(activeTimerId, { 
+        timeLeft: totalSeconds,
+        initialTime: totalSeconds,
+        isRunning: false
+      });
+      setCustomTimeInput('');
+      setShowCustomTime(false);
+    } else {
+      alert('Please enter time in MM:SS format (e.g., 15:30)');
+    }
+
   const AdminView = () => (
     <div className="bg-gray-900 text-white min-h-screen p-6">
       <div className="max-w-6xl mx-auto">
@@ -232,7 +251,7 @@ const ProTimerApp = () => {
               </div>
               <div className="w-full bg-gray-700 rounded-full h-3 mb-4">
                 <div 
-                  className="bg-gradient-to-r from-red-500 via-yellow-500 to-green-500 h-3 rounded-full transition-all duration-1000" 
+                  className="bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 h-3 rounded-full transition-all duration-1000" 
                   style={{width: `${getProgressPercentage()}%`}}
                 ></div>
               </div>
@@ -296,6 +315,44 @@ const ProTimerApp = () => {
               >
                 -5 min
               </button>
+            </div>
+
+            <div className="flex justify-center mt-4">
+              <button 
+                onClick={() => setShowCustomTime(!showCustomTime)}
+                className="bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-lg transition-colors"
+              >
+                Set Custom Time
+              </button>
+            </div>
+
+            {showCustomTime && (
+              <div className="mt-4 flex justify-center gap-3">
+                <input
+                  type="text"
+                  value={customTimeInput}
+                  onChange={(e) => setCustomTimeInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && setCustomTime()}
+                  placeholder="MM:SS (e.g., 15:30)"
+                  className="bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white placeholder-gray-400"
+                />
+                <button 
+                  onClick={setCustomTime}
+                  className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg transition-colors"
+                >
+                  Set
+                </button>
+                <button 
+                  onClick={() => {
+                    setShowCustomTime(false);
+                    setCustomTimeInput('');
+                  }}
+                  className="bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
             </div>
           </div>
 
@@ -423,7 +480,7 @@ const ProTimerApp = () => {
                 </div>
                 <div className="w-full bg-gray-800 rounded-full h-2 mb-3">
                   <div 
-                    className="bg-gradient-to-r from-red-500 via-yellow-500 to-green-500 h-2 rounded-full transition-all duration-1000" 
+                    className="bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 h-2 rounded-full transition-all duration-1000" 
                     style={{width: `${getProgressPercentage(timer)}%`}}
                   ></div>
                 </div>
@@ -504,7 +561,7 @@ const ProTimerApp = () => {
         
         <div className="w-[80vw] max-w-4xl bg-gray-800 rounded-full h-8 mb-12">
           <div 
-            className="bg-gradient-to-r from-red-500 via-yellow-500 to-green-500 h-8 rounded-full transition-all duration-1000" 
+            className="bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 h-8 rounded-full transition-all duration-1000" 
             style={{width: `${getProgressPercentage()}%`}}
           ></div>
         </div>
