@@ -983,7 +983,6 @@ const ProTimerApp = () => {
             </div>
           )}
         </div>
-      </div>
     );
   };
 
