@@ -171,7 +171,7 @@ const ProTimerApp = () => {
         color: {
           dark: '#000000',
           light: '#FFFFFF'
-          }
+        }
       });
       setQrCodeUrl(qrDataUrl);
       setShowQR(true);
@@ -621,9 +621,6 @@ const ProTimerApp = () => {
       </div>
     );
   };
-    } else {
-      clearInterval(intervalRef.current);
-    }
 
   return (
     <div className="w-full">
