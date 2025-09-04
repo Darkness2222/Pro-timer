@@ -54,6 +54,10 @@ const ProTimerApp = () => {
       })
       .subscribe();
 
+    // Load initial data
+    loadSessions();
+    loadMessages();
+
     return () => {
       supabase.removeChannel(timersSubscription);
       supabase.removeChannel(sessionsSubscription);
@@ -67,10 +71,16 @@ const ProTimerApp = () => {
       clearInterval(intervalRef.current);
     }
 
+    const runningSessions = Object.entries(sessions).filter(([_, session]) => session.is_running);
+    
+    if (runningSessions.length === 0) {
+      return;
+    }
+
     intervalRef.current = setInterval(async () => {
-      const runningSessions = Object.entries(sessions).filter(([_, session]) => session.is_running);
+      const currentRunningSessions = Object.entries(sessions).filter(([_, session]) => session.is_running);
       
-      for (const [timerId, session] of runningSessions) {
+      for (const [timerId, session] of currentRunningSessions) {
         if (session.time_left > 0) {
           const newTimeLeft = session.time_left - 1;
           
