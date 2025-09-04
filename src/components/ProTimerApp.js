@@ -795,6 +795,8 @@ const ProTimerApp = () => {
               )}
             </div>
           </div>
+        </div>
+
         {/* QR Code Modal */}
         {showQRCode && (
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -897,7 +899,7 @@ const ProTimerApp = () => {
                   }}
                   className="w-full bg-slate-600 hover:bg-slate-700 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 text-sm"
                 >
-                  ➕ Create Timer
+                  🔄 Reset to Defaults
                 </button>
               </div>
             </div>
@@ -951,7 +953,6 @@ const ProTimerApp = () => {
               {Math.round((status.timeLeft / activeTimer.duration) * 100)}% remaining
             </div>
           </div>
-        </div>
 
           {/* Status */}
           <div className="mb-8">
@@ -983,6 +984,7 @@ const ProTimerApp = () => {
             </div>
           )}
         </div>
+      </div>
     );
   };
 
