@@ -1,9 +1,61 @@
 import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Play, Pause, Square, RotateCcw, QrCode, Send, Copy, Eye } from 'lucide-react';
 
 const ProTimerApp = () => {
   const [currentView, setCurrentView] = useState('admin');
   const [showQR, setShowQR] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(12 * 60 + 34); // 12:34 in seconds
+  const [isRunning, setIsRunning] = useState(false);
+  const [initialTime, setInitialTime] = useState(12 * 60 + 34);
+  const intervalRef = useRef(null);
+
+  useEffect(() => {
+    if (isRunning && timeLeft > 0) {
+      intervalRef.current = setInterval(() => {
+        setTimeLeft(prev => {
+          if (prev <= 1) {
+            setIsRunning(false);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } else {
+      clearInterval(intervalRef.current);
+    }
+
+    return () => clearInterval(intervalRef.current);
+  }, [isRunning, timeLeft]);
+
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const getProgressPercentage = () => {
+    if (initialTime === 0) return 0;
+    return ((initialTime - timeLeft) / initialTime) * 100;
+  };
+
+  const handleStart = () => setIsRunning(true);
+  const handlePause = () => setIsRunning(false);
+  const handleStop = () => {
+    setIsRunning(false);
+    setTimeLeft(0);
+  };
+  const handleReset = () => {
+    setIsRunning(false);
+    setTimeLeft(initialTime);
+  };
+
+  const adjustTime = (seconds) => {
+    setTimeLeft(prev => Math.max(0, prev + seconds));
+    if (!isRunning && timeLeft + seconds > 0) {
+      setInitialTime(timeLeft + seconds);
+    }
+  };
 
   const AdminView = () => (
     <div className="bg-gray-900 text-white min-h-screen p-6">
@@ -34,36 +86,70 @@ const ProTimerApp = () => {
             <h2 className="text-xl font-semibold mb-4">Timer Control</h2>
             
             <div className="text-center mb-6">
-              <div className="text-6xl font-mono font-bold text-red-500 mb-4">12:34</div>
+              <div className="text-6xl font-mono font-bold text-red-500 mb-4">{formatTime(timeLeft)}</div>
               <div className="w-full bg-gray-700 rounded-full h-3 mb-4">
-                <div className="bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 h-3 rounded-full" style={{width: '65%'}}></div>
+                <div className="bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 h-3 rounded-full transition-all duration-1000" style={{width: `${getProgressPercentage()}%`}}></div>
               </div>
             </div>
 
             <div className="flex justify-center gap-3 mb-6">
-              <button className="flex items-center gap-2 bg-green-600 hover:bg-green-700 px-6 py-3 rounded-lg transition-colors">
+              <button 
+                onClick={handleStart}
+                disabled={timeLeft === 0}
+                className="flex items-center gap-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 px-6 py-3 rounded-lg transition-colors"
+              >
                 <Play size={20} />
                 Start
               </button>
-              <button className="flex items-center gap-2 bg-yellow-600 hover:bg-yellow-700 px-6 py-3 rounded-lg transition-colors">
+              <button 
+                onClick={handlePause}
+                disabled={!isRunning}
+                className="flex items-center gap-2 bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-600 px-6 py-3 rounded-lg transition-colors"
+              >
                 <Pause size={20} />
                 Pause
               </button>
-              <button className="flex items-center gap-2 bg-red-600 hover:bg-red-700 px-6 py-3 rounded-lg transition-colors">
+              <button 
+                onClick={handleStop}
+                className="flex items-center gap-2 bg-red-600 hover:bg-red-700 px-6 py-3 rounded-lg transition-colors"
+              >
                 <Square size={20} />
                 Stop
               </button>
-              <button className="flex items-center gap-2 bg-gray-600 hover:bg-gray-700 px-6 py-3 rounded-lg transition-colors">
+              <button 
+                onClick={handleReset}
+                className="flex items-center gap-2 bg-gray-600 hover:bg-gray-700 px-6 py-3 rounded-lg transition-colors"
+              >
                 <RotateCcw size={20} />
                 Reset
               </button>
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <button className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg transition-colors">+1 min</button>
-              <button className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg transition-colors">+5 min</button>
-              <button className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg transition-colors">-1 min</button>
-              <button className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg transition-colors">-5 min</button>
+              <button 
+                onClick={() => adjustTime(60)}
+                className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg transition-colors"
+              >
+                +1 min
+              </button>
+              <button 
+                onClick={() => adjustTime(300)}
+                className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg transition-colors"
+              >
+                +5 min
+              </button>
+              <button 
+                onClick={() => adjustTime(-60)}
+                className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg transition-colors"
+              >
+                -1 min
+              </button>
+              <button 
+                onClick={() => adjustTime(-300)}
+                className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg transition-colors"
+              >
+                -5 min
+              </button>
             </div>
           </div>
 
@@ -154,16 +240,18 @@ const ProTimerApp = () => {
       
       <div className="text-center">
         <div className="text-9xl font-mono font-bold text-red-500 mb-8 leading-none">
-          12:34
+          {formatTime(timeLeft)}
         </div>
         
         <div className="w-96 bg-gray-800 rounded-full h-6 mb-8">
-          <div className="bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 h-6 rounded-full transition-all duration-1000" style={{width: '65%'}}></div>
+          <div className="bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 h-6 rounded-full transition-all duration-1000" style={{width: `${getProgressPercentage()}%`}}></div>
         </div>
         
         <div className="bg-gray-800 rounded-xl p-6 max-w-md">
           <div className="text-2xl font-semibold text-yellow-400 mb-2">📢 Message from Admin</div>
-          <p className="text-xl">"Please wrap up in the next 2 minutes"</p>
+          <p className="text-xl">
+            {isRunning ? '"Timer is running"' : timeLeft === 0 ? '"Time is up!"' : '"Timer is paused"'}
+          </p>
         </div>
       </div>
     </div>
