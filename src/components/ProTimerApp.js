@@ -129,7 +129,6 @@ const ProTimerApp = () => {
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
-        }
       }
     };
   }, [sessions]);
