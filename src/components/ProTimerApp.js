@@ -1008,6 +1008,33 @@ const ProTimerApp = ({ session, bypassAuth }) => {
                         className="text-red-400 hover:text-red-300 ml-2 p-1"
                         title="Remove message"
                       >
+                        🗑️
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Reset to Defaults */}
+              <div className="border-t border-white/10 pt-4">
+                <button
+                  onClick={() => {
+                    setCustomMessages([
+                      "⏰ 5 minutes remaining",
+                      "⚡ Please wrap up", 
+                      "🎯 Final slide please",
+                      "👏 Thank you!"
+                    ]);
+                  }}
+                  className="w-full bg-slate-600 hover:bg-slate-700 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 text-sm"
+                >
+                  🔄 Reset to Defaults
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
               </div>
 
               {/* Reset to Defaults */}
