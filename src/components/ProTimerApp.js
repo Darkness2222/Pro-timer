@@ -795,116 +795,114 @@ const ProTimerApp = () => {
               )}
             </div>
           </div>
-
-          {/* QR Code Modal */}
-          {showQRCode && (
-            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-              <div className="bg-white rounded-2xl p-8 max-w-md w-full text-center">
-                <h3 className="text-2xl font-bold text-gray-800 mb-4">Presenter View</h3>
-                <div className="bg-gray-100 p-6 rounded-lg mb-4">
-                  <div className="text-6xl mb-4">📱</div>
-                  <p className="text-gray-600 mb-4">Scan to access presenter view</p>
-                  <div className="bg-white p-4 rounded border-2 border-dashed border-gray-300">
-                    <p className="text-sm text-gray-500">QR Code would appear here</p>
-                    <p className="text-xs text-gray-400 mt-2">
-                      {window.location.origin}/presenter/{activeTimerId}
-                    </p>
-                  </div>
+        {/* QR Code Modal */}
+        {showQRCode && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl p-8 max-w-md w-full text-center">
+              <h3 className="text-2xl font-bold text-gray-800 mb-4">Presenter View</h3>
+              <div className="bg-gray-100 p-6 rounded-lg mb-4">
+                <div className="text-6xl mb-4">📱</div>
+                <p className="text-gray-600 mb-4">Scan to access presenter view</p>
+                <div className="bg-white p-4 rounded border-2 border-dashed border-gray-300">
+                  <p className="text-sm text-gray-500">QR Code would appear here</p>
+                  <p className="text-xs text-gray-400 mt-2">
+                    {window.location.origin}/presenter/{activeTimerId}
+                  </p>
                 </div>
+              </div>
+              <button
+                onClick={() => setShowQRCode(false)}
+                className="bg-gray-800 hover:bg-gray-900 text-white font-bold py-3 px-6 rounded-lg transition-all duration-200"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Message Settings Modal */}
+        {showMessageSettings && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-slate-800 rounded-2xl p-6 max-w-md w-full border border-white/20">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold text-white">⚙️ Customize Quick Messages</h3>
                 <button
-                  onClick={() => setShowQRCode(false)}
-                  className="bg-gray-800 hover:bg-gray-900 text-white font-bold py-3 px-6 rounded-lg transition-all duration-200"
+                  onClick={() => setShowMessageSettings(false)}
+                  className="text-white/60 hover:text-white text-2xl"
                 >
-                  Close
+                  ✕
+                </button>
+              </div>
+
+              {/* Add New Message */}
+              <div className="mb-6">
+                <label className="block text-white font-medium mb-2">Add New Quick Message</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newCustomMessage}
+                    onChange={(e) => setNewCustomMessage(e.target.value)}
+                    placeholder="e.g., 🔔 2 minutes left"
+                    className="flex-1 px-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        addCustomMessage();
+                      }
+                    }}
+                  />
+                  <button
+                    onClick={addCustomMessage}
+                    className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-all duration-200"
+                  >
+                    ➕
+                  </button>
+                </div>
+              </div>
+
+              {/* Current Messages */}
+              <div className="mb-6">
+                <label className="block text-white font-medium mb-3">Current Quick Messages</label>
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {customMessages.map((msg, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between bg-white/5 rounded-lg p-3 border border-white/10"
+                    >
+                      <span className="text-white text-sm flex-1">{msg}</span>
+                      <button
+                        onClick={() => removeCustomMessage(index)}
+                        className="text-red-400 hover:text-red-300 ml-2 p-1"
+                        title="Remove message"
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                {customMessages.length === 0 && (
+                  <p className="text-white/60 text-sm text-center py-4">No quick messages yet. Add one above!</p>
+                )}
+              </div>
+
+              {/* Reset to Defaults */}
+              <div className="border-t border-white/10 pt-4">
+                <button
+                  onClick={() => {
+                    setCustomMessages([
+                      "⏰ 5 minutes remaining",
+                      "⚡ Please wrap up", 
+                      "🎯 Final slide please",
+                      "👏 Thank you!"
+                    ]);
+                  }}
+                  className="w-full bg-slate-600 hover:bg-slate-700 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 text-sm"
+                >
+                  ➕ Create Timer
                 </button>
               </div>
             </div>
-          )}
-
-          {/* Message Settings Modal */}
-          {showMessageSettings && (
-            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-              <div className="bg-slate-800 rounded-2xl p-6 max-w-md w-full border border-white/20">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-xl font-bold text-white">⚙️ Customize Quick Messages</h3>
-                  <button
-                    onClick={() => setShowMessageSettings(false)}
-                    className="text-white/60 hover:text-white text-2xl"
-                  >
-                    ✕
-                  </button>
-                </div>
-
-                {/* Add New Message */}
-                <div className="mb-6">
-                  <label className="block text-white font-medium mb-2">Add New Quick Message</label>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={newCustomMessage}
-                      onChange={(e) => setNewCustomMessage(e.target.value)}
-                      placeholder="e.g., 🔔 2 minutes left"
-                      className="flex-1 px-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                      onKeyPress={(e) => {
-                        if (e.key === 'Enter') {
-                          addCustomMessage();
-                        }
-                      }}
-                    />
-                    <button
-                      onClick={addCustomMessage}
-                      className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-all duration-200"
-                    >
-                      ➕
-                    </button>
-                  </div>
-                </div>
-
-                {/* Current Messages */}
-                <div className="mb-6">
-                  <label className="block text-white font-medium mb-3">Current Quick Messages</label>
-                  <div className="space-y-2 max-h-60 overflow-y-auto">
-                    {customMessages.map((msg, index) => (
-                      <div
-                        key={index}
-                        className="flex items-center justify-between bg-white/5 rounded-lg p-3 border border-white/10"
-                      >
-                        <span className="text-white text-sm flex-1">{msg}</span>
-                        <button
-                          onClick={() => removeCustomMessage(index)}
-                          className="text-red-400 hover:text-red-300 ml-2 p-1"
-                          title="Remove message"
-                        >
-                          🗑️
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                  {customMessages.length === 0 && (
-                    <p className="text-white/60 text-sm text-center py-4">No quick messages yet. Add one above!</p>
-                  )}
-                </div>
-
-                {/* Reset to Defaults */}
-                <div className="border-t border-white/10 pt-4">
-                  <button
-                    onClick={() => {
-                      setCustomMessages([
-                        "⏰ 5 minutes remaining",
-                        "⚡ Please wrap up", 
-                        "🎯 Final slide please",
-                        "👏 Thank you!"
-                      ]);
-                    }}
-                    className="w-full bg-slate-600 hover:bg-slate-700 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 text-sm"
-                  >
-                    Reset to Defaults
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     );
   };
@@ -938,37 +936,51 @@ const ProTimerApp = () => {
             <div className="text-9xl font-mono text-white mb-6 tracking-wider">
               {formatTime(status.timeLeft)}
             </div>
-
-            {/* Status */}
-            <div className="mb-8">
-              <span className={`px-6 py-3 rounded-full text-xl font-medium ${
-                status.status === 'running' ? 'bg-green-500/20 text-green-300 border border-green-500/30' :
-                status.status === 'finished' ? 'bg-red-500/20 text-red-300 border border-red-500/30' :
-                'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30'
-              }`}>
-                {status.status === 'running' ? '▶️ Presentation Active' :
-                 status.status === 'finished' ? '⏹️ Time Complete' :
-                 '⏸️ Timer Paused'}
-              </span>
+              <button
+                onClick={() => {
+                  setCustomMessages([
+                    "⏰ 5 minutes remaining",
+                    "⚡ Please wrap up", 
+                    "🎯 Final slide please",
+                    "👏 Thank you!"
+                  ]);
+                }}
+                className="w-full bg-slate-600 hover:bg-slate-700 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 text-sm"
+              >
+                Reset to Defaults
+              </button>
             </div>
-
-            {/* Messages */}
-            {recentMessages.length > 0 && (
-              <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20 max-w-2xl mx-auto">
-                <h3 className="text-xl font-bold text-white mb-4">📨 Messages from Control</h3>
-                <div className="space-y-3">
-                  {recentMessages.map((msg, index) => (
-                    <div
-                      key={index}
-                      className="bg-white/10 rounded-lg p-4 text-white border border-white/20"
-                    >
-                      {msg.message}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
+
+          {/* Status */}
+          <div className="mb-8">
+            <span className={`px-6 py-3 rounded-full text-xl font-medium ${
+              status.status === 'running' ? 'bg-green-500/20 text-green-300 border border-green-500/30' :
+              status.status === 'finished' ? 'bg-red-500/20 text-red-300 border border-red-500/30' :
+              'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30'
+            }`}>
+              {status.status === 'running' ? '▶️ Presentation Active' :
+               status.status === 'finished' ? '⏹️ Time Complete' :
+               '⏸️ Timer Paused'}
+            </span>
+          </div>
+
+          {/* Messages */}
+          {recentMessages.length > 0 && (
+            <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20 max-w-2xl mx-auto">
+              <h3 className="text-xl font-bold text-white mb-4">📨 Messages from Control</h3>
+              <div className="space-y-3">
+                {recentMessages.map((msg, index) => (
+                  <div
+                    key={index}
+                    className="bg-white/10 rounded-lg p-4 text-white border border-white/20"
+                  >
+                    {msg.message}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
