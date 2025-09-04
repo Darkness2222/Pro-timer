@@ -1,70 +1,53 @@
-import React, { useState } from 'react';
-import { Play, Pause, Square, RotateCcw, QrCode, Send, Copy, Eye } from 'lucide-react';
+import React, { useState, useEffect } from 'react'
+import { supabase } from './lib/supabase'
+import Auth from './components/Auth'
+import ProTimerApp from './components/ProTimerApp'
 
-const ProTimerApp = () => {
-  const [currentView, setCurrentView] = useState('admin');
-  const [showQR, setShowQR] = useState(false);
+function App() {
+  const [session, setSession] = useState(null)
+  const [loading, setLoading] = useState(true)
 
-  const AdminView = () => (
-    <div className="bg-gray-900 text-white min-h-screen">
-      {/* ... all your Admin code here ... */}
-    </div>
-  );
+  useEffect(() => {
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session)
+      setLoading(false)
+    })
 
-  const PresenterView = () => (
-    <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-8 relative">
-      {/* ... all your Presenter code here ... */}
-    </div>
-  );
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session)
+    })
 
-  const CreateView = () => (
-    <div className="bg-gray-900 text-white min-h-screen">
-      {/* ... all your Create Timer code here ... */}
-    </div>
-  );
+    return () => subscription.unsubscribe()
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-white text-xl">Loading...</div>
+      </div>
+    )
+  }
 
   return (
-    <div className="w-full">
-      {/* Top nav buttons to switch views */}
-      <div className="bg-gray-800 p-4 flex justify-center gap-4 border-b border-gray-700">
-        <button
-          onClick={() => setCurrentView('admin')}
-          className={`px-6 py-3 rounded-lg font-medium transition-colors ${
-            currentView === 'admin'
-              ? 'bg-blue-600 text-white'
-              : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-          }`}
-        >
-          👨‍💼 Admin Dashboard
-        </button>
-        <button
-          onClick={() => setCurrentView('presenter')}
-          className={`px-6 py-3 rounded-lg font-medium transition-colors ${
-            currentView === 'presenter'
-              ? 'bg-purple-600 text-white'
-              : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-          }`}
-        >
-          🎯 Presenter View
-        </button>
-        <button
-          onClick={() => setCurrentView('create')}
-          className={`px-6 py-3 rounded-lg font-medium transition-colors ${
-            currentView === 'create'
-              ? 'bg-green-600 text-white'
-              : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-          }`}
-        >
-          ➕ Create Timer
-        </button>
-      </div>
-
-      {/* Switch views */}
-      {currentView === 'admin' && <AdminView />}
-      {currentView === 'presenter' && <PresenterView />}
-      {currentView === 'create' && <CreateView />}
+    <div className="App">
+      {!session ? (
+        <Auth />
+      ) : (
+        <div>
+          <ProTimerApp />
+          {/* Add logout button */}
+          <button
+            onClick={() => supabase.auth.signOut()}
+            className="fixed top-4 right-4 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm z-50"
+          >
+            Sign Out
+          </button>
+        </div>
+      )}
     </div>
-  );
-};
+  )
+}
 
-export default ProTimerApp;
+export default App
