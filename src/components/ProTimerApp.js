@@ -554,6 +554,12 @@ const ProTimerApp = () => {
               onClick={() => setCurrentView('overview')}
               className="bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-lg transition-colors"
             >
+              📋 Multiple Timers
+            </button>
+            <button
+              onClick={() => setCurrentView('overview')}
+              className="bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-lg transition-colors"
+            >
               📋 Timer Overview
             </button>
           </div>
