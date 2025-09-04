@@ -190,6 +190,7 @@ const ProTimerApp = () => {
   };
 
   const startTimer = async (timerId) => {
+    console.log('Starting timer:', timerId);
     await supabase
       .from('timer_sessions')
       .update({ 
@@ -200,6 +201,7 @@ const ProTimerApp = () => {
   };
 
   const pauseTimer = async (timerId) => {
+    console.log('Pausing timer:', timerId);
     await supabase
       .from('timer_sessions')
       .update({ 
@@ -210,6 +212,7 @@ const ProTimerApp = () => {
   };
 
   const resetTimer = async (timerId) => {
+    console.log('Resetting timer:', timerId);
     const timer = timers.find(t => t.id === timerId);
     if (!timer) return;
 
@@ -224,6 +227,7 @@ const ProTimerApp = () => {
   };
 
   const setCustomTimer = async (timerId, totalSeconds) => {
+    console.log('Setting custom timer:', timerId, totalSeconds);
     await supabase
       .from('timer_sessions')
       .update({ 
@@ -522,7 +526,13 @@ const ProTimerApp = () => {
                 {/* Control Buttons */}
                 <div className="flex gap-4 mb-6">
                   <button
-                    onClick={() => status.isRunning ? pauseTimer(activeTimerId) : startTimer(activeTimerId)}
+                    onClick={() => {
+                      if (status.isRunning) {
+                        pauseTimer(activeTimerId);
+                      } else {
+                        startTimer(activeTimerId);
+                      }
+                    }}
                     className={`flex-1 font-bold py-4 px-6 rounded-lg transition-all duration-200 transform hover:scale-105 ${
                       status.isRunning
                         ? 'bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white'
@@ -534,7 +544,7 @@ const ProTimerApp = () => {
                   <button
                     onClick={() => {
                       pauseTimer(activeTimerId);
-                      resetTimer(activeTimerId);
+                      setTimeout(() => resetTimer(activeTimerId), 100);
                     }}
                     className="flex-1 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-bold py-4 px-6 rounded-lg transition-all duration-200 transform hover:scale-105"
                   >
