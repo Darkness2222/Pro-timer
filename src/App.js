@@ -60,22 +60,20 @@ function App() {
 
   return (
     <div className="App">
-      <div>
-        <ProTimerApp session={session} bypassAuth={bypassAuth} />
-        {/* Add logout/reset button */}
-        <button
-          onClick={() => {
-            if (session) {
-              supabase.auth.signOut()
-            } else {
-              setBypassAuth(false)
-            }
-          }}
-          className="fixed top-4 right-4 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm z-50"
-        >
-          {session ? 'Sign Out' : 'Back to Auth'}
-        </button>
-      </div>
+      <ProTimerApp session={session} bypassAuth={bypassAuth} />
+      {/* Add logout/reset button */}
+      <button
+        onClick={() => {
+          if (session) {
+            supabase.auth.signOut()
+          } else {
+            setBypassAuth(false)
+          }
+        }}
+        className="fixed top-4 right-4 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm z-50"
+      >
+        {session ? 'Sign Out' : 'Back to Auth'}
+      </button>
     </div>
   )
 }
