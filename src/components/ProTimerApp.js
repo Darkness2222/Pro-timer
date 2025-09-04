@@ -630,7 +630,7 @@ const ProTimerApp = () => {
                       console.log('Reset button clicked');
                       await resetTimer(activeTimerId);
                     }}
-                    className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold py-4 px-6 rounded-lg transition-all duration-200 transform hover:scale-105"
+                    className="flex-1 bg-gradient-to-r from-slate-500 to-slate-600 hover:from-slate-600 hover:to-slate-700 text-white font-bold py-4 px-6 rounded-lg transition-all duration-200 transform hover:scale-105"
                   >
                     🔄 Reset
                   </button>
@@ -714,10 +714,12 @@ const ProTimerApp = () => {
                       />
                     </div>
                     <button
-                      onClick={() => {
+                      onClick={async () => {
+                        if (!activeTimerId) return;
                         const totalSeconds = (customTime.minutes * 60) + customTime.seconds;
                         if (totalSeconds > 0) {
-                          setCustomTimer(activeTimerId, totalSeconds);
+                          console.log('Setting custom time:', totalSeconds, 'seconds');
+                          await setCustomTimer(activeTimerId, totalSeconds);
                         }
                       }}
                       className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-all duration-200"
