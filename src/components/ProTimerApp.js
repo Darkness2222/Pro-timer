@@ -35,7 +35,7 @@ const ProTimerApp = () => {
 
   const getProgressPercentage = () => {
     if (initialTime === 0) return 0;
-    return ((initialTime - timeLeft) / initialTime) * 100;
+    return (timeLeft / initialTime) * 100;
   };
 
   const handleStart = () => setIsRunning(true);
