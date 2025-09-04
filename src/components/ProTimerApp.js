@@ -1,35 +1,57 @@
-{/* Delete Confirmation Modal */}
-       {deleteConfirmation && (
-         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-           <div className="bg-slate-800 rounded-2xl p-6 max-w-md w-full border border-white/20">
-             <div className="text-center">
-               <div className="text-6xl mb-4">🗑️</div>
-               <h3 className="text-xl font-bold text-white mb-2">Delete Timer</h3>
-               <p className="text-white/80 mb-2">
-                 Are you sure you want to delete <strong>"{deleteConfirmation.name}"</strong>?
-               </p>
-               <p className="text-red-300 text-sm mb-6">
-                 This action cannot be undone and will remove all associated data.
-               </p>
-               
-               <div className="flex gap-3">
-                 <button
-                   onClick={() => setDeleteConfirmation(null)}
-                   className="flex-1 bg-slate-600 hover:bg-slate-700 text-white font-medium py-3 px-4 rounded-lg transition-all duration-200"
-                 >
-                   Cancel
-                 </button>
-                 <button
-                   onClick={() => deleteTimer(deleteConfirmation.id)}
-                   className="flex-1 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-bold py-3 px-4 rounded-lg transition-all duration-200"
-                 >
-                   Delete Timer
-                 </button>
-               </div>
-             </div>
-           </div>
-         </div>
-       )}
+import React, { useState } from 'react';
+
+const ProTimerApp = () => {
+  const [deleteConfirmation, setDeleteConfirmation] = useState(null);
+  const [editingTimer, setEditingTimer] = useState(null);
+  const [editForm, setEditForm] = useState({ name: '', presenter: '' });
+
+  const deleteTimer = async (timerId) => {
+    // Placeholder function - implement timer deletion logic
+    console.log('Deleting timer:', timerId);
+    setDeleteConfirmation(null);
+  };
+
+  const editTimer = async (timerId, name, presenter) => {
+    // Placeholder function - implement timer editing logic
+    console.log('Editing timer:', timerId, name, presenter);
+    setEditingTimer(null);
+    setEditForm({ name: '', presenter: '' });
+  };
+
+  return (
+    <div>
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmation && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-800 rounded-2xl p-6 max-w-md w-full border border-white/20">
+            <div className="text-center">
+              <div className="text-6xl mb-4">🗑️</div>
+              <h3 className="text-xl font-bold text-white mb-2">Delete Timer</h3>
+              <p className="text-white/80 mb-2">
+                Are you sure you want to delete <strong>"{deleteConfirmation.name}"</strong>?
+              </p>
+              <p className="text-red-300 text-sm mb-6">
+                This action cannot be undone and will remove all associated data.
+              </p>
+              
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setDeleteConfirmation(null)}
+                  className="flex-1 bg-slate-600 hover:bg-slate-700 text-white font-medium py-3 px-4 rounded-lg transition-all duration-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => deleteTimer(deleteConfirmation.id)}
+                  className="flex-1 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-bold py-3 px-4 rounded-lg transition-all duration-200"
+                >
+                  Delete Timer
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Edit Timer Modal */}
       {editingTimer && (
@@ -93,3 +115,8 @@
           </div>
         </div>
       )}
+    </div>
+  );
+};
+
+export default ProTimerApp;
