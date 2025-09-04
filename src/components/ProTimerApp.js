@@ -912,14 +912,19 @@ const ProTimerApp = ({ session, bypassAuth }) => {
                     📤
                   </button>
                 </div>
+                
+                {/* Recent Messages */}
+                {messages[activeTimerId] && messages[activeTimerId].length > 0 && (
+                  <div className="mt-4 space-y-2 max-h-32 overflow-y-auto">
+                    <div className="text-sm text-white/70 mb-2">Recent messages:</div>
                     {messages[activeTimerId].slice(0, 5).map((msg, index) => (
                       <div key={index} className="text-sm text-white/80 bg-white/5 rounded p-2">
                         {msg.message}
                       </div>
                     ))}
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -1002,15 +1007,7 @@ const ProTimerApp = ({ session, bypassAuth }) => {
                         onClick={() => removeCustomMessage(index)}
                         className="text-red-400 hover:text-red-300 ml-2 p-1"
                         title="Remove message"
-                {messages[activeTimerId] && messages[activeTimerId].length > 0 && (
-                  <div className="space-y-2 max-h-32 overflow-y-auto">
-                    {messages[activeTimerId].slice(0, 5).map((msg, index) => (
-                      <div key={index} className="text-sm text-white/80 bg-white/5 rounded p-2">
-                        {msg.message}
-                      </div>
-                    ))}
-                  </div>
-                )}
+                      >
               </div>
 
               {/* Reset to Defaults */}
