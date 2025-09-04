@@ -354,7 +354,6 @@ const ProTimerApp = () => {
                 </button>
               </div>
             )}
-            </div>
           </div>
 
           {/* Quick Messages */}
