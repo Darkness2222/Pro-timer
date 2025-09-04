@@ -945,16 +945,17 @@ const ProTimerApp = () => {
 
           {/* Timer Display */}
           <div className="mb-8">
-            <div className="text-9xl font-mono text-white mb-6 tracking-wider">
+            <div className="text-9xl font-mono text-red-500 mb-6 tracking-wider">
               {formatTime(status.timeLeft)}
             </div>
             
             {/* Progress Bar */}
-            <div className="bg-white/20 rounded-full h-4 mb-4 max-w-2xl mx-auto">
+            <div className="bg-white/20 rounded-full h-4 mb-4 max-w-2xl mx-auto overflow-hidden">
               <div
-                className="h-4 rounded-full transition-all duration-300 bg-gradient-to-r from-green-400 via-yellow-400 to-red-500"
+                className="h-4 rounded-full transition-all duration-300"
                 style={{
-                  width: `${Math.max(0, (status.timeLeft / activeTimer.duration) * 100)}%`
+                  width: `${Math.max(0, (status.timeLeft / activeTimer.duration) * 100)}%`,
+                  background: 'linear-gradient(to right, #10b981, #f59e0b, #ef4444)'
                 }}
               />
             </div>
@@ -978,11 +979,11 @@ const ProTimerApp = () => {
           </div>
 
           {/* Messages */}
-          {recentMessages.length > 0 && (
+          {messages[activeTimerId] && messages[activeTimerId].length > 0 && (
             <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20 max-w-2xl mx-auto">
               <h3 className="text-xl font-bold text-white mb-4">📨 Messages from Control</h3>
               <div className="space-y-3">
-                {recentMessages.map((msg, index) => (
+                {messages[activeTimerId].slice(0, 3).map((msg, index) => (
                   <div
                     key={index}
                     className="bg-white/10 rounded-lg p-4 text-white border border-white/20"
