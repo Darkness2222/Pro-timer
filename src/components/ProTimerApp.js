@@ -915,7 +915,6 @@ const ProTimerApp = ({ session, bypassAuth }) => {
                   </button>
                 </div>
               </div>
-                     <div className="text-center mb-4">
                       <div key={index} className="text-sm text-white/80 bg-white/5 rounded p-2">
                         {msg.message}
                       </div>
