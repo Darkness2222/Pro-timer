@@ -1,4 +1,3 @@
-import React, { useState } from 'react';
 import React, { useState, useEffect, useRef } from 'react';
 import { Play, Pause, Square, RotateCcw, QrCode, Send, Copy, Eye } from 'lucide-react';
 
