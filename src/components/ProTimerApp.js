@@ -415,11 +415,7 @@ const ProTimerApp = () => {
                   <div className="mb-4">
                     <div className="bg-white/10 rounded-full h-2">
                       <div
-                        className={`h-2 rounded-full transition-all duration-300 ${
-                          status.status === 'running' ? 'bg-gradient-to-r from-green-400 to-blue-500' :
-                          status.status === 'finished' ? 'bg-red-500' :
-                          'bg-yellow-500'
-                        }`}
+                        className="h-2 rounded-full transition-all duration-300 bg-gradient-to-r from-green-400 via-yellow-400 to-red-500"
                         style={{
                           width: `${Math.max(0, (status.timeLeft / timer.duration) * 100)}%`
                         }}
@@ -515,11 +511,7 @@ const ProTimerApp = () => {
                   {/* Progress Bar */}
                   <div className="bg-white/10 rounded-full h-3 mb-6">
                     <div
-                      className={`h-3 rounded-full transition-all duration-300 ${
-                        status.timeLeft / activeTimer.duration > 0.5 ? 'bg-gradient-to-r from-green-400 to-green-600' :
-                        status.timeLeft / activeTimer.duration > 0.25 ? 'bg-gradient-to-r from-yellow-400 to-orange-500' :
-                        'bg-gradient-to-r from-red-400 to-red-600'
-                      }`}
+                      className="h-3 rounded-full transition-all duration-300 bg-gradient-to-r from-green-400 via-yellow-400 to-red-500"
                       style={{
                         width: `${Math.max(0, (status.timeLeft / activeTimer.duration) * 100)}%`
                       }}
@@ -540,11 +532,67 @@ const ProTimerApp = () => {
                     {status.isRunning ? '⏸️ Pause' : '▶️ Start'}
                   </button>
                   <button
+                    onClick={() => {
+                      pauseTimer(activeTimerId);
+                      resetTimer(activeTimerId);
+                    }}
+                    className="flex-1 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-bold py-4 px-6 rounded-lg transition-all duration-200 transform hover:scale-105"
+                  >
+                    ⏹️ Stop
+                  </button>
+                  <button
                     onClick={() => resetTimer(activeTimerId)}
                     className="flex-1 bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white font-bold py-4 px-6 rounded-lg transition-all duration-200 transform hover:scale-105"
                   >
                     🔄 Reset
                   </button>
+                </div>
+
+                {/* Quick Adjust Buttons */}
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-white mb-4">Quick Adjust</h3>
+                  <div className="grid grid-cols-4 gap-3">
+                    <button
+                      onClick={() => {
+                        const currentTime = status.timeLeft;
+                        const newTime = Math.max(0, currentTime - 300); // -5 minutes
+                        setCustomTimer(activeTimerId, newTime);
+                      }}
+                      className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-bold py-3 px-4 rounded-lg transition-all duration-200"
+                    >
+                      -5m
+                    </button>
+                    <button
+                      onClick={() => {
+                        const currentTime = status.timeLeft;
+                        const newTime = Math.max(0, currentTime - 60); // -1 minute
+                        setCustomTimer(activeTimerId, newTime);
+                      }}
+                      className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold py-3 px-4 rounded-lg transition-all duration-200"
+                    >
+                      -1m
+                    </button>
+                    <button
+                      onClick={() => {
+                        const currentTime = status.timeLeft;
+                        const newTime = currentTime + 60; // +1 minute
+                        setCustomTimer(activeTimerId, newTime);
+                      }}
+                      className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-all duration-200"
+                    >
+                      +1m
+                    </button>
+                    <button
+                      onClick={() => {
+                        const currentTime = status.timeLeft;
+                        const newTime = currentTime + 300; // +5 minutes
+                        setCustomTimer(activeTimerId, newTime);
+                      }}
+                      className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold py-3 px-4 rounded-lg transition-all duration-200"
+                    >
+                      +5m
+                    </button>
+                  </div>
                 </div>
 
                 {/* Custom Time */}
@@ -806,11 +854,7 @@ const ProTimerApp = () => {
             {/* Progress Bar */}
             <div className="bg-white/20 rounded-full h-4 mb-4 max-w-2xl mx-auto">
               <div
-                className={`h-4 rounded-full transition-all duration-300 ${
-                  status.timeLeft / activeTimer.duration > 0.5 ? 'bg-gradient-to-r from-green-400 to-green-600' :
-                  status.timeLeft / activeTimer.duration > 0.25 ? 'bg-gradient-to-r from-yellow-400 to-orange-500' :
-                  'bg-gradient-to-r from-red-400 to-red-600'
-                }`}
+                className="h-4 rounded-full transition-all duration-300 bg-gradient-to-r from-green-400 via-yellow-400 to-red-500"
                 style={{
                   width: `${Math.max(0, (status.timeLeft / activeTimer.duration) * 100)}%`
                 }}
