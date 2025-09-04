@@ -10,6 +10,14 @@ const ProTimerApp = () => {
   const [newMessage, setNewMessage] = useState('');
   const [customTime, setCustomTime] = useState({ minutes: 30, seconds: 0 });
   const [showQRCode, setShowQRCode] = useState(false);
+  const [showMessageSettings, setShowMessageSettings] = useState(false);
+  const [customMessages, setCustomMessages] = useState([
+    "⏰ 5 minutes remaining",
+    "⚡ Please wrap up",
+    "🎯 Final slide please",
+    "👏 Thank you!"
+  ]);
+  const [newCustomMessage, setNewCustomMessage] = useState('');
   const [createForm, setCreateForm] = useState({
     name: '',
     presenter: '',
@@ -235,6 +243,17 @@ const ProTimerApp = () => {
       }]);
     
     setNewMessage('');
+  };
+
+  const addCustomMessage = () => {
+    if (newCustomMessage.trim() && !customMessages.includes(newCustomMessage.trim())) {
+      setCustomMessages([...customMessages, newCustomMessage.trim()]);
+      setNewCustomMessage('');
+    }
+  };
+
+  const removeCustomMessage = (index) => {
+    setCustomMessages(customMessages.filter((_, i) => i !== index));
   };
 
   const formatTime = (seconds) => {
@@ -579,12 +598,7 @@ const ProTimerApp = () => {
               
               {/* Quick Message Buttons */}
               <div className="space-y-2 mb-6">
-                {[
-                  "⏰ 5 minutes remaining",
-                  "⚡ Please wrap up",
-                  "🎯 Final slide please",
-                  "👏 Thank you!"
-                ].map((msg, index) => (
+                {customMessages.map((msg, index) => (
                   <button
                     key={index}
                     onClick={() => sendMessage(activeTimerId, msg)}
@@ -593,6 +607,16 @@ const ProTimerApp = () => {
                     {msg}
                   </button>
                 ))}
+              </div>
+
+              {/* Message Settings Button */}
+              <div className="mb-4">
+                <button
+                  onClick={() => setShowMessageSettings(true)}
+                  className="w-full text-center px-4 py-2 bg-purple-600/20 hover:bg-purple-600/30 rounded-lg text-purple-300 transition-all duration-200 border border-purple-500/30 hover:border-purple-500/50 text-sm"
+                >
+                  ⚙️ Customize Messages
+                </button>
               </div>
 
               {/* Custom Message */}
@@ -661,6 +685,90 @@ const ProTimerApp = () => {
               >
                 Close
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Message Settings Modal */}
+        {showMessageSettings && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-slate-800 rounded-2xl p-6 max-w-md w-full border border-white/20">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold text-white">⚙️ Customize Quick Messages</h3>
+                <button
+                  onClick={() => setShowMessageSettings(false)}
+                  className="text-white/60 hover:text-white text-2xl"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Add New Message */}
+              <div className="mb-6">
+                <label className="block text-white font-medium mb-2">Add New Quick Message</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newCustomMessage}
+                    onChange={(e) => setNewCustomMessage(e.target.value)}
+                    placeholder="e.g., 🔔 2 minutes left"
+                    className="flex-1 px-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        addCustomMessage();
+                      }
+                    }}
+                  />
+                  <button
+                    onClick={addCustomMessage}
+                    className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-all duration-200"
+                  >
+                    ➕
+                  </button>
+                </div>
+              </div>
+
+              {/* Current Messages */}
+              <div className="mb-6">
+                <label className="block text-white font-medium mb-3">Current Quick Messages</label>
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {customMessages.map((msg, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between bg-white/5 rounded-lg p-3 border border-white/10"
+                    >
+                      <span className="text-white text-sm flex-1">{msg}</span>
+                      <button
+                        onClick={() => removeCustomMessage(index)}
+                        className="text-red-400 hover:text-red-300 ml-2 p-1"
+                        title="Remove message"
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                {customMessages.length === 0 && (
+                  <p className="text-white/60 text-sm text-center py-4">No quick messages yet. Add one above!</p>
+                )}
+              </div>
+
+              {/* Reset to Defaults */}
+              <div className="border-t border-white/10 pt-4">
+                <button
+                  onClick={() => {
+                    setCustomMessages([
+                      "⏰ 5 minutes remaining",
+                      "⚡ Please wrap up", 
+                      "🎯 Final slide please",
+                      "👏 Thank you!"
+                    ]);
+                  }}
+                  className="w-full bg-slate-600 hover:bg-slate-700 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 text-sm"
+                >
+                  🔄 Reset to Defaults
+                </button>
+              </div>
             </div>
           </div>
         )}
