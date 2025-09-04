@@ -1002,14 +1002,14 @@ const ProTimerApp = ({ session, bypassAuth }) => {
                         onClick={() => removeCustomMessage(index)}
                         className="text-red-400 hover:text-red-300 ml-2 p-1"
                         title="Remove message"
-                      >
-                        🗑️
-                      </button>
-                    </div>
-                  ))}
-                </div>
-                {customMessages.length === 0 && (
-                  <p className="text-white/60 text-sm text-center py-4">No quick messages yet. Add one above!</p>
+                {messages[activeTimerId] && messages[activeTimerId].length > 0 && (
+                  <div className="space-y-2 max-h-32 overflow-y-auto">
+                    {messages[activeTimerId].slice(0, 5).map((msg, index) => (
+                      <div key={index} className="text-sm text-white/80 bg-white/5 rounded p-2">
+                        {msg.message}
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
 
