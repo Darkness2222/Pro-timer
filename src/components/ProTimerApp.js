@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 
-const ProTimerApp = () => {
+const ProTimerApp = ({ session, bypassAuth }) => {
   const [currentView, setCurrentView] = useState('admin');
   const [timers, setTimers] = useState([]);
   const [activeTimerId, setActiveTimerId] = useState(null);

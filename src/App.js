@@ -52,10 +52,16 @@ function App() {
       </div>
     )
   }
+
+  // Allow access if either authenticated OR bypassed
+  if (!session && !bypassAuth) {
+    return <Auth />
+  }
+
   return (
     <div className="App">
       <div>
-        <ProTimerApp />
+        <ProTimerApp session={session} bypassAuth={bypassAuth} />
         {/* Add logout/reset button */}
         <button
           onClick={() => {
