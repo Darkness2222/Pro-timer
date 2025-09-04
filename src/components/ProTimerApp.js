@@ -630,7 +630,7 @@ const ProTimerApp = () => {
                       console.log('Reset button clicked');
                       await resetTimer(activeTimerId);
                     }}
-                    className="flex-1 bg-gradient-to-r from-slate-500 to-slate-600 hover:from-slate-600 hover:to-slate-700 text-white font-bold py-4 px-6 rounded-lg transition-all duration-200 transform hover:scale-105"
+                    className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold py-4 px-6 rounded-lg transition-all duration-200 transform hover:scale-105"
                   >
                     🔄 Reset
                   </button>
@@ -641,44 +641,40 @@ const ProTimerApp = () => {
                   <h3 className="text-lg font-semibold text-white mb-4">Quick Adjust</h3>
                   <div className="grid grid-cols-4 gap-3">
                     <button
-                      onClick={async () => {
-                        if (!activeTimerId) return;
-                        console.log('Subtracting 5 minutes');
-                        const newTime = Math.max(0, status.timeLeft - 300);
-                        await setCustomTimer(activeTimerId, newTime);
+                      onClick={() => {
+                        const currentTime = status.timeLeft;
+                        const newTime = Math.max(0, currentTime - 300); // -5 minutes
+                        setCustomTimer(activeTimerId, newTime);
                       }}
                       className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-bold py-3 px-4 rounded-lg transition-all duration-200"
                     >
                       -5m
                     </button>
                     <button
-                      onClick={async () => {
-                        if (!activeTimerId) return;
-                        console.log('Subtracting 1 minute');
-                        const newTime = Math.max(0, status.timeLeft - 60);
-                        await setCustomTimer(activeTimerId, newTime);
+                      onClick={() => {
+                        const currentTime = status.timeLeft;
+                        const newTime = Math.max(0, currentTime - 60); // -1 minute
+                        setCustomTimer(activeTimerId, newTime);
                       }}
                       className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold py-3 px-4 rounded-lg transition-all duration-200"
                     >
                       -1m
                     </button>
                     <button
-                      onClick={async () => {
-                        if (!activeTimerId) return;
-                        console.log('Adding 1 minute');
-                        const newTime = status.timeLeft + 60;
-                        await setCustomTimer(activeTimerId, newTime);
+                      onClick={() => {
+                        const currentTime = status.timeLeft;
+                        const newTime = currentTime + 60; // +1 minute
+                        setCustomTimer(activeTimerId, newTime);
                       }}
                       className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-all duration-200"
                     >
                       +1m
                     </button>
                     <button
-                      onClick={async () => {
-                        if (!activeTimerId) return;
-                        console.log('Adding 5 minutes');
-                        const newTime = status.timeLeft + 300;
-                        await setCustomTimer(activeTimerId, newTime);
+                      onClick={() => {
+                        const currentTime = status.timeLeft;
+                        const newTime = currentTime + 300; // +5 minutes
+                        setCustomTimer(activeTimerId, newTime);
                       }}
                       className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold py-3 px-4 rounded-lg transition-all duration-200"
                     >
@@ -714,12 +710,10 @@ const ProTimerApp = () => {
                       />
                     </div>
                     <button
-                      onClick={async () => {
-                        if (!activeTimerId) return;
+                      onClick={() => {
                         const totalSeconds = (customTime.minutes * 60) + customTime.seconds;
                         if (totalSeconds > 0) {
-                          console.log('Setting custom time:', totalSeconds, 'seconds');
-                          await setCustomTimer(activeTimerId, totalSeconds);
+                          setCustomTimer(activeTimerId, totalSeconds);
                         }
                       }}
                       className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-all duration-200"
