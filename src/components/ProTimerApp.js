@@ -103,7 +103,7 @@ const ProTimerApp = () => {
             <div className="text-center mb-6">
               <div className="text-6xl font-mono font-bold text-red-500 mb-4">{formatTime(timeLeft)}</div>
               <div className="w-full bg-gray-700 rounded-full h-3 mb-4">
-                <div className="bg-gradient-to-r from-red-500 via-yellow-500 to-green-500 h-3 rounded-full transition-all duration-1000" style={{width: `${getProgressPercentage()}%`}}></div>
+                <div className="bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 h-3 rounded-full transition-all duration-1000" style={{width: `${getProgressPercentage()}%`}}></div>
               </div>
             </div>
 
@@ -278,7 +278,7 @@ const ProTimerApp = () => {
         </div>
         
         <div className="w-96 bg-gray-800 rounded-full h-6 mb-8">
-          <div className="bg-gradient-to-r from-red-500 via-yellow-500 to-green-500 h-6 rounded-full transition-all duration-1000" style={{width: `${getProgressPercentage()}%`}}></div>
+          <div className="bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 h-6 rounded-full transition-all duration-1000" style={{width: `${getProgressPercentage()}%`}}></div>
         </div>
         
         <div className="bg-gray-800 rounded-xl p-6 max-w-md">
