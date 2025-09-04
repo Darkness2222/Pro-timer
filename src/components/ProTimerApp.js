@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Play, Pause, Square, RotateCcw, QrCode, Send, Copy, Eye } from 'lucide-react';
+import QRCodeLib from 'qrcode';
 
 const ProTimerApp = () => {
   const [currentView, setCurrentView] = useState('admin');
@@ -9,6 +10,7 @@ const ProTimerApp = () => {
   const [initialTime, setInitialTime] = useState(12 * 60 + 34);
   const [currentMessage, setCurrentMessage] = useState('');
   const [customMessage, setCustomMessage] = useState('');
+  const [qrCodeUrl, setQrCodeUrl] = useState('');
   const intervalRef = useRef(null);
 
   useEffect(() => {
@@ -58,6 +60,34 @@ const ProTimerApp = () => {
     }
   };
 
+  const generateQRCode = async () => {
+    try {
+      // Create a URL that opens the presenter view
+      const presenterUrl = `${window.location.origin}${window.location.pathname}?view=presenter`;
+      const qrDataUrl = await QRCodeLib.toDataURL(presenterUrl, {
+        width: 256,
+        margin: 2,
+        color: {
+          dark: '#000000',
+          light: '#FFFFFF'
+        }
+      });
+      setQrCodeUrl(qrDataUrl);
+      setShowQR(true);
+    } catch (error) {
+      console.error('Error generating QR code:', error);
+    }
+  };
+
+  const copyPresenterLink = () => {
+    const presenterUrl = `${window.location.origin}${window.location.pathname}?view=presenter`;
+    navigator.clipboard.writeText(presenterUrl).then(() => {
+      alert('Presenter link copied to clipboard!');
+    }).catch(() => {
+      alert('Failed to copy link');
+    });
+  };
+
   const sendQuickMessage = (message) => {
     setCurrentMessage(message);
     // Auto-clear message after 10 seconds
@@ -82,13 +112,16 @@ const ProTimerApp = () => {
           </div>
           <div className="flex gap-3">
             <button
-              onClick={() => setShowQR(!showQR)}
+              onClick={generateQRCode}
               className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg transition-colors"
             >
               <QrCode size={20} />
               QR Code
             </button>
-            <button className="flex items-center gap-2 bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg transition-colors">
+            <button 
+              onClick={() => setCurrentView('presenter')}
+              className="flex items-center gap-2 bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg transition-colors"
+            >
               <Eye size={20} />
               View Presenter
             </button>
@@ -243,12 +276,26 @@ const ProTimerApp = () => {
             <div className="bg-gray-800 rounded-xl p-8 max-w-md w-full mx-4">
               <h3 className="text-xl font-semibold mb-4 text-center">Presenter Access</h3>
               <div className="bg-white p-6 rounded-lg mb-4">
-                <div className="w-48 h-48 mx-auto bg-gray-200 rounded-lg flex items-center justify-center">
-                  <span className="text-gray-600">QR Code</span>
-                </div>
+                {qrCodeUrl ? (
+                  <img 
+                    src={qrCodeUrl} 
+                    alt="QR Code for Presenter View" 
+                    className="w-64 h-64 mx-auto"
+                  />
+                ) : (
+                  <div className="w-64 h-64 mx-auto bg-gray-200 rounded-lg flex items-center justify-center">
+                    <span className="text-gray-600">Generating QR Code...</span>
+                  </div>
+                )}
               </div>
+              <p className="text-gray-400 text-sm text-center mb-4">
+                Scan this QR code to open the presenter view on another device
+              </p>
               <div className="flex gap-3">
-                <button className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition-colors">
+                <button 
+                  onClick={copyPresenterLink}
+                  className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition-colors"
+                >
                   <Copy size={16} />
                   Copy Link
                 </button>
