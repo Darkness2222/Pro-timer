@@ -951,7 +951,6 @@ const ProTimerApp = () => {
               </button>
             </div>
           </div>
-        </div>
 
           {/* Status */}
           <div className="mb-8">
