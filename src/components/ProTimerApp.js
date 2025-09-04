@@ -190,52 +190,107 @@ const ProTimerApp = () => {
   };
 
   const startTimer = async (timerId) => {
-    console.log('Starting timer:', timerId);
-    await supabase
-      .from('timer_sessions')
-      .update({ 
-        is_running: true,
-        updated_at: new Date().toISOString()
-      })
-      .eq('timer_id', timerId);
+    try {
+      console.log('Starting timer:', timerId);
+      const { error } = await supabase
+        .from('timer_sessions')
+        .update({ 
+          is_running: true,
+          updated_at: new Date().toISOString()
+        })
+        .eq('timer_id', timerId);
+      
+      if (error) {
+        console.error('Error starting timer:', error);
+        return;
+      }
+      
+      // Force reload sessions to update UI immediately
+      await loadSessions();
+      console.log('Timer started successfully');
+    } catch (err) {
+      console.error('Failed to start timer:', err);
+    }
   };
 
   const pauseTimer = async (timerId) => {
-    console.log('Pausing timer:', timerId);
-    await supabase
-      .from('timer_sessions')
-      .update({ 
-        is_running: false,
-        updated_at: new Date().toISOString()
-      })
-      .eq('timer_id', timerId);
+    try {
+      console.log('Pausing timer:', timerId);
+      const { error } = await supabase
+        .from('timer_sessions')
+        .update({ 
+          is_running: false,
+          updated_at: new Date().toISOString()
+        })
+        .eq('timer_id', timerId);
+      
+      if (error) {
+        console.error('Error pausing timer:', error);
+        return;
+      }
+      
+      // Force reload sessions to update UI immediately
+      await loadSessions();
+      console.log('Timer paused successfully');
+    } catch (err) {
+      console.error('Failed to pause timer:', err);
+    }
   };
 
   const resetTimer = async (timerId) => {
-    console.log('Resetting timer:', timerId);
-    const timer = timers.find(t => t.id === timerId);
-    if (!timer) return;
+    try {
+      console.log('Resetting timer:', timerId);
+      const timer = timers.find(t => t.id === timerId);
+      if (!timer) {
+        console.error('Timer not found:', timerId);
+        return;
+      }
 
-    await supabase
-      .from('timer_sessions')
-      .update({ 
-        time_left: timer.duration,
-        is_running: false,
-        updated_at: new Date().toISOString()
-      })
-      .eq('timer_id', timerId);
+      const { error } = await supabase
+        .from('timer_sessions')
+        .update({ 
+          time_left: timer.duration,
+          is_running: false,
+          updated_at: new Date().toISOString()
+        })
+        .eq('timer_id', timerId);
+      
+      if (error) {
+        console.error('Error resetting timer:', error);
+        return;
+      }
+      
+      // Force reload sessions to update UI immediately
+      await loadSessions();
+      console.log('Timer reset successfully');
+    } catch (err) {
+      console.error('Failed to reset timer:', err);
+    }
   };
 
   const setCustomTimer = async (timerId, totalSeconds) => {
-    console.log('Setting custom timer:', timerId, totalSeconds);
-    await supabase
-      .from('timer_sessions')
-      .update({ 
-        time_left: totalSeconds,
-        is_running: false,
-        updated_at: new Date().toISOString()
-      })
-      .eq('timer_id', timerId);
+    try {
+      console.log('Setting custom timer:', timerId, totalSeconds);
+      const { error } = await supabase
+        .from('timer_sessions')
+        .update({ 
+          time_left: Math.max(0, totalSeconds),
+          is_running: false,
+          updated_at: new Date().toISOString()
+        })
+        .eq('timer_id', timerId);
+      
+      if (error) {
+        console.error('Error setting custom timer:', error);
+        return;
+      }
+      
+      // Force reload sessions to update UI immediately
+      await loadSessions();
+      console.log('Custom timer set successfully');
+    } catch (err) {
+      console.error('Failed to set custom timer:', err);
+    }
   };
 
   const sendMessage = async (timerId, message) => {
@@ -522,15 +577,20 @@ const ProTimerApp = () => {
                     />
                   </div>
                 </div>
-
-                {/* Control Buttons */}
-                <div className="flex gap-4 mb-6">
-                  <button
-                    onClick={() => {
+                    onClick={async () => {
+                      if (!activeTimerId) {
+                        console.error('No active timer ID');
+                        return;
+                      }
+                      
+                      console.log('Start/Pause button clicked');
+                      console.log('Active Timer ID:', activeTimerId);
+                      console.log('Current status:', status);
+                      
                       if (status.isRunning) {
-                        pauseTimer(activeTimerId);
+                        await pauseTimer(activeTimerId);
                       } else {
-                        startTimer(activeTimerId);
+                        await startTimer(activeTimerId);
                       }
                     }}
                     className={`flex-1 font-bold py-4 px-6 rounded-lg transition-all duration-200 transform hover:scale-105 ${
@@ -541,19 +601,29 @@ const ProTimerApp = () => {
                   >
                     {status.isRunning ? '⏸️ Pause' : '▶️ Start'}
                   </button>
-                  <button
-                    onClick={() => {
-                      pauseTimer(activeTimerId);
-                      setTimeout(() => resetTimer(activeTimerId), 100);
+                    onClick={async () => {
+                      if (!activeTimerId) {
+                        console.error('No active timer ID');
+                        return;
+                      }
+                      
+                      console.log('Stop button clicked');
+                      await pauseTimer(activeTimerId);
+                      await resetTimer(activeTimerId);
                     }}
                     className="flex-1 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-bold py-4 px-6 rounded-lg transition-all duration-200 transform hover:scale-105"
                   >
                     ⏹️ Stop
                   </button>
                   <button
-                    onClick={() => resetTimer(activeTimerId)}
-                    className="flex-1 bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white font-bold py-4 px-6 rounded-lg transition-all duration-200 transform hover:scale-105"
-                  >
+                    onClick={async () => {
+                      if (!activeTimerId) {
+                        console.error('No active timer ID');
+                        return;
+                      }
+                      
+                      console.log('Reset button clicked');
+                      await resetTimer(activeTimerId);
                     🔄 Reset
                   </button>
                 </div>
@@ -563,40 +633,44 @@ const ProTimerApp = () => {
                   <h3 className="text-lg font-semibold text-white mb-4">Quick Adjust</h3>
                   <div className="grid grid-cols-4 gap-3">
                     <button
-                      onClick={() => {
-                        const currentTime = status.timeLeft;
-                        const newTime = Math.max(0, currentTime - 300); // -5 minutes
-                        setCustomTimer(activeTimerId, newTime);
+                      onClick={async () => {
+                        if (!activeTimerId) return;
+                        console.log('Subtracting 5 minutes');
+                        const newTime = Math.max(0, status.timeLeft - 300);
+                        await setCustomTimer(activeTimerId, newTime);
                       }}
                       className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-bold py-3 px-4 rounded-lg transition-all duration-200"
                     >
                       -5m
                     </button>
                     <button
-                      onClick={() => {
-                        const currentTime = status.timeLeft;
-                        const newTime = Math.max(0, currentTime - 60); // -1 minute
-                        setCustomTimer(activeTimerId, newTime);
+                      onClick={async () => {
+                        if (!activeTimerId) return;
+                        console.log('Subtracting 1 minute');
+                        const newTime = Math.max(0, status.timeLeft - 60);
+                        await setCustomTimer(activeTimerId, newTime);
                       }}
                       className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold py-3 px-4 rounded-lg transition-all duration-200"
                     >
                       -1m
                     </button>
                     <button
-                      onClick={() => {
-                        const currentTime = status.timeLeft;
-                        const newTime = currentTime + 60; // +1 minute
-                        setCustomTimer(activeTimerId, newTime);
+                      onClick={async () => {
+                        if (!activeTimerId) return;
+                        console.log('Adding 1 minute');
+                        const newTime = status.timeLeft + 60;
+                        await setCustomTimer(activeTimerId, newTime);
                       }}
                       className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-all duration-200"
                     >
                       +1m
                     </button>
                     <button
-                      onClick={() => {
-                        const currentTime = status.timeLeft;
-                        const newTime = currentTime + 300; // +5 minutes
-                        setCustomTimer(activeTimerId, newTime);
+                      onClick={async () => {
+                        if (!activeTimerId) return;
+                        console.log('Adding 5 minutes');
+                        const newTime = status.timeLeft + 300;
+                        await setCustomTimer(activeTimerId, newTime);
                       }}
                       className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold py-3 px-4 rounded-lg transition-all duration-200"
                     >
@@ -632,10 +706,12 @@ const ProTimerApp = () => {
                       />
                     </div>
                     <button
-                      onClick={() => {
+                      onClick={async () => {
+                        if (!activeTimerId) return;
                         const totalSeconds = (customTime.minutes * 60) + customTime.seconds;
                         if (totalSeconds > 0) {
-                          setCustomTimer(activeTimerId, totalSeconds);
+                          console.log('Setting custom time:', totalSeconds, 'seconds');
+                          await setCustomTimer(activeTimerId, totalSeconds);
                         }
                       }}
                       className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-all duration-200"
