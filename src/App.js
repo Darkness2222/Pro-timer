@@ -6,8 +6,14 @@ import ProTimerApp from './components/ProTimerApp'
 function App() {
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [bypassAuth, setBypassAuth] = useState(false)
 
   useEffect(() => {
+    if (bypassAuth) {
+      setLoading(false)
+      return
+    }
+
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
@@ -20,7 +26,7 @@ function App() {
     })
 
     return () => subscription.unsubscribe()
-  }, [])
+  }, [bypassAuth])
 
   if (loading) {
     return (
@@ -30,22 +36,40 @@ function App() {
     )
   }
 
-  return (
-    <div className="App">
-      {!session ? (
+  // Show bypass option on auth screen
+  if (!session && !bypassAuth) {
+    return (
+      <div>
         <Auth />
-      ) : (
-        <div>
-          <ProTimerApp />
-          {/* Add logout button */}
+        <div className="fixed bottom-4 left-4">
           <button
-            onClick={() => supabase.auth.signOut()}
-            className="fixed top-4 right-4 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm z-50"
+            onClick={() => setBypassAuth(true)}
+            className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg text-sm"
           >
-            Sign Out
+            Skip Auth (Testing)
           </button>
         </div>
-      )}
+      </div>
+    )
+  }
+  return (
+    <div className="App">
+      <div>
+        <ProTimerApp />
+        {/* Add logout/reset button */}
+        <button
+          onClick={() => {
+            if (session) {
+              supabase.auth.signOut()
+            } else {
+              setBypassAuth(false)
+            }
+          }}
+          className="fixed top-4 right-4 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm z-50"
+        >
+          {session ? 'Sign Out' : 'Back to Auth'}
+        </button>
+      </div>
     </div>
   )
 }
