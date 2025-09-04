@@ -18,6 +18,7 @@ const ProTimerApp = ({ session, bypassAuth }) => {
     "👏 Thank you!"
   ]);
   const [newCustomMessage, setNewCustomMessage] = useState('');
+  const [deleteConfirmation, setDeleteConfirmation] = useState(null);
   const [createForm, setCreateForm] = useState({
     name: '',
     presenter: '',
@@ -356,10 +357,6 @@ const ProTimerApp = ({ session, bypassAuth }) => {
   };
 
   const deleteTimer = async (timerId) => {
-    if (!window.confirm('Are you sure you want to delete this timer? This action cannot be undone.')) {
-      return;
-    }
-
     try {
       const { error } = await supabase
         .from('timers')
@@ -379,9 +376,13 @@ const ProTimerApp = ({ session, bypassAuth }) => {
 
       // Reload timers to update the UI
       loadTimers();
+      
+      // Close confirmation dialog
+      setDeleteConfirmation(null);
     } catch (err) {
       console.error('Failed to delete timer:', err);
       alert('Failed to delete timer. Please try again.');
+      setDeleteConfirmation(null);
     }
   };
 
@@ -582,7 +583,7 @@ const ProTimerApp = ({ session, bypassAuth }) => {
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      deleteTimer(timer.id);
+                      setDeleteConfirmation(timer);
                     }}
                     className="w-full mt-2 bg-gradient-to-r from-red-500 to-red-600 text-white font-medium py-2 px-4 rounded-lg hover:from-red-600 hover:to-red-700 transition-all duration-200 flex items-center justify-center gap-2"
                   >
@@ -594,6 +595,39 @@ const ProTimerApp = ({ session, bypassAuth }) => {
           </div>
         )}
       </div>
+      
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmation && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-800 rounded-2xl p-6 max-w-md w-full border border-white/20">
+            <div className="text-center">
+              <div className="text-6xl mb-4">🗑️</div>
+              <h3 className="text-xl font-bold text-white mb-2">Delete Timer</h3>
+              <p className="text-white/80 mb-2">
+                Are you sure you want to delete <strong>"{deleteConfirmation.name}"</strong>?
+              </p>
+              <p className="text-red-300 text-sm mb-6">
+                This action cannot be undone and will remove all associated data.
+              </p>
+              
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setDeleteConfirmation(null)}
+                  className="flex-1 bg-slate-600 hover:bg-slate-700 text-white font-medium py-3 px-4 rounded-lg transition-all duration-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => deleteTimer(deleteConfirmation.id)}
+                  className="flex-1 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-bold py-3 px-4 rounded-lg transition-all duration-200"
+                >
+                  Delete Timer
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 
