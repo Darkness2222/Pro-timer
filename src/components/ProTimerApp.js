@@ -552,7 +552,7 @@ const ProTimerApp = () => {
 
                 {/* Timer Display */}
                 <div className="text-center mb-8">
-                  <div className="text-8xl font-mono text-white mb-4 tracking-wider">
+                  <div className="text-8xl font-mono text-red-500 mb-4 tracking-wider">
                     {formatTime(status.timeLeft)}
                   </div>
                   <div className="flex justify-center mb-4">
