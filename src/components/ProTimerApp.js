@@ -219,6 +219,14 @@ const ProTimerApp = ({ session, bypassAuth }) => {
 
     setActiveTimerId(data.id);
     setCurrentView('admin');
+    
+    // Reset the create form
+    setCreateForm({
+      name: '',
+      presenter: '',
+      minutes: 30,
+      seconds: 0
+    });
   };
 
   const startTimer = async (timerId) => {
