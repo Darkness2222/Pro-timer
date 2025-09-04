@@ -418,9 +418,73 @@ const ProTimerApp = () => {
         </div>
 
         {/* All Timers */}
+        {/* Timer List Overview */}
         <div className="mt-8 bg-gray-800 rounded-xl p-6 border border-gray-700">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold">All Timers</h2>
+            <h2 className="text-xl font-semibold">Timer Overview</h2>
+            <div className="text-sm text-gray-400">
+              {timers.length} timer{timers.length !== 1 ? 's' : ''} total
+            </div>
+          </div>
+          <div className="space-y-3">
+            {timers.map(timer => (
+              <div 
+                key={timer.id}
+                className={`flex items-center justify-between p-4 rounded-lg border transition-all cursor-pointer ${
+                  timer.id === activeTimerId 
+                    ? 'bg-blue-900/30 border-blue-500' 
+                    : 'bg-gray-700 border-gray-600 hover:border-gray-500'
+                }`}
+                onClick={() => setActiveTimer(timer.id)}
+              >
+                <div className="flex items-center gap-4">
+                  <div className="flex flex-col">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold text-white">{timer.name}</h3>
+                      {timer.id === activeTimerId && (
+                        <span className="bg-blue-500 text-xs px-2 py-1 rounded font-medium">ACTIVE</span>
+                      )}
+                    </div>
+                    <p className="text-gray-400 text-sm">Speaker: {timer.presenterName}</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-6">
+                  <div className="text-right">
+                    <div className="text-xl font-mono font-bold" style={{
+                      color: timer.isRunning ? '#10b981' : timer.timeLeft === 0 ? '#ef4444' : '#ef4444'
+                    }}>
+                      {formatTime(timer.timeLeft)}
+                    </div>
+                    <div className="text-sm">
+                      {timer.isRunning ? (
+                        <span className="text-green-400">▶️ Running</span>
+                      ) : timer.timeLeft === 0 ? (
+                        <span className="text-red-400">⏹️ Stopped</span>
+                      ) : (
+                        <span className="text-yellow-400">⏸️ Paused</span>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="w-24">
+                    <div className="w-full bg-gray-800 rounded-full h-2">
+                      <div 
+                        className="bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 h-2 rounded-full transition-all duration-1000" 
+                        style={{width: `${getProgressPercentage(timer)}%`}}
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Detailed Timer Cards */}
+        <div className="mt-8 bg-gray-800 rounded-xl p-6 border border-gray-700">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold">Timer Details</h2>
             <button
               onClick={() => setCurrentView('create')}
               className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg transition-colors"
