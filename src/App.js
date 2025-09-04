@@ -74,6 +74,7 @@ function App() {
       >
         {session ? 'Sign Out' : 'Back to Auth'}
       </button>
+    </div>
   )
 }
 
