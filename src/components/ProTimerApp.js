@@ -287,22 +287,18 @@ const ProTimerApp = () => {
         <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 border border-white/20">
           <form onSubmit={(e) => {
             e.preventDefault();
-            const formData = new FormData(e.target);
-            const name = formData.get('name');
-            const presenter = formData.get('presenter');
-            const minutes = parseInt(formData.get('minutes'));
-            const seconds = parseInt(formData.get('seconds'));
-            const totalSeconds = (minutes * 60) + seconds;
+            const totalSeconds = (createForm.minutes * 60) + createForm.seconds;
             
-            if (name && presenter && totalSeconds > 0) {
-              createTimer(name, presenter, totalSeconds);
+            if (createForm.name && createForm.presenter && totalSeconds > 0) {
+              createTimer(createForm.name, createForm.presenter, totalSeconds);
             }
           }} className="space-y-6">
             <div>
               <label className="block text-white font-medium mb-2">Session Name</label>
               <input
-                name="name"
                 type="text"
+                value={createForm.name}
+                onChange={(e) => setCreateForm({...createForm, name: e.target.value})}
                 placeholder="e.g., Keynote Presentation"
                 className="w-full px-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500"
                 required
@@ -312,8 +308,9 @@ const ProTimerApp = () => {
             <div>
               <label className="block text-white font-medium mb-2">Presenter Name</label>
               <input
-                name="presenter"
                 type="text"
+                value={createForm.presenter}
+                onChange={(e) => setCreateForm({...createForm, presenter: e.target.value})}
                 placeholder="e.g., John Smith"
                 className="w-full px-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500"
                 required
@@ -325,22 +322,22 @@ const ProTimerApp = () => {
               <div className="flex gap-4">
                 <div className="flex-1">
                   <input
-                    name="minutes"
                     type="number"
                     min="0"
                     max="180"
-                    defaultValue="30"
+                    value={createForm.minutes}
+                    onChange={(e) => setCreateForm({...createForm, minutes: parseInt(e.target.value) || 0})}
                     className="w-full px-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500"
                   />
                   <span className="text-white/70 text-sm mt-1 block">Minutes</span>
                 </div>
                 <div className="flex-1">
                   <input
-                    name="seconds"
                     type="number"
                     min="0"
                     max="59"
-                    defaultValue="0"
+                    value={createForm.seconds}
+                    onChange={(e) => setCreateForm({...createForm, seconds: parseInt(e.target.value) || 0})}
                     className="w-full px-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500"
                   />
                   <span className="text-white/70 text-sm mt-1 block">Seconds</span>
