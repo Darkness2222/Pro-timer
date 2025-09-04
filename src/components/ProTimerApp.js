@@ -913,13 +913,7 @@ const ProTimerApp = ({ session, bypassAuth }) => {
                   </button>
                 </div>
               </div>
-
-              {/* Recent Messages */}
-              {messages[activeTimerId] && messages[activeTimerId].length > 0 && (
-                <div className="border-t border-white/10 pt-4 mt-4">
-                  <h4 className="text-sm font-medium text-white/70 mb-3">Recent Messages</h4>
-                  <div className="space-y-2 max-h-40 overflow-y-auto">
-                    {messages[activeTimerId].slice(0, 5).map((msg, index) => (
+                     <div className="text-center mb-4">
                       <div key={index} className="text-sm text-white/80 bg-white/5 rounded p-2">
                         {msg.message}
                       </div>
@@ -960,13 +954,7 @@ const ProTimerApp = ({ session, bypassAuth }) => {
         {showMessageSettings && (
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
             <div className="bg-slate-800 rounded-2xl p-6 max-w-md w-full border border-white/20">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold text-white">⚙️ Customize Quick Messages</h3>
-                <button
-                  onClick={() => setShowMessageSettings(false)}
-                  className="text-white/60 hover:text-white text-2xl"
-                >
-                  ✕
+                     <div className="text-center mb-4">
                 </button>
               </div>
 
@@ -983,13 +971,7 @@ const ProTimerApp = ({ session, bypassAuth }) => {
                     onKeyPress={(e) => {
                       if (e.key === 'Enter') {
                         addCustomMessage();
-                      }
-                    }}
-                  />
-                  <button
-                    onClick={addCustomMessage}
-                    className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-all duration-200"
-                  >
+                     <div className="mb-4">
                     ➕
                   </button>
                 </div>
@@ -1004,7 +986,10 @@ const ProTimerApp = ({ session, bypassAuth }) => {
                       key={index}
                       className="flex items-center justify-between bg-white/5 rounded-lg p-3 border border-white/10"
                     >
-                      <span className="text-white text-sm flex-1">{msg}</span>
+                       onClick={(e) => {
+                         e.preventDefault();
+                         e.stopPropagation();
+                         e.preventDefault();
                       <button
                         onClick={() => removeCustomMessage(index)}
                         className="text-red-400 hover:text-red-300 ml-2 p-1"
