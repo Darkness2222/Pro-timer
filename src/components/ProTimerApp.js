@@ -570,7 +570,12 @@ const ProTimerApp = () => {
                     </button>
                   </div>
                 </div>
-              const totalSeconds = (createForm.minutes * 60) + createForm.seconds;
+              </div>
+            </div>
+
+            {/* Messages Panel */}
+            <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20">
+              <h3 className="text-xl font-bold text-white mb-6">📨 Messages</h3>
               
               {/* Quick Message Buttons */}
               <div className="space-y-2 mb-6">
@@ -578,16 +583,15 @@ const ProTimerApp = () => {
                   "⏰ 5 minutes remaining",
                   "⚡ Please wrap up",
                   "🎯 Final slide please",
-              if (createForm.name && createForm.presenter && totalSeconds > 0) {
-                createTimer(createForm.name, createForm.presenter, totalSeconds);
+                  "👏 Thank you!"
+                ].map((msg, index) => (
                   <button
                     key={index}
                     onClick={() => sendMessage(activeTimerId, msg)}
                     className="w-full text-left px-4 py-3 bg-white/5 hover:bg-white/10 rounded-lg text-white transition-all duration-200 border border-white/10 hover:border-white/20"
                   >
+                    {msg}
                   </button>
-                  value={createForm.name}
-                  onChange={(e) => setCreateForm({...createForm, name: e.target.value})}
                 ))}
               </div>
 
@@ -597,9 +601,8 @@ const ProTimerApp = () => {
                   <input
                     type="text"
                     value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
                     placeholder="Custom message..."
-                  value={createForm.presenter}
-                  onChange={(e) => setCreateForm({...createForm, presenter: e.target.value})}
                     className="flex-1 px-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500"
                     onKeyPress={(e) => {
                       if (e.key === 'Enter' && newMessage.trim()) {
@@ -611,22 +614,22 @@ const ProTimerApp = () => {
                     onClick={() => {
                       if (newMessage.trim()) {
                         sendMessage(activeTimerId, newMessage);
+                      }
                     }}
                     className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-all duration-200"
                   >
-                      value={createForm.minutes}
-                      onChange={(e) => setCreateForm({...createForm, minutes: parseInt(e.target.value) || 0})}
+                    📤
                   </button>
                 </div>
               </div>
 
               {/* Recent Messages */}
               {messages[activeTimerId] && messages[activeTimerId].length > 0 && (
+                <div className="border-t border-white/10 pt-4 mt-4">
                   <h4 className="text-sm font-medium text-white/70 mb-3">Recent Messages</h4>
                   <div className="space-y-2 max-h-40 overflow-y-auto">
                     {messages[activeTimerId].slice(0, 5).map((msg, index) => (
-                      value={createForm.seconds}
-                      onChange={(e) => setCreateForm({...createForm, seconds: parseInt(e.target.value) || 0})}
+                      <div key={index} className="text-sm text-white/80 bg-white/5 rounded p-2">
                         {msg.message}
                       </div>
                     ))}
