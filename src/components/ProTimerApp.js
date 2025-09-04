@@ -1165,10 +1165,29 @@ const ProTimerApp = ({ session, bypassAuth }) => {
       </nav>
 
       {/* Main Content */}
-      {currentView === 'admin' && renderAdminDashboard()}
-      {currentView === 'presenter' && renderPresenterView()}
-      {currentView === 'create' && renderCreateTimer()}
-      {currentView === 'overview' && renderTimerOverview()}
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+        {currentView === 'admin' && renderAdminDashboard()}
+        {currentView === 'presenter' && renderPresenterView()}
+        {currentView === 'create' && renderCreateTimer()}
+        {currentView === 'overview' && renderTimerOverview()}
+        
+        {/* Default content if no view matches */}
+        {!['admin', 'presenter', 'create', 'overview'].includes(currentView) && (
+          <div className="flex items-center justify-center min-h-screen">
+            <div className="text-center">
+              <div className="text-6xl mb-4">🎯</div>
+              <h2 className="text-2xl font-bold text-white mb-4">SyncCue Pro Timer</h2>
+              <p className="text-slate-300 mb-6">Professional presentation timers with admin control</p>
+              <button
+                onClick={() => setCurrentView('create')}
+                className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-all duration-200"
+              >
+                Get Started
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
