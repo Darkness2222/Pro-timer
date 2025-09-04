@@ -208,6 +208,7 @@ const ProTimerApp = () => {
     } else {
       alert('Please enter time in MM:SS format (e.g., 15:30)');
     }
+  };
 
   const AdminView = () => (
     <div className="bg-gray-900 text-white min-h-screen p-6">
