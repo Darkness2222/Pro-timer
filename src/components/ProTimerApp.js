@@ -78,39 +78,62 @@ const ProTimerApp = () => {
     }
 
     intervalRef.current = setInterval(async () => {
-      const currentRunningSessions = Object.entries(sessions).filter(([_, session]) => session.is_running);
-      
-      for (const [timerId, session] of currentRunningSessions) {
-        if (session.time_left > 0) {
-          const newTimeLeft = session.time_left - 1;
-          
-          // Update in database
-          await supabase
-            .from('timer_sessions')
-            .update({ 
-              time_left: newTimeLeft,
-              updated_at: new Date().toISOString()
-            })
-            .eq('timer_id', timerId);
-        } else {
-          // Timer finished - stop it
-          await supabase
-            .from('timer_sessions')
-            .update({ 
-              is_running: false,
-              updated_at: new Date().toISOString()
-            })
-            .eq('timer_id', timerId);
-        }
-      }
+      // Update local state immediately for smooth UI
+      setSessions(prevSessions => {
+        const updatedSessions = { ...prevSessions };
+        let hasChanges = false;
+        
+        Object.entries(updatedSessions).forEach(([timerId, session]) => {
+          if (session.is_running) {
+            if (session.time_left > 0) {
+              updatedSessions[timerId] = {
+                ...session,
+                time_left: session.time_left - 1,
+                updated_at: new Date().toISOString()
+              };
+              hasChanges = true;
+              
+              // Update database in background
+              supabase
+                .from('timer_sessions')
+                .update({ 
+                  time_left: session.time_left - 1,
+                  updated_at: new Date().toISOString()
+                })
+                .eq('timer_id', timerId);
+            } else {
+              // Timer finished - stop it
+              updatedSessions[timerId] = {
+                ...session,
+                is_running: false,
+                updated_at: new Date().toISOString()
+              };
+              hasChanges = true;
+              
+              // Update database in background
+              supabase
+                .from('timer_sessions')
+                .update({ 
+                  is_running: false,
+                  updated_at: new Date().toISOString()
+                })
+                .eq('timer_id', timerId);
+            }
+          }
+        });
+        
+        return hasChanges ? updatedSessions : prevSessions;
+      });
     }, 1000);
 
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
+        }
       }
     };
   }, [sessions]);
+
 
   const loadTimers = async () => {
     const { data, error } = await supabase
