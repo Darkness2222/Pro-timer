@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Play, Pause, Square, RotateCcw, QrCode, Send, Copy, Eye } from 'lucide-react';
-import QRCodeLib from 'qrcode';
 
 const ProTimerApp = () => {
   const [currentView, setCurrentView] = useState('admin');
@@ -160,26 +159,11 @@ const ProTimerApp = () => {
   };
 
   const generateQRCode = async () => {
-    try {
-      // Dynamic import to avoid module resolution issues
-      const QRCode = await import('qrcode');
-      // Create a URL that opens the presenter view
-      const presenterUrl = `${window.location.origin}${window.location.pathname}?view=presenter&timer=${activeTimerId}`;
-      const qrDataUrl = await QRCode.default.toDataURL(presenterUrl, {
-        width: 256,
-        margin: 2,
-        color: {
-          dark: '#000000',
-          light: '#FFFFFF'
-          }
-      });
-      setQrCodeUrl(qrDataUrl);
-      setShowQR(true);
-    } catch (error) {
-      console.error('Error generating QR code:', error);
-      // Fallback: show modal without QR code
-      setShowQR(true);
-    }
+    // Create a simple QR code using a public API service
+    const presenterUrl = `${window.location.origin}${window.location.pathname}?view=presenter&timer=${activeTimerId}`;
+    const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=256x256&data=${encodeURIComponent(presenterUrl)}`;
+    setQrCodeUrl(qrApiUrl);
+    setShowQR(true);
   };
 
   const copyPresenterLink = () => {
