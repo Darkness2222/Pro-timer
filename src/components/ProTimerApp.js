@@ -457,8 +457,7 @@ const ProTimerApp = ({ session, bypassAuth }) => {
                     max="180"
                     value={createForm.minutes}
                     onChange={(e) => setCreateForm({...createForm, minutes: parseInt(e.target.value) || 0})}
-                    className="w-full px-4 py-3 rounded-lg bg
-                className="w-full px-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500"
                   />
                   <span className="text-white/70 text-sm mt-1 block">Minutes</span>
                 </div>
