@@ -7,6 +7,8 @@ const ProTimerApp = () => {
   const [timeLeft, setTimeLeft] = useState(12 * 60 + 34); // 12:34 in seconds
   const [isRunning, setIsRunning] = useState(false);
   const [initialTime, setInitialTime] = useState(12 * 60 + 34);
+  const [currentMessage, setCurrentMessage] = useState('');
+  const [customMessage, setCustomMessage] = useState('');
   const intervalRef = useRef(null);
 
   useEffect(() => {
@@ -56,6 +58,20 @@ const ProTimerApp = () => {
     }
   };
 
+  const sendQuickMessage = (message) => {
+    setCurrentMessage(message);
+    // Auto-clear message after 10 seconds
+    setTimeout(() => setCurrentMessage(''), 10000);
+  };
+
+  const sendCustomMessage = () => {
+    if (customMessage.trim()) {
+      setCurrentMessage(customMessage.trim());
+      setCustomMessage('');
+      // Auto-clear message after 10 seconds
+      setTimeout(() => setCurrentMessage(''), 10000);
+    }
+  };
   const AdminView = () => (
     <div className="bg-gray-900 text-white min-h-screen p-6">
       <div className="max-w-6xl mx-auto">
@@ -157,16 +173,28 @@ const ProTimerApp = () => {
             <h2 className="text-xl font-semibold mb-4">Quick Messages</h2>
             
             <div className="space-y-3 mb-6">
-              <button className="w-full bg-blue-600 hover:bg-blue-700 px-4 py-3 rounded-lg transition-colors text-left">
+              <button 
+                onClick={() => sendQuickMessage('🎯 Wrap up')}
+                className="w-full bg-blue-600 hover:bg-blue-700 px-4 py-3 rounded-lg transition-colors text-left"
+              >
                 🎯 "Wrap up"
               </button>
-              <button className="w-full bg-orange-600 hover:bg-orange-700 px-4 py-3 rounded-lg transition-colors text-left">
+              <button 
+                onClick={() => sendQuickMessage('📢 Louder')}
+                className="w-full bg-orange-600 hover:bg-orange-700 px-4 py-3 rounded-lg transition-colors text-left"
+              >
                 📢 "Louder"
               </button>
-              <button className="w-full bg-purple-600 hover:bg-purple-700 px-4 py-3 rounded-lg transition-colors text-left">
+              <button 
+                onClick={() => sendQuickMessage('⚡ Faster')}
+                className="w-full bg-purple-600 hover:bg-purple-700 px-4 py-3 rounded-lg transition-colors text-left"
+              >
                 ⚡ "Faster"
               </button>
-              <button className="w-full bg-green-600 hover:bg-green-700 px-4 py-3 rounded-lg transition-colors text-left">
+              <button 
+                onClick={() => sendQuickMessage('👍 Great job')}
+                className="w-full bg-green-600 hover:bg-green-700 px-4 py-3 rounded-lg transition-colors text-left"
+              >
                 👍 "Great job"
               </button>
             </div>
@@ -174,10 +202,17 @@ const ProTimerApp = () => {
             <div className="space-y-3">
               <input
                 type="text"
+                value={customMessage}
+                onChange={(e) => setCustomMessage(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && sendCustomMessage()}
                 placeholder="Custom message..."
                 className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400"
               />
-              <button className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 px-4 py-3 rounded-lg transition-colors">
+              <button 
+                onClick={sendCustomMessage}
+                disabled={!customMessage.trim()}
+                className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-600 px-4 py-3 rounded-lg transition-colors"
+              >
                 <Send size={20} />
                 Send Message
               </button>
@@ -249,7 +284,7 @@ const ProTimerApp = () => {
         <div className="bg-gray-800 rounded-xl p-6 max-w-md">
           <div className="text-2xl font-semibold text-yellow-400 mb-2">📢 Message from Admin</div>
           <p className="text-xl">
-            {isRunning ? '"Timer is running"' : timeLeft === 0 ? '"Time is up!"' : '"Timer is paused"'}
+            {currentMessage || (isRunning ? 'Timer is running' : timeLeft === 0 ? 'Time is up!' : 'Timer is paused')}
           </p>
         </div>
       </div>
