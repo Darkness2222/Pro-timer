@@ -1,60 +1,36 @@
-const deleteTimer = async (timerId) => {
-  try {
-    const { error } = await supabase
-      .from('timers')
-      .delete()
-      .eq('id', timerId);
+<button
+                     onClick={(e) => {
+                       e.preventDefault();
+                       e.stopPropagation();
+                       setActiveTimerId(timer.id);
+                       setCurrentView('admin');
+                     }}
+                     className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white font-medium py-2 px-4 rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all duration-200"
+                   >
+                     Manage Timer →
+                   </button>
 
-    if (error) {
-      console.error('Error deleting timer:', error);
-      alert('Failed to delete timer. Please try again.');
-      return;
-    }
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setEditingTimer(timer);
+                      setEditForm({
+                        name: timer.name,
+                        presenter: timer.presenter_name
+                      });
+                    }}
+                    className="w-full mt-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-medium py-2 px-4 rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-200 flex items-center justify-center gap-2"
+                  >
+                    ✏️ Edit Timer
+                  </button>
 
-    // If we deleted the active timer, clear the active timer
-    if (activeTimerId === timerId) {
-      setActiveTimerId(null);
-    }
-
-    // Reload timers to update the UI
-    loadTimers();
-    
-    // Close confirmation dialog
-    setDeleteConfirmation(null);
-  } catch (err) {
-    console.error('Failed to delete timer:', err);
-    alert('Failed to delete timer. Please try again.');
-    setDeleteConfirmation(null);
-  }
-};
-
-const editTimer = async (timerId, newName, newPresenter) => {
-  try {
-    const { error } = await supabase
-      .from('timers')
-      .update({
-        name: newName,
-        presenter_name: newPresenter
-      })
-      .eq('id', timerId);
-
-    if (error) {
-      console.error('Error updating timer:', error);
-      alert('Failed to update timer. Please try again.');
-      return;
-    }
-
-    // Reload timers to update the UI
-    loadTimers();
-    
-    // Close edit dialog
-    setEditingTimer(null);
-    setEditForm({ name: '', presenter: '' });
-  } catch (err) {
-    console.error('Failed to update timer:', err);
-    alert('Failed to update timer. Please try again.');
-    setEditingTimer(null);
-  }
-};
-
-const formatTime = (seconds) => {
+                   <button
+                     onClick={(e) => {
+                       e.stopPropagation();
+                       setDeleteConfirmation(timer);
+                     }}
+                     className="w-full mt-2 bg-gradient-to-r from-red-500 to-red-600 text-white font-medium py-2 px-4 rounded-lg hover:from-red-600 hover:to-red-700 transition-all duration-200 flex items-center justify-center gap-2"
+                   >
+                     🗑️ Delete Timer
+                   </button>
