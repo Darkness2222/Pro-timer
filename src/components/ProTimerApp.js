@@ -347,6 +347,36 @@ const ProTimerApp = ({ session, bypassAuth }) => {
     setCustomMessages(customMessages.filter((_, i) => i !== index));
   };
 
+  const deleteTimer = async (timerId) => {
+    if (!window.confirm('Are you sure you want to delete this timer? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('timers')
+        .delete()
+        .eq('id', timerId);
+
+      if (error) {
+        console.error('Error deleting timer:', error);
+        alert('Failed to delete timer. Please try again.');
+        return;
+      }
+
+      // If we deleted the active timer, clear the active timer
+      if (activeTimerId === timerId) {
+        setActiveTimerId(null);
+      }
+
+      // Reload timers to update the UI
+      loadTimers();
+    } catch (err) {
+      console.error('Failed to delete timer:', err);
+      alert('Failed to delete timer. Please try again.');
+    }
+  };
+
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -475,18 +505,26 @@ const ProTimerApp = ({ session, bypassAuth }) => {
               return (
                 <div
                   key={timer.id}
-                  onClick={() => {
-                    setActiveTimerId(timer.id);
-                    setCurrentView('admin');
-                  }}
-                  className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20 hover:bg-white/20 transition-all duration-200 cursor-pointer transform hover:scale-105"
+                  className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20 hover:bg-white/20 transition-all duration-200 transform hover:scale-105"
                 >
-                  <div className="text-center mb-4">
+                  <div 
+                    onClick={() => {
+                      setActiveTimerId(timer.id);
+                      setCurrentView('admin');
+                    }}
+                    className="cursor-pointer text-center mb-4"
+                  >
                     <h3 className="text-xl font-bold text-white mb-1">{timer.name}</h3>
                     <p className="text-slate-300">👤 {timer.presenter_name}</p>
                   </div>
 
-                  <div className="text-center mb-4">
+                  <div 
+                    onClick={() => {
+                      setActiveTimerId(timer.id);
+                      setCurrentView('admin');
+                    }}
+                    className="cursor-pointer text-center mb-4"
+                  >
                     <div className="text-5xl font-mono text-white mb-2">
                       {formatTime(status.timeLeft)}
                     </div>
@@ -503,7 +541,13 @@ const ProTimerApp = ({ session, bypassAuth }) => {
                     </div>
                   </div>
 
-                  <div className="mb-4">
+                  <div 
+                    onClick={() => {
+                      setActiveTimerId(timer.id);
+                      setCurrentView('admin');
+                    }}
+                    className="cursor-pointer mb-4"
+                  >
                     <div className="bg-white/10 rounded-full h-2">
                       <div
                         className="h-2 rounded-full transition-all duration-300 bg-gradient-to-r from-green-400 via-yellow-400 to-red-500"
@@ -517,8 +561,24 @@ const ProTimerApp = ({ session, bypassAuth }) => {
                     </div>
                   </div>
 
-                  <button className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white font-medium py-2 px-4 rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all duration-200">
+                  <button 
+                    onClick={() => {
+                      setActiveTimerId(timer.id);
+                      setCurrentView('admin');
+                    }}
+                    className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white font-medium py-2 px-4 rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all duration-200"
+                  >
                     Manage Timer →
+                  </button>
+
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteTimer(timer.id);
+                    }}
+                    className="w-full mt-2 bg-gradient-to-r from-red-500 to-red-600 text-white font-medium py-2 px-4 rounded-lg hover:from-red-600 hover:to-red-700 transition-all duration-200 flex items-center justify-center gap-2"
+                  >
+                    🗑️ Delete Timer
                   </button>
                 </div>
               );
