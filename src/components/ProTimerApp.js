@@ -1042,6 +1042,13 @@ export default function ProTimerApp({ session, bypassAuth }) {
   )
 }
 
+  return (
+    <>
+      {renderCurrentView()}
+    </>
+  )
+}
+
   return <></>
       {/* Timer Overview */}
       {currentView === 'overview' && (
