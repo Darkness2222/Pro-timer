@@ -1341,6 +1341,39 @@ const ProTimerApp = ({ session, bypassAuth }) => {
               </div>
             </div>
           )}
+
+          {/* Messages from Control Section */}
+          <div className="mt-8">
+            <div className="flex items-center gap-3 mb-4">
+              <span className="text-2xl">📨</span>
+              <h3 className="text-xl font-semibold text-white">Messages from Control</h3>
+            </div>
+            
+            <div className="space-y-3 max-h-64 overflow-y-auto">
+              {messages.length === 0 ? (
+                <div className="bg-gray-700/50 rounded-lg p-4 text-center text-gray-400">
+                  No messages yet
+                </div>
+              ) : (
+                messages.slice(-5).reverse().map((msg, index) => (
+                  <div key={index} className="bg-gray-700/50 rounded-lg p-4 border border-gray-600">
+                    <div className="flex items-start gap-3">
+                      <span className="text-lg">{msg.message.startsWith('🔔') ? '🔔' : 
+                                                 msg.message.startsWith('⚡') ? '⚡' : 
+                                                 msg.message.startsWith('🎯') ? '🎯' : 
+                                                 msg.message.startsWith('👋') ? '👋' : '💬'}</span>
+                      <div className="flex-1">
+                        <p className="text-white font-medium">{msg.message}</p>
+                        <p className="text-gray-400 text-sm mt-1">
+                          {new Date(msg.sent_at).toLocaleTimeString()}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
         </div>
       </div>
     );
