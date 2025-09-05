@@ -226,7 +226,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
           time_left: timeLeft,
           is_running: true,
           updated_at: new Date().toISOString()
-        })
+        }, { onConflict: 'timer_id' })
     } catch (error) {
       console.error('Error updating session:', error)
     }
@@ -245,7 +245,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
           time_left: timeLeft,
           is_running: false,
           updated_at: new Date().toISOString()
-        })
+        }, { onConflict: 'timer_id' })
     } catch (error) {
       console.error('Error updating session:', error)
     }
@@ -267,7 +267,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
           time_left: selectedTimer.duration,
           is_running: false,
           updated_at: new Date().toISOString()
-        })
+        }, { onConflict: 'timer_id' })
     } catch (error) {
       console.error('Error updating session:', error)
     }
@@ -288,7 +288,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
             time_left: newTime,
             is_running: isRunning,
             updated_at: new Date().toISOString()
-          })
+          }, { onConflict: 'timer_id' })
       } catch (error) {
         console.error('Error updating session:', error)
       }
