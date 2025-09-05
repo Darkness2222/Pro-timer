@@ -25,6 +25,8 @@ const ProTimerApp = ({ session, bypassAuth }) => {
     minutes: 30,
     seconds: 0
   });
+  const [timerLogs, setTimerLogs] = useState([]);
+  const [showTimerLogs, setShowTimerLogs] = useState(false);
   const intervalRef = useRef(null);
 
   // Load timers from database
@@ -55,14 +57,23 @@ const ProTimerApp = ({ session, bypassAuth }) => {
       })
       .subscribe();
 
+    const logsSubscription = supabase
+      .channel('timer_logs')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'timer_logs' }, () => {
+        loadTimerLogs();
+      })
+      .subscribe();
+
     // Load initial data
     loadSessions();
     loadMessages();
+    loadTimerLogs();
 
     return () => {
       supabase.removeChannel(timersSubscription);
       supabase.removeChannel(sessionsSubscription);
       supabase.removeChannel(messagesSubscription);
+      supabase.removeChannel(logsSubscription);
     };
   }, []);
 
@@ -110,6 +121,9 @@ const ProTimerApp = ({ session, bypassAuth }) => {
                 updated_at: new Date().toISOString()
               };
               hasChanges = true;
+              
+              // Log timer completion
+              logTimerAction(timerId, 'complete', 0, 0, 'Timer completed automatically');
               
               // Update database in background
               supabase
@@ -193,6 +207,43 @@ const ProTimerApp = ({ session, bypassAuth }) => {
     setMessages(messagesMap);
   };
 
+  const loadTimerLogs = async () => {
+    const { data, error } = await supabase
+      .from('timer_logs')
+      .select(`
+        *,
+        timers (
+          name,
+          presenter_name
+        )
+      `)
+      .order('created_at', { ascending: false })
+      .limit(100);
+    
+    if (error) {
+      console.error('Error loading timer logs:', error);
+      return;
+    }
+    
+    setTimerLogs(data || []);
+  };
+
+  const logTimerAction = async (timerId, action, timeValue = 0, durationChange = 0, notes = '') => {
+    try {
+      await supabase
+        .from('timer_logs')
+        .insert([{
+          timer_id: timerId,
+          action,
+          time_value: timeValue,
+          duration_change: durationChange,
+          notes
+        }]);
+    } catch (error) {
+      console.error('Error logging timer action:', error);
+    }
+  };
+
   const createTimer = async (name, presenterName, duration) => {
     const { data, error } = await supabase
       .from('timers')
@@ -218,6 +269,9 @@ const ProTimerApp = ({ session, bypassAuth }) => {
         is_running: false
       }]);
 
+    // Log timer creation
+    await logTimerAction(data.id, 'create', duration, 0, `Timer created: ${name} (${presenterName})`);
+
     setActiveTimerId(data.id);
     setCurrentView('admin');
     
@@ -233,6 +287,8 @@ const ProTimerApp = ({ session, bypassAuth }) => {
   const startTimer = async (timerId) => {
     try {
       console.log('Starting timer:', timerId);
+      const currentSession = sessions[timerId];
+      
       const { error } = await supabase
         .from('timer_sessions')
         .update({ 
@@ -246,6 +302,9 @@ const ProTimerApp = ({ session, bypassAuth }) => {
         return;
       }
       
+      // Log timer start
+      await logTimerAction(timerId, 'start', currentSession?.time_left || 0, 0, 'Timer started');
+      
       // Force reload sessions to update UI immediately
       await loadSessions();
       console.log('Timer started successfully');
@@ -257,6 +316,8 @@ const ProTimerApp = ({ session, bypassAuth }) => {
   const pauseTimer = async (timerId) => {
     try {
       console.log('Pausing timer:', timerId);
+      const currentSession = sessions[timerId];
+      
       const { error } = await supabase
         .from('timer_sessions')
         .update({ 
@@ -269,6 +330,9 @@ const ProTimerApp = ({ session, bypassAuth }) => {
         console.error('Error pausing timer:', error);
         return;
       }
+      
+      // Log timer pause
+      await logTimerAction(timerId, 'pause', currentSession?.time_left || 0, 0, 'Timer paused');
       
       // Force reload sessions to update UI immediately
       await loadSessions();
@@ -301,6 +365,9 @@ const ProTimerApp = ({ session, bypassAuth }) => {
         return;
       }
       
+      // Log timer reset
+      await logTimerAction(timerId, 'reset', timer.duration, 0, 'Timer reset to original duration');
+      
       // Force reload sessions to update UI immediately
       await loadSessions();
       console.log('Timer reset successfully');
@@ -312,6 +379,9 @@ const ProTimerApp = ({ session, bypassAuth }) => {
   const setCustomTimer = async (timerId, totalSeconds) => {
     try {
       console.log('Setting custom timer:', timerId, totalSeconds);
+      const currentSession = sessions[timerId];
+      const durationChange = totalSeconds - (currentSession?.time_left || 0);
+      
       const { error } = await supabase
         .from('timer_sessions')
         .update({ 
@@ -325,6 +395,15 @@ const ProTimerApp = ({ session, bypassAuth }) => {
         console.error('Error setting custom timer:', error);
         return;
       }
+      
+      // Log timer adjustment
+      await logTimerAction(
+        timerId, 
+        'adjust', 
+        totalSeconds, 
+        durationChange, 
+        `Timer adjusted by ${durationChange > 0 ? '+' : ''}${Math.floor(durationChange / 60)}:${Math.abs(durationChange % 60).toString().padStart(2, '0')}`
+      );
       
       // Force reload sessions to update UI immediately
       await loadSessions();
@@ -374,6 +453,9 @@ const ProTimerApp = ({ session, bypassAuth }) => {
         setActiveTimerId(null);
       }
 
+      // Log timer deletion
+      await logTimerAction(timerId, 'delete', 0, 0, 'Timer deleted');
+
       // Reload timers to update the UI
       loadTimers();
       
@@ -390,6 +472,39 @@ const ProTimerApp = ({ session, bypassAuth }) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const formatDateTime = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleString();
+  };
+
+  const getActionIcon = (action) => {
+    switch (action) {
+      case 'create': return '🆕';
+      case 'start': return '▶️';
+      case 'pause': return '⏸️';
+      case 'stop': return '⏹️';
+      case 'reset': return '🔄';
+      case 'adjust': return '⚙️';
+      case 'complete': return '✅';
+      case 'delete': return '🗑️';
+      default: return '📝';
+    }
+  };
+
+  const getActionColor = (action) => {
+    switch (action) {
+      case 'create': return 'text-blue-300';
+      case 'start': return 'text-green-300';
+      case 'pause': return 'text-yellow-300';
+      case 'stop': return 'text-red-300';
+      case 'reset': return 'text-purple-300';
+      case 'adjust': return 'text-orange-300';
+      case 'complete': return 'text-emerald-300';
+      case 'delete': return 'text-red-400';
+      default: return 'text-gray-300';
+    }
   };
 
   const getTimerStatus = (timerId) => {
@@ -919,11 +1034,19 @@ const ProTimerApp = ({ session, bypassAuth }) => {
                     <div className="text-sm text-white/70 mb-2">Recent messages:</div>
                     {messages[activeTimerId].slice(0, 5).map((msg, index) => (
                       <div key={index} className="text-sm text-white/80 bg-white/5 rounded p-2">
-                        {msg.message}
-                      </div>
-                    ))}
-                  </div>
-                )}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowTimerLogs(!showTimerLogs)}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-all duration-200 flex items-center gap-2"
+                >
+                  📊 Timer Logs
+                </button>
+                <button
+                  onClick={() => setShowQRCode(!showQRCode)}
+                  className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-lg transition-all duration-200 flex items-center gap-2"
+                >
+                  📱 QR Code
+                </button>
               </div>
             </div>
           </div>
@@ -950,6 +1073,99 @@ const ProTimerApp = ({ session, bypassAuth }) => {
               >
                 Close
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Timer Logs Modal */}
+        {showTimerLogs && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-slate-800 rounded-2xl p-6 max-w-4xl w-full max-h-[80vh] border border-white/20">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-2xl font-bold text-white flex items-center gap-2">
+                  📊 Timer Usage Logs
+                </h3>
+                <button
+                  onClick={() => setShowTimerLogs(false)}
+                  className="text-white/60 hover:text-white text-2xl"
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className="overflow-y-auto max-h-[60vh]">
+                {timerLogs.length === 0 ? (
+                  <div className="text-center py-8">
+                    <div className="text-4xl mb-4">📝</div>
+                    <p className="text-white/70">No timer activity logged yet</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {timerLogs.map((log) => (
+                      <div
+                        key={log.id}
+                        className="bg-white/5 rounded-lg p-4 border border-white/10 hover:bg-white/10 transition-all duration-200"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-start gap-3">
+                            <span className="text-2xl">{getActionIcon(log.action)}</span>
+                            <div>
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className={`font-medium capitalize ${getActionColor(log.action)}`}>
+                                  {log.action}
+                                </span>
+                                <span className="text-white font-medium">
+                                  {log.timers?.name || 'Unknown Timer'}
+                                </span>
+                                {log.timers?.presenter_name && (
+                                  <span className="text-white/70 text-sm">
+                                    by {log.timers.presenter_name}
+                                  </span>
+                                )}
+                              </div>
+                              
+                              <div className="flex items-center gap-4 text-sm text-white/70">
+                                {log.time_value > 0 && (
+                                  <span>Time: {formatTime(log.time_value)}</span>
+                                )}
+                                {log.duration_change !== 0 && (
+                                  <span className={log.duration_change > 0 ? 'text-green-300' : 'text-red-300'}>
+                                    Change: {log.duration_change > 0 ? '+' : ''}{formatTime(Math.abs(log.duration_change))}
+                                  </span>
+                                )}
+                              </div>
+                              
+                              {log.notes && (
+                                <div className="text-white/60 text-sm mt-1 italic">
+                                  {log.notes}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          
+                          <div className="text-right text-xs text-white/50">
+                            {formatDateTime(log.created_at)}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="border-t border-white/10 pt-4 mt-6">
+                <div className="flex justify-between items-center">
+                  <div className="text-sm text-white/70">
+                    Showing last {timerLogs.length} activities
+                  </div>
+                  <button
+                    onClick={() => setShowTimerLogs(false)}
+                    className="bg-slate-600 hover:bg-slate-700 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}
