@@ -761,7 +761,19 @@ export default function ProTimerApp({ session, bypassAuth }) {
                 <h3 className="text-xl font-semibold text-white mb-2">{timer.name}</h3>
                 <p className="text-gray-300 mb-4">Presenter: {timer.presenter_name}</p>
                 <div className="text-3xl font-mono text-blue-400 mb-4">
-                  {formatTimeFromSession(session, timer.duration)}
+                  {(() => {
+                    if (!session) return formatTime(timer.duration);
+                    
+                    let timeLeft = session.time_left;
+                    if (session.is_running) {
+                      const now = new Date(currentTime);
+                      const lastUpdate = new Date(session.updated_at);
+                      const elapsedSinceUpdate = Math.floor((now - lastUpdate) / 1000);
+                      timeLeft = Math.max(0, session.time_left - elapsedSinceUpdate);
+                    }
+                    
+                    return formatTime(timeLeft);
+                  })()}
                 </div>
                 <div className="w-full bg-gray-700 rounded-full h-2">
                   <div 
