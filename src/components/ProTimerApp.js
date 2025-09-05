@@ -376,3 +376,5 @@ const ProTimerApp = ({ session, bypassAuth }) => {
   };
 
   const setCustomTimer = async (timerId, total
+  )
+}
