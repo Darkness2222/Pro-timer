@@ -346,6 +346,12 @@ export default function ProTimerApp({ session, bypassAuth }) {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
   }
 
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+  }
+
   const formatTimeFromSession = (session, originalDuration) => {
     if (!session) return formatTime(originalDuration)
     
@@ -355,12 +361,6 @@ export default function ProTimerApp({ session, bypassAuth }) {
       const lastUpdate = new Date(session.updated_at)
       const elapsedSinceUpdate = Math.floor((now - lastUpdate) / 1000)
       const currentTime = Math.max(0, session.time_left - elapsedSinceUpdate)
-      return formatTime(currentTime)
-    }
-    
-    return formatTime(session.time_left)
-  }
-
   const getProgressPercentage = () => {
     if (!selectedTimer) return 0
     return ((selectedTimer.duration - timeLeft) / selectedTimer.duration) * 100
