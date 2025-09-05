@@ -644,13 +644,13 @@ export default function ProTimerApp({ session, bypassAuth }) {
       {/* Presenter View */}
       {currentView === 'presenter' && (
         <div className="min-h-screen flex flex-col items-center justify-center p-8 relative">
-          {/* Status Indicator */}
-          <div className="absolute top-8 right-8">
-            <div className={`w-4 h-4 rounded-full ${isRunning ? 'bg-green-500' : 'bg-red-500'} shadow-lg`}></div>
-          </div>
-
           {selectedTimer ? (
             <>
+              {/* Status Indicator */}
+              <div className="absolute top-8 right-8">
+                <div className={`w-4 h-4 rounded-full ${isRunning ? 'bg-green-500' : 'bg-red-500'} shadow-lg`}></div>
+              </div>
+
               {/* Timer Info */}
               <div className="text-center mb-8">
                 <h1 className="text-4xl font-bold text-white mb-2">{selectedTimer.name}</h1>
@@ -677,7 +677,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
               </div>
 
               {/* Current Message Display */}
-              {messages.length > 0 && (
+              {messages && messages.length > 0 && (
                 <div className="bg-yellow-500/20 border border-yellow-500/50 rounded-xl p-6 mb-8 max-w-2xl">
                   <div className="text-center">
                     <div className="text-2xl mb-2">💬</div>
@@ -713,7 +713,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
                         Messages from Control
                       </h3>
                       <div className="space-y-2 max-h-64 overflow-y-auto">
-                        {messages.length > 0 ? (
+                        {messages && messages.length > 0 ? (
                           messages.slice(0, 5).map((message, index) => (
                             <div key={index} className="bg-gray-700/50 rounded-lg p-3">
                               <div className="flex items-start gap-2">
