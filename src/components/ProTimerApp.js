@@ -465,7 +465,8 @@ export default function ProTimerApp({ session, bypassAuth }) {
           {/* Timers Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {timers.map((timer) => (
-              const session = timerSessions[timer.id]
+              const session = timerSessions[timer.id];
+              return (
               <div
                 key={timer.id}
                 className={`bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border cursor-pointer transition-all ${
@@ -495,7 +496,8 @@ export default function ProTimerApp({ session, bypassAuth }) {
                   ></div>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* Selected Timer Controls */}
@@ -748,7 +750,8 @@ export default function ProTimerApp({ session, bypassAuth }) {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {timers.map((timer) => (
-              const session = timerSessions[timer.id]
+              const session = timerSessions[timer.id];
+              return (
               <div key={timer.id} className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700">
                 {/* Status Indicator */}
                 <div className="flex justify-between items-start mb-3">
@@ -766,7 +769,8 @@ export default function ProTimerApp({ session, bypassAuth }) {
                   ></div>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
