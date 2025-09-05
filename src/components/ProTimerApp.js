@@ -992,54 +992,46 @@ const ProTimerApp = ({ session, bypassAuth }) => {
               </div>
 
               {/* Message Settings Button */}
-              <div className="mb-4">
-                <button
-                  onClick={() => setShowMessageSettings(true)}
-                  className="w-full text-center px-4 py-2 bg-purple-600/20 hover:bg-purple-600/30 rounded-lg text-purple-300 transition-all duration-200 border border-purple-500/30 hover:border-purple-500/50 text-sm"
-                >
-                  ⚙️ Customize Messages
-                </button>
-              </div>
-
-              {/* Custom Message */}
-              <div className="border-t border-white/10 pt-4">
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    placeholder="Custom message..."
-                    className="flex-1 px-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter' && newMessage.trim()) {
-                        sendMessage(activeTimerId, newMessage);
-                      }
-                    }}
-                  />
-                  <button
-                    onClick={() => {
-                      if (newMessage.trim()) {
-                        sendMessage(activeTimerId, newMessage);
-                      }
-                    }}
-                    className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-all duration-200"
-                  >
-                    📤
-                  </button>
+            {/* Messages from Control - Collapsible Button */}
+            <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-10">
+              <button
+                onClick={() => setMessagesExpanded(!messagesExpanded)}
+                className="bg-black/30 backdrop-blur-sm hover:bg-black/40 px-6 py-3 rounded-full border border-white/20 transition-all duration-200 flex items-center gap-3"
+              >
+                <span className="text-xl">💬</span>
+                <span className="font-medium">Messages from Control</span>
+                <span className={`transition-transform duration-200 ${messagesExpanded ? 'rotate-180' : ''}`}>
+                  ▼
+                </span>
+              </button>
+              
+              {messagesExpanded && (
+                <div className="absolute bottom-full mb-4 left-1/2 transform -translate-x-1/2 w-96 bg-black/40 backdrop-blur-sm rounded-2xl border border-white/20 p-4 max-h-80 overflow-y-auto">
+                  {timerMessages.length > 0 ? (
+                    <div className="space-y-3">
+                      {timerMessages.slice(-5).reverse().map((msg, index) => (
+                        <div key={index} className="bg-white/10 rounded-lg p-3 border border-white/20">
+                          <div className="flex items-start gap-3">
+                            <span className="text-lg">
+                              {msg.message.includes('wrap') ? '⚡' :
+                               msg.message.includes('time') ? '⏰' :
+                               msg.message.includes('final') ? '🎯' :
+                               msg.message.includes('thank') ? '👋' : '💬'}
+                            </span>
+                            <div className="flex-1">
+                              <p className="text-sm">{msg.message}</p>
+                              <p className="text-xs text-white/60 mt-1">
+                                {new Date(msg.sent_at).toLocaleTimeString()}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-white/60 text-center py-4 text-sm">No messages yet</p>
+                  )}
                 </div>
-                
-                {/* Recent Messages */}
-                {messages[activeTimerId] && messages[activeTimerId].length > 0 && (
-                  <div className="mt-4 space-y-2 max-h-32 overflow-y-auto">
-                    <div className="text-sm text-white/70 mb-2">Recent messages:</div>
-                    {messages[activeTimerId].slice(0, 5).map((msg, index) => (
-                      <div key={index} className="text-sm text-white/80 bg-white/5 rounded p-2">
-                        {msg.message}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
               )}
             </div>
           </div>
