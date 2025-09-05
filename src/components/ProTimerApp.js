@@ -181,14 +181,18 @@ export default function ProTimerApp({ session, bypassAuth }) {
         setIsRunning(data.is_running)
       }
     } catch (error) {
-      // No existing session, use defaults
+      console.log('No existing session found, using defaults')
+      // No existing session, use defaults - this is expected behavior
     }
 
-    // Load messages for this timer
-    loadMessages(timer.id)
-    
-    // Load logs for this timer
-    loadTimerLogs(timer.id)
+    // Load messages and logs for this timer
+    try {
+      await loadMessages(timer.id)
+      await loadTimerLogs(timer.id)
+    } catch (error) {
+      console.error('Error loading timer data:', error)
+      // Don't throw the error, just log it
+    }
   }
 
   const loadMessages = async (timerId) => {
