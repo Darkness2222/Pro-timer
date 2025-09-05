@@ -482,19 +482,19 @@ export default function ProTimerApp({ session, bypassAuth }) {
                 onClick={() => selectTimer(timer)}
               >
                 {/* Status Indicator */}
-                <div className="flex justify-between items-start mb-3">
+                <div className="flex justify-between items-start mb-2">
                   <div className={`w-3 h-3 rounded-full ${session?.is_running ? 'bg-green-500' : 'bg-red-500'}`}></div>
                 </div>
-                <h3 className="text-xl font-semibold text-white mb-2">{timer.name}</h3>
-                <p className="text-gray-300 mb-4">Presenter: {timer.presenter_name}</p>
+                <h3 className="text-lg font-semibold text-white mb-1">{timer.name}</h3>
+                <p className="text-gray-300 mb-2 text-sm">Presenter: {timer.presenter_name}</p>
                 <div className="flex items-center justify-between">
-                  <span className="text-2xl font-mono text-blue-400">
+                  <span className="text-xl font-mono text-blue-400">
                     {formatTimeFromSession(session, timer.duration)}
                   </span>
-                  <Clock className="w-6 h-6 text-gray-400" />
+                  <Clock className="w-5 h-5 text-gray-400" />
                 </div>
                 {/* Progress Bar */}
-                <div className="w-full bg-gray-700 rounded-full h-2 mt-3">
+                <div className="w-full bg-gray-700 rounded-full h-2 mt-2">
                   <div
                     className="bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 h-2 rounded-full transition-all duration-1000"
                     style={{ width: `${getProgressPercentageFromSession(session, timer.duration)}%` }}
