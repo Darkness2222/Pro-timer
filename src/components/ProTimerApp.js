@@ -464,7 +464,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
 
           {/* Timers Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {timers.map((timer) => (
+            {timers.map((timer) => {
               const session = timerSessions[timer.id];
               return (
               <div
@@ -749,7 +749,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {timers.map((timer) => (
+            {timers.map((timer) => {
               const session = timerSessions[timer.id];
               return (
               <div key={timer.id} className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700">
