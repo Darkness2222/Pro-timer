@@ -30,7 +30,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
   // Form states
   const [newTimerName, setNewTimerName] = useState('')
   const [newTimerPresenter, setNewTimerPresenter] = useState('')
-  const [newTimerDuration, setNewTimerDuration] = useState(5)
+  const [newTimerDuration, setNewTimerDuration] = useState('')
   const [newMessage, setNewMessage] = useState('')
   
   const intervalRef = useRef(null)
@@ -136,7 +136,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
   }
 
   const createTimer = async () => {
-    if (!newTimerName.trim() || !newTimerPresenter.trim()) return
+    if (!newTimerName.trim() || !newTimerPresenter.trim() || !newTimerDuration) return
 
     try {
       const { data, error } = await supabase
@@ -144,7 +144,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
         .insert([{
           name: newTimerName.trim(),
           presenter_name: newTimerPresenter.trim(),
-          duration: newTimerDuration * 60, // Convert minutes to seconds
+          duration: parseInt(newTimerDuration) * 60, // Convert minutes to seconds
           user_id: session?.user?.id || null
         }])
         .select()
@@ -155,7 +155,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
       setTimers(prev => [data, ...prev])
       setNewTimerName('')
       setNewTimerPresenter('')
-      setNewTimerDuration(5)
+      setNewTimerDuration('')
       setShowCreateModal(false)
     } catch (error) {
       console.error('Error creating timer:', error)
@@ -192,6 +192,34 @@ export default function ProTimerApp({ session, bypassAuth }) {
     } catch (error) {
       console.error('Error loading timer data:', error)
       // Don't throw the error, just log it
+    }
+  }
+
+  const deleteTimer = async (timerId) => {
+    if (!confirm('Are you sure you want to delete this timer? This action cannot be undone.')) {
+      return
+    }
+
+    try {
+      const { error } = await supabase
+        .from('timers')
+        .delete()
+        .eq('id', timerId)
+
+      if (error) throw error
+
+      setTimers(prev => prev.filter(timer => timer.id !== timerId))
+      
+      // If the deleted timer was selected, clear selection
+      if (selectedTimer?.id === timerId) {
+        setSelectedTimer(null)
+        setTimeLeft(0)
+        setIsRunning(false)
+        setMessages([])
+      }
+    } catch (error) {
+      console.error('Error deleting timer:', error)
+      alert('Error deleting timer: ' + error.message)
     }
   }
 
@@ -468,37 +496,51 @@ export default function ProTimerApp({ session, bypassAuth }) {
           </div>
 
           {/* Timers Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
             {timers.map((timer) => {
               const session = timerSessions[timer.id];
               return (
               <div
                 key={timer.id}
-                className={`bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border cursor-pointer transition-all ${
+                className={`bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 border cursor-pointer transition-all aspect-square flex flex-col relative group ${
                   selectedTimer?.id === timer.id
                     ? 'border-blue-500 bg-blue-900/20'
                     : 'border-gray-700 hover:border-gray-600'
                 }`}
-                onClick={() => selectTimer(timer)}
               >
-                {/* Status Indicator */}
-                <div className="flex justify-between items-start mb-2">
-                  <div className={`w-3 h-3 rounded-full ${session?.is_running ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                </div>
-                <h3 className="text-lg font-semibold text-white mb-1">{timer.name}</h3>
-                <p className="text-gray-300 mb-2 text-sm">Presenter: {timer.presenter_name}</p>
-                <div className="flex items-center justify-between">
-                  <span className="text-xl font-mono text-blue-400">
-                    {formatTimeFromSession(session, timer.duration)}
-                  </span>
-                  <Clock className="w-5 h-5 text-gray-400" />
-                </div>
-                {/* Progress Bar */}
-                <div className="w-full bg-gray-700 rounded-full h-2 mt-2">
-                  <div
-                    className="bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 h-2 rounded-full transition-all duration-1000"
-                    style={{ width: `${getProgressPercentageFromSession(session, timer.duration)}%` }}
-                  ></div>
+                {/* Delete Button */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    deleteTimer(timer.id)
+                  }}
+                  className="absolute top-2 right-2 w-6 h-6 bg-red-600 hover:bg-red-700 text-white rounded-full text-xs opacity-0 group-hover:opacity-100 transition-opacity z-10 flex items-center justify-center"
+                >
+                  ×
+                </button>
+                
+                {/* Main clickable area */}
+                <div className="flex-1 flex flex-col" onClick={() => selectTimer(timer)}>
+                  {/* Status Indicator */}
+                  <div className="flex justify-between items-start mb-2">
+                    <div className={`w-2 h-2 rounded-full ${session?.is_running ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                  </div>
+                  
+                  <h3 className="text-sm font-semibold text-white mb-1 line-clamp-2 leading-tight">{timer.name}</h3>
+                  <p className="text-gray-300 mb-2 text-xs truncate">Presenter: {timer.presenter_name}</p>
+                  
+                  <div className="mt-auto">
+                    <div className="text-lg font-mono text-blue-400 mb-2">
+                      {formatTimeFromSession(session, timer.duration)}
+                    </div>
+                    {/* Progress Bar */}
+                    <div className="w-full bg-gray-700 rounded-full h-1">
+                      <div
+                        className="bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 h-1 rounded-full transition-all duration-1000"
+                        style={{ width: `${getProgressPercentageFromSession(session, timer.duration)}%` }}
+                      ></div>
+                    </div>
+                  </div>
                 </div>
               </div>
               );
@@ -832,8 +874,9 @@ export default function ProTimerApp({ session, bypassAuth }) {
                 <input
                   type="number"
                   value={newTimerDuration}
-                  onChange={(e) => setNewTimerDuration(parseInt(e.target.value) || 5)}
+                  onChange={(e) => setNewTimerDuration(e.target.value)}
                   className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                  placeholder="5"
                   min="1"
                   max="180"
                 />
