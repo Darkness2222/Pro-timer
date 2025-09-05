@@ -354,8 +354,8 @@ export default function ProTimerApp({ session, bypassAuth }) {
       const now = new Date(currentTime)
       const lastUpdate = new Date(session.updated_at)
       const elapsedSinceUpdate = Math.floor((now - lastUpdate) / 1000)
-      const currentTime = Math.max(0, session.time_left - elapsedSinceUpdate)
-      return formatTime(currentTime)
+      const calculatedTimeLeft = Math.max(0, session.time_left - elapsedSinceUpdate)
+      return formatTime(calculatedTimeLeft)
     }
     
     return formatTime(session.time_left)
