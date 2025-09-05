@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from './lib/supabase'
-import Auth from './components/Auth'
+import LandingPage from './components/LandingPage'
 import ProTimerApp from './components/ProTimerApp'
 
 function App() {
@@ -39,8 +39,8 @@ function App() {
   // Show bypass option on auth screen
   if (!session && !bypassAuth) {
     return (
-      <div>
-        <Auth />
+      <>
+        <LandingPage />
         <div className="fixed bottom-4 left-4">
           <button
             onClick={() => setBypassAuth(true)}
@@ -48,16 +48,10 @@ function App() {
           >
             Skip Auth (Testing)
           </button>
-        </div>
+      </>
       </div>
     )
   }
-
-  // Allow access if either authenticated OR bypassed
-  if (!session && !bypassAuth) {
-    return <Auth />
-  }
-
   return (
     <div className="App">
       <ProTimerApp session={session} bypassAuth={bypassAuth} />
@@ -67,12 +61,12 @@ function App() {
           if (session) {
             supabase.auth.signOut()
           } else {
-            setBypassAuth(false)
+            setBypassAuth(false) // This will take them back to the LandingPage
           }
         }}
         className="fixed top-4 right-4 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm z-50"
       >
-        {session ? 'Sign Out' : 'Back to Auth'}
+        {session ? 'Sign Out' : 'Back to Landing Page'}
       </button>
     </div>
   )

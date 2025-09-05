@@ -1,11 +1,11 @@
 import React, { useState } from 'react'
 import { supabase } from '../lib/supabase'
 
-export default function Auth() {
+export default function Auth({ initialMode = 'signIn', onClose }) {
   const [loading, setLoading] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [isSignUp, setIsSignUp] = useState(false)
+  const [isSignUp, setIsSignUp] = useState(initialMode === 'signUp')
 
   const handleAuth = async (e) => {
     e.preventDefault()
@@ -78,6 +78,14 @@ export default function Auth() {
           </button>
         </form>
         
+        {onClose && (
+          <div className="text-center mt-4">
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-300 text-sm">
+              Back to Landing Page
+            </button>
+          </div>
+        )}
+
         <div className="text-center mt-6">
           <button
             onClick={() => setIsSignUp(!isSignUp)}
