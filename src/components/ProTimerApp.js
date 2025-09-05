@@ -26,6 +26,8 @@ export default function ProTimerApp({ session, bypassAuth }) {
     { id: 3, text: '🎯 Final slide please', emoji: '🎯' },
     { id: 4, text: '👏 Thank you!', emoji: '👏' }
   ])
+  const [overrideTime, setOverrideTime] = useState('')
+  const [showOverride, setShowOverride] = useState(false)
   
   // Form states
   const [newTimerName, setNewTimerName] = useState('')
@@ -279,6 +281,25 @@ export default function ProTimerApp({ session, bypassAuth }) {
     }
   }
 
+  const stopTimer = async () => {
+    setIsRunning(false)
+    logTimerAction('stop', timeLeft)
+    
+    // Update session in database
+    try {
+      await supabase
+        .from('timer_sessions')
+        .upsert({
+          timer_id: selectedTimer.id,
+          time_left: timeLeft,
+          is_running: false,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'timer_id' })
+    } catch (error) {
+      console.error('Error updating session:', error)
+    }
+  }
+
   const resetTimer = async () => {
     if (!selectedTimer) return
     
@@ -321,6 +342,37 @@ export default function ProTimerApp({ session, bypassAuth }) {
         console.error('Error updating session:', error)
       }
     }
+  }
+
+  const overrideTimerDuration = async () => {
+    if (!selectedTimer || !overrideTime) return
+    
+    const newDurationMinutes = parseInt(overrideTime)
+    if (isNaN(newDurationMinutes) || newDurationMinutes <= 0) {
+      alert('Please enter a valid number of minutes')
+      return
+    }
+    
+    const newDurationSeconds = newDurationMinutes * 60
+    setTimeLeft(newDurationSeconds)
+    logTimerAction('override', newDurationSeconds, newDurationSeconds - selectedTimer.duration, `Duration changed to ${newDurationMinutes} minutes`)
+    
+    // Update session in database
+    try {
+      await supabase
+        .from('timer_sessions')
+        .upsert({
+          timer_id: selectedTimer.id,
+          time_left: newDurationSeconds,
+          is_running: false,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'timer_id' })
+    } catch (error) {
+      console.error('Error updating session:', error)
+    }
+    
+    setOverrideTime('')
+    setShowOverride(false)
   }
 
   const sendMessage = async (messageText) => {
@@ -589,10 +641,18 @@ export default function ProTimerApp({ session, bypassAuth }) {
                   Pause
                 </button>
                 <button
+                  onClick={stopTimer}
+                  disabled={!isRunning}
+                  className="bg-orange-600 hover:bg-orange-700 disabled:bg-gray-600 text-white px-6 py-3 rounded-lg font-medium flex items-center gap-2"
+                >
+                  <Square className="w-5 h-5" />
+                  Stop
+                </button>
+                <button
                   onClick={resetTimer}
                   className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-medium flex items-center gap-2"
                 >
-                  <Square className="w-5 h-5" />
+                  <RotateCcw className="w-5 h-5" />
                   Reset
                 </button>
               </div>
@@ -623,7 +683,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
               </div>
 
               {/* Time Adjustment */}
-              <div className="flex justify-center gap-2 mb-6">
+              <div className="flex justify-center gap-2 mb-4">
                 <button
                   onClick={() => adjustTime(-60)}
                   className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg flex items-center gap-1"
@@ -652,6 +712,48 @@ export default function ProTimerApp({ session, bypassAuth }) {
                   <Plus className="w-4 h-4" />
                   1m
                 </button>
+              </div>
+
+              {/* Override Timer Duration */}
+              <div className="flex justify-center mb-6">
+                {!isRunning && !showOverride && (
+                  <button
+                    onClick={() => setShowOverride(true)}
+                    className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2"
+                  >
+                    <Clock className="w-4 h-4" />
+                    Override Duration
+                  </button>
+                )}
+                
+                {showOverride && (
+                  <div className="flex items-center gap-3 bg-gray-700/50 rounded-lg p-4">
+                    <label className="text-white font-medium">New Duration:</label>
+                    <input
+                      type="text"
+                      value={overrideTime}
+                      onChange={(e) => setOverrideTime(e.target.value)}
+                      className="w-20 p-2 bg-gray-600 border border-gray-500 rounded text-white text-center"
+                      placeholder="20"
+                    />
+                    <span className="text-gray-300">minutes</span>
+                    <button
+                      onClick={overrideTimerDuration}
+                      className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded font-medium"
+                    >
+                      Set
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowOverride(false)
+                        setOverrideTime('')
+                      }}
+                      className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded font-medium"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Quick Messages */}
