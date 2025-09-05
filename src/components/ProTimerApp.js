@@ -196,7 +196,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
   }
 
   const deleteTimer = async (timerId) => {
-    if (!confirm('Are you sure you want to delete this timer? This action cannot be undone.')) {
+    if (!window.confirm('Are you sure you want to delete this timer? This action cannot be undone.')) {
       return
     }
 
