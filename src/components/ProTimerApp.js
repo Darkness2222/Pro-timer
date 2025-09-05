@@ -716,12 +716,29 @@ export default function ProTimerApp({ session, bypassAuth }) {
                 <div className="flex-1 flex flex-col" onClick={() => selectTimer(timer)}>
                   {/* Status Indicator */}
                   <div className="flex justify-between items-start mb-2">
-                    <div className={`w-2 h-2 rounded-full ${session?.is_running ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                const timeLeft = getCurrentTime(timer)
                   </div>
                   
                   <h3 className="text-sm font-semibold text-white mb-1 line-clamp-2 leading-tight">{timer.name}</h3>
                   <p className="text-gray-300 mb-2 text-xs truncate">Presenter: {timer.presenter_name}</p>
-                  
+                  <div 
+                    key={timer.id} 
+                    className="bg-gray-800 rounded-lg p-6 border border-gray-700 cursor-pointer hover:bg-gray-750 transition-colors relative"
+                    onClick={() => {
+                      setSelectedTimerId(timer.id)
+                      setCurrentView('admin')
+                    }}
+                  >
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        deleteTimer(timer.id)
+                      }}
+                      className="absolute top-2 right-2 text-red-400 hover:text-red-300 text-xl font-bold w-6 h-6 flex items-center justify-center"
+                      title="Delete timer"
+                    >
+                      ×
+                    </button>
                   <div className="mt-auto">
                     <div className="text-lg font-mono text-blue-400 mb-2">
                       {formatTimeFromSession(session, timer.duration)}
