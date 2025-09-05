@@ -18,6 +18,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
   const [timerSessions, setTimerSessions] = useState({})
   const [timerLogs, setTimerLogs] = useState([])
   const [showQRModal, setShowQRModal] = useState(false)
+  const [currentTimes, setCurrentTimes] = useState({})
   const [showLogsModal, setShowLogsModal] = useState(false)
   const [currentTime, setCurrentTime] = useState(Date.now())
   const [allTimerLogs, setAllTimerLogs] = useState([])
@@ -44,6 +45,26 @@ export default function ProTimerApp({ session, bypassAuth }) {
     loadTimers()
     loadAllTimerLogs()
     // Update timer sessions and current time every second
+    
+    // Update current times every second
+    const interval = setInterval(() => {
+      const now = Date.now()
+      const newTimes = {}
+      
+      Object.entries(timerSessions).forEach(([timerId, session]) => {
+        if (session.is_running) {
+          const elapsed = Math.floor((now - new Date(session.updated_at).getTime()) / 1000)
+          const newTimeLeft = Math.max(0, session.time_left - elapsed)
+          newTimes[timerId] = newTimeLeft
+        } else {
+          newTimes[timerId] = session.time_left
+        }
+      })
+      
+      setCurrentTimes(newTimes)
+    }, 1000)
+    
+    return () => clearInterval(interval)
     const sessionInterval = setInterval(() => {
       updateTimerSessions()
       setCurrentTime(Date.now())
