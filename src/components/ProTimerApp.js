@@ -42,4 +42,5 @@ const ProTimerApp = ({ session, bypassAuth }) => {
     }
     
     setTimers(data || []);
-    if
+  }
+}
