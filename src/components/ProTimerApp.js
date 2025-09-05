@@ -556,61 +556,65 @@ export default function ProTimerApp({ session, bypassAuth }) {
 
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60)
-        {/* Reports Tab */}
-        {activeTab === 'reports' && (
-          <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-white">Reports & Analytics</h2>
-            
-            <div className="bg-gray-800 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-white mb-4">Export Timer Data</h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Start Date
-                  </label>
-                  <input
-                    type="date"
-                    value={reportStartDate}
-                    onChange={(e) => setReportStartDate(e.target.value)}
-                    className="w-full p-2 bg-gray-700 border border-gray-600 rounded text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    End Date
-                  </label>
-                  <input
-                    type="date"
-                    value={reportEndDate}
-                    onChange={(e) => setReportEndDate(e.target.value)}
-                    className="w-full p-2 bg-gray-700 border border-gray-600 rounded text-white"
-                  />
-                </div>
-                <div className="flex items-end">
-                  <button
-                    onClick={exportTimerData}
-                    className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium"
-                  >
-                    Export CSV
-                  </button>
-                </div>
-              </div>
-              
-              <div className="text-sm text-gray-400">
-                <p>Export includes:</p>
-                <ul className="list-disc list-inside mt-2 space-y-1">
-                  <li>Timer creation and configuration data</li>
-                  <li>All timer activity logs (start, pause, stop, reset)</li>
-                  <li>Duration changes and time adjustments</li>
-                  <li>Messages sent to presenters</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    )
+    const secs = seconds % 60
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+  }
+
+  const getProgressPercentage = () => {
+    if (!selectedTimer) return 0
+    return Math.max(0, (timeLeft / selectedTimer.duration) * 100)
+  }
+
+  const getProgressPercentageFromSession = (session, duration) => {
+    if (!session) return 100
+    
+    let timeLeft = session.time_left
+    if (session.is_running) {
+      const now = new Date(currentTime)
+      const lastUpdate = new Date(session.updated_at)
+      const elapsedSinceUpdate = Math.floor((now - lastUpdate) / 1000)
+      timeLeft = Math.max(0, session.time_left - elapsedSinceUpdate)
+    }
+    
+    return Math.max(0, (timeLeft / duration) * 100)
+  }
+
+  const formatTimeFromSession = (session, duration) => {
+    if (!session) return formatTime(duration)
+    
+    let timeLeft = session.time_left
+    if (session.is_running) {
+      const now = new Date(currentTime)
+      const lastUpdate = new Date(session.updated_at)
+      const elapsedSinceUpdate = Math.floor((now - lastUpdate) / 1000)
+      timeLeft = Math.max(0, session.time_left - elapsedSinceUpdate)
+    }
+    
+    return formatTime(timeLeft)
+  }
+
+  const getCurrentTime = (timer) => {
+    const session = timerSessions[timer.id]
+    if (!session) return timer.duration
+    
+    let timeLeft = session.time_left
+    if (session.is_running) {
+      const now = Date.now()
+      const lastUpdate = new Date(session.updated_at).getTime()
+      const elapsedSinceUpdate = Math.floor((now - lastUpdate) / 1000)
+      timeLeft = Math.max(0, session.time_left - elapsedSinceUpdate)
+    }
+    
+    return timeLeft
+  }
+
+  const generatePresenterUrl = () => {
+    if (!selectedTimer) return ''
+    return `${window.location.origin}${window.location.pathname}?timer=${selectedTimer.id}&view=presenter`
+  }
+
+  const openPresenterView = () => {
+    window.open(generatePresenterUrl(), '_blank')
   }
 
   return (
@@ -716,29 +720,12 @@ export default function ProTimerApp({ session, bypassAuth }) {
                 <div className="flex-1 flex flex-col" onClick={() => selectTimer(timer)}>
                   {/* Status Indicator */}
                   <div className="flex justify-between items-start mb-2">
-                const timeLeft = getCurrentTime(timer)
+                    <div className={`w-2 h-2 rounded-full ${session?.is_running ? 'bg-green-500' : 'bg-red-500'}`}></div>
                   </div>
                   
                   <h3 className="text-sm font-semibold text-white mb-1 line-clamp-2 leading-tight">{timer.name}</h3>
                   <p className="text-gray-300 mb-2 text-xs truncate">Presenter: {timer.presenter_name}</p>
-                  <div 
-                    key={timer.id} 
-                    className="bg-gray-800 rounded-lg p-6 border border-gray-700 cursor-pointer hover:bg-gray-750 transition-colors relative"
-                    onClick={() => {
-                      setSelectedTimerId(timer.id)
-                      setCurrentView('admin')
-                    }}
-                  >
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        deleteTimer(timer.id)
-                      }}
-                      className="absolute top-2 right-2 text-red-400 hover:text-red-300 text-xl font-bold w-6 h-6 flex items-center justify-center"
-                      title="Delete timer"
-                    >
-                      ×
-                    </button>
+                  
                   <div className="mt-auto">
                     <div className="text-lg font-mono text-blue-400 mb-2">
                       {formatTimeFromSession(session, timer.duration)}
@@ -993,8 +980,8 @@ export default function ProTimerApp({ session, bypassAuth }) {
                </div>
              )}
 
-          </div>
-        )}
+             {/* Messages Toggle */}
+             <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2">
                <button
                  onClick={() => setMessagesExpanded(!messagesExpanded)}
                  className="bg-gray-800/80 backdrop-blur-sm hover:bg-gray-700/80 text-white px-6 py-3 rounded-full border border-gray-600 flex items-center gap-2 shadow-lg"
@@ -1045,7 +1032,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
            </div>
          )}
        </div>
-     )}
+      )}
 
       {/* Timer Overview */}
       {currentView === 'overview' && (
