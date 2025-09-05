@@ -1034,6 +1034,18 @@ const ProTimerApp = ({ session, bypassAuth }) => {
                     <div className="text-sm text-white/70 mb-2">Recent messages:</div>
                     {messages[activeTimerId].slice(0, 5).map((msg, index) => (
                       <div key={index} className="text-sm text-white/80 bg-white/5 rounded p-2">
+                        {msg.message}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom Action Buttons */}
+          <div className="mt-8 text-center">
+            <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20">
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowTimerLogs(!showTimerLogs)}
