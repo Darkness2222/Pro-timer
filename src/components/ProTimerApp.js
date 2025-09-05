@@ -20,6 +20,8 @@ export default function ProTimerApp({ session, bypassAuth }) {
   const [showQRModal, setShowQRModal] = useState(false)
   const [showLogsModal, setShowLogsModal] = useState(false)
   const [currentTime, setCurrentTime] = useState(Date.now())
+  const [allTimerLogs, setAllTimerLogs] = useState([])
+  const [reportDateRange, setReportDateRange] = useState({ start: '', end: '' })
   const [quickMessages, setQuickMessages] = useState([
     { id: 1, text: '⏰ 5 minutes remaining', emoji: '⏰' },
     { id: 2, text: '⚡ Please wrap up', emoji: '⚡' },
@@ -40,6 +42,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
   // Load timers on component mount
   useEffect(() => {
     loadTimers()
+    loadAllTimerLogs()
     // Update timer sessions and current time every second
     const sessionInterval = setInterval(() => {
       updateTimerSessions()
@@ -119,6 +122,27 @@ export default function ProTimerApp({ session, bypassAuth }) {
     }
   }
 
+  const loadAllTimerLogs = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('timer_logs')
+        .select(`
+          *,
+          timers (
+            name,
+            presenter_name
+          )
+        `)
+        .order('created_at', { ascending: false })
+        .limit(1000)
+      
+      if (error) throw error
+      setAllTimerLogs(data || [])
+    } catch (error) {
+      console.error('Error loading all timer logs:', error)
+    }
+  }
+
   const logTimerAction = async (action, timeValue = null, durationChange = null, notes = null) => {
     if (!selectedTimer) return
     
@@ -135,6 +159,9 @@ export default function ProTimerApp({ session, bypassAuth }) {
     } catch (error) {
       console.error('Error logging action:', error)
     }
+    
+    // Reload all logs for reports
+    loadAllTimerLogs()
   }
 
   const createTimer = async () => {
@@ -159,6 +186,9 @@ export default function ProTimerApp({ session, bypassAuth }) {
       setNewTimerPresenter('')
       setNewTimerDuration('')
       setShowCreateModal(false)
+      
+      // Reload logs to include new timer
+      loadAllTimerLogs()
     } catch (error) {
       console.error('Error creating timer:', error)
       alert('Error creating timer: ' + error.message)
@@ -219,6 +249,9 @@ export default function ProTimerApp({ session, bypassAuth }) {
         setIsRunning(false)
         setMessages([])
       }
+      
+      // Reload logs after deletion
+      loadAllTimerLogs()
     } catch (error) {
       console.error('Error deleting timer:', error)
       alert('Error deleting timer: ' + error.message)
@@ -415,6 +448,82 @@ export default function ProTimerApp({ session, bypassAuth }) {
     setQuickMessages(prev => prev.filter(msg => msg.id !== id))
   }
 
+  const exportTimersCSV = () => {
+    const csvData = []
+    
+    // Add headers
+    csvData.push([
+      'Timer Name',
+      'Presenter',
+      'Duration (minutes)',
+      'Created At',
+      'Action',
+      'Time Value',
+      'Duration Change',
+      'Notes',
+      'Action Date'
+    ])
+    
+    // Filter logs by date range if specified
+    let filteredLogs = allTimerLogs
+    if (reportDateRange.start) {
+      filteredLogs = filteredLogs.filter(log => 
+        new Date(log.created_at) >= new Date(reportDateRange.start)
+      )
+    }
+    if (reportDateRange.end) {
+      filteredLogs = filteredLogs.filter(log => 
+        new Date(log.created_at) <= new Date(reportDateRange.end + 'T23:59:59')
+      )
+    }
+    
+    // Add timer creation rows
+    timers.forEach(timer => {
+      csvData.push([
+        timer.name,
+        timer.presenter_name,
+        Math.round(timer.duration / 60),
+        new Date(timer.created_at).toLocaleString(),
+        'Timer Created',
+        '',
+        '',
+        '',
+        new Date(timer.created_at).toLocaleString()
+      ])
+    })
+    
+    // Add log entries
+    filteredLogs.forEach(log => {
+      csvData.push([
+        log.timers?.name || 'Unknown Timer',
+        log.timers?.presenter_name || 'Unknown Presenter',
+        '',
+        '',
+        log.action,
+        log.time_value ? formatTime(log.time_value) : '',
+        log.duration_change || '',
+        log.notes || '',
+        new Date(log.created_at).toLocaleString()
+      ])
+    })
+    
+    // Convert to CSV string
+    const csvString = csvData.map(row => 
+      row.map(field => `"${field}"`).join(',')
+    ).join('\n')
+    
+    // Download file
+    const blob = new Blob([csvString], { type: 'text/csv' })
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `timer-reports-${new Date().toISOString().split('T')[0]}.csv`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    window.URL.revokeObjectURL(url)
+  }
+
   const resetToDefaults = () => {
     setQuickMessages([
       { id: 1, text: '⏰ 5 minutes remaining', emoji: '⏰' },
@@ -522,6 +631,17 @@ export default function ProTimerApp({ session, bypassAuth }) {
               >
                 <TimerIcon className="w-4 h-4 mr-2" />
                 Timer Overview
+              </button>
+              <button
+                onClick={() => setCurrentView('reports')}
+                className={`inline-flex items-center px-4 py-2 border-b-2 text-sm font-medium ${
+                  currentView === 'reports'
+                    ? 'border-green-500 text-green-400'
+                    : 'border-transparent text-gray-300 hover:text-white hover:border-gray-300'
+                }`}
+              >
+                <FileText className="w-4 h-4 mr-2" />
+                Reports
               </button>
             </div>
           </div>
@@ -932,6 +1052,186 @@ export default function ProTimerApp({ session, bypassAuth }) {
               </div>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {/* Reports View */}
+      {currentView === 'reports' && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-white mb-2">Timer Reports</h1>
+            <p className="text-gray-300">View all timer activity and export data</p>
+          </div>
+
+          {/* Export Controls */}
+          <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700 mb-8">
+            <div className="flex flex-wrap items-center gap-4 mb-4">
+              <h2 className="text-xl font-semibold text-white">Export Data</h2>
+              <div className="flex items-center gap-2">
+                <label className="text-gray-300 text-sm">From:</label>
+                <input
+                  type="date"
+                  value={reportDateRange.start}
+                  onChange={(e) => setReportDateRange(prev => ({ ...prev, start: e.target.value }))}
+                  className="p-2 bg-gray-700 border border-gray-600 rounded text-white text-sm"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-gray-300 text-sm">To:</label>
+                <input
+                  type="date"
+                  value={reportDateRange.end}
+                  onChange={(e) => setReportDateRange(prev => ({ ...prev, end: e.target.value }))}
+                  className="p-2 bg-gray-700 border border-gray-600 rounded text-white text-sm"
+                />
+              </div>
+              <button
+                onClick={exportTimersCSV}
+                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2"
+              >
+                <FileText className="w-4 h-4" />
+                Export CSV
+              </button>
+            </div>
+            <p className="text-gray-400 text-sm">
+              Export includes all timer creations and activity logs. Leave dates empty to export all data.
+            </p>
+          </div>
+
+          {/* Summary Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+            <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 border border-gray-700">
+              <h3 className="text-lg font-semibold text-white mb-2">Total Timers</h3>
+              <p className="text-3xl font-bold text-blue-400">{timers.length}</p>
+            </div>
+            <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 border border-gray-700">
+              <h3 className="text-lg font-semibold text-white mb-2">Total Actions</h3>
+              <p className="text-3xl font-bold text-green-400">{allTimerLogs.length}</p>
+            </div>
+            <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 border border-gray-700">
+              <h3 className="text-lg font-semibold text-white mb-2">Active Sessions</h3>
+              <p className="text-3xl font-bold text-orange-400">
+                {Object.values(timerSessions).filter(session => session?.is_running).length}
+              </p>
+            </div>
+            <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 border border-gray-700">
+              <h3 className="text-lg font-semibold text-white mb-2">Total Presenters</h3>
+              <p className="text-3xl font-bold text-purple-400">
+                {new Set(timers.map(timer => timer.presenter_name)).size}
+              </p>
+            </div>
+          </div>
+
+          {/* Timers Table */}
+          <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700 mb-8">
+            <div className="p-6 border-b border-gray-700">
+              <h2 className="text-xl font-semibold text-white">All Timers</h2>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-700/50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                      Timer Name
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                      Presenter
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                      Duration
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                      Created
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-700">
+                  {timers.map((timer) => {
+                    const session = timerSessions[timer.id];
+                    return (
+                      <tr key={timer.id} className="hover:bg-gray-700/30">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">
+                          {timer.name}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                          {timer.presenter_name}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                          {Math.round(timer.duration / 60)} minutes
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            session?.is_running 
+                              ? 'bg-green-100 text-green-800' 
+                              : 'bg-red-100 text-red-800'
+                          }`}>
+                            {session?.is_running ? 'Running' : 'Stopped'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                          {new Date(timer.created_at).toLocaleDateString()}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Activity Log */}
+          <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700">
+            <div className="p-6 border-b border-gray-700">
+              <h2 className="text-xl font-semibold text-white">Recent Activity</h2>
+            </div>
+            <div className="overflow-x-auto max-h-96 overflow-y-auto">
+              <table className="w-full">
+                <thead className="bg-gray-700/50 sticky top-0">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                      Timer
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                      Action
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                      Time Value
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                      Notes
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                      Date
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-700">
+                  {allTimerLogs.slice(0, 100).map((log, index) => (
+                    <tr key={index} className="hover:bg-gray-700/30">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">
+                        {log.timers?.name || 'Unknown Timer'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300 capitalize">
+                        {log.action}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-400">
+                        {log.time_value ? formatTime(log.time_value) : '-'}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-300 max-w-xs truncate">
+                        {log.notes || '-'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                        {new Date(log.created_at).toLocaleString()}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
