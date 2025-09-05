@@ -982,55 +982,55 @@ export default function ProTimerApp({ session, bypassAuth }) {
 
              {/* Messages Toggle */}
              <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2">
-               <button
-                 onClick={() => setMessagesExpanded(!messagesExpanded)}
-                 className="bg-gray-800/80 backdrop-blur-sm hover:bg-gray-700/80 text-white px-6 py-3 rounded-full border border-gray-600 flex items-center gap-2 shadow-lg"
-               >
-                 <MessageSquare className="w-5 h-5" />
-                 Messages from Control
-                 <span className={`transform transition-transform ${messagesExpanded ? 'rotate-180' : ''}`}>
-                   ▼
-                 </span>
-               </button>
-
-               {/* Messages Popup */}
-               {messagesExpanded && (
-                 <div className="absolute bottom-full mb-4 left-1/2 transform -translate-x-1/2 w-96 bg-gray-800/90 backdrop-blur-sm rounded-xl border border-gray-600 shadow-xl">
-                   <div className="p-4">
-                     <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
-                       <MessageSquare className="w-5 h-5" />
-                       Messages from Control
-                     </h3>
-                     <div className="space-y-2 max-h-64 overflow-y-auto">
-                       {messages && messages.length > 0 ? (
-                         messages.slice(0, 5).map((message, index) => (
-                           <div key={index} className="bg-gray-700/50 rounded-lg p-3">
-                             <div className="flex items-start gap-2">
-                               <span className="text-lg">💬</span>
-                               <div className="flex-1">
-                                 <p className="text-white text-sm">{message.message}</p>
-                                 <p className="text-gray-400 text-xs mt-1">
-                                   {new Date(message.sent_at).toLocaleTimeString()}
-                                 </p>
-                               </div>
-                             </div>
-                           </div>
-                         ))
-                       ) : (
-                         <p className="text-gray-400 text-center py-4">No messages yet</p>
-                       )}
-                     </div>
-                   </div>
-                 </div>
-               )}
-             </div>
-           </>
-         ) : (
-           <div className="text-center">
-             <h1 className="text-4xl font-bold text-white mb-4">No Timer Selected</h1>
-             <p className="text-xl text-gray-300">Please select a timer from the Admin Dashboard</p>
-           </div>
-         )}
+        {/* Reports Tab */}
+        {activeTab === 'reports' && (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-bold text-white">Reports & Analytics</h2>
+            
+            <div className="bg-gray-800 rounded-lg p-6">
+              <h3 className="text-lg font-semibold text-white mb-4">Export Timer Data</h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Start Date
+                  </label>
+                  <input
+                    type="date"
+                    value={reportStartDate}
+                    onChange={(e) => setReportStartDate(e.target.value)}
+                    className="w-full p-2 bg-gray-700 border border-gray-600 rounded text-white"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    End Date
+                  </label>
+                  <input
+                    type="date"
+                    value={reportEndDate}
+                    onChange={(e) => setReportEndDate(e.target.value)}
+                    className="w-full p-2 bg-gray-700 border border-gray-600 rounded text-white"
+                  />
+                </div>
+                
+                <div className="flex items-end">
+                  <button
+                    onClick={exportToCSV}
+                    className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium"
+                  >
+                    Export CSV
+                  </button>
+                </div>
+              </div>
+              
+              <div className="text-sm text-gray-400">
+                <p>Export includes timer creation data and activity logs for the selected date range.</p>
+              </div>
+            </div>
+          </div>
+        )}
        </div>
       )}
 
