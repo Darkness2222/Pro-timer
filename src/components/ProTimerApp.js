@@ -43,4 +43,6 @@ const ProTimerApp = ({ session, bypassAuth }) => {
     
     setTimers(data || []);
   }
-}
+};
+
+export default ProTimerApp;
