@@ -19,6 +19,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
   const [timerLogs, setTimerLogs] = useState([])
   const [showQRModal, setShowQRModal] = useState(false)
   const [showLogsModal, setShowLogsModal] = useState(false)
+  const [currentTime, setCurrentTime] = useState(Date.now())
   const [quickMessages, setQuickMessages] = useState([
     { id: 1, text: '⏰ 5 minutes remaining', emoji: '⏰' },
     { id: 2, text: '⚡ Please wrap up', emoji: '⚡' },
@@ -37,9 +38,10 @@ export default function ProTimerApp({ session, bypassAuth }) {
   // Load timers on component mount
   useEffect(() => {
     loadTimers()
-    // Update timer sessions every second
+    // Update timer sessions and current time every second
     const sessionInterval = setInterval(() => {
       updateTimerSessions()
+      setCurrentTime(Date.now())
     }, 1000)
     
     return () => clearInterval(sessionInterval)
@@ -349,11 +351,11 @@ export default function ProTimerApp({ session, bypassAuth }) {
     
     if (session.is_running) {
       // Calculate time based on when it was last updated
-      const now = new Date()
+      const now = new Date(currentTime)
       const lastUpdate = new Date(session.updated_at)
       const elapsedSinceUpdate = Math.floor((now - lastUpdate) / 1000)
       const currentTime = Math.max(0, session.time_left - elapsedSinceUpdate)
-      return formatTime(currentTime)
+      return formatTime(currentTimeLeft)
     }
     
     return formatTime(session.time_left)
@@ -369,7 +371,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
     
     let currentTimeLeft = session.time_left
     if (session.is_running) {
-      const now = new Date()
+      const now = new Date(currentTime)
       const lastUpdate = new Date(session.updated_at)
       const elapsedSinceUpdate = Math.floor((now - lastUpdate) / 1000)
       currentTimeLeft = Math.max(0, session.time_left - elapsedSinceUpdate)
