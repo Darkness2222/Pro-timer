@@ -48,6 +48,7 @@ function App() {
           >
             Skip Auth (Testing)
           </button>
+        </div>
       </>
       </div>
     )
