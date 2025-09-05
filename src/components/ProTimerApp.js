@@ -174,7 +174,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
         .from('timer_sessions')
         .select('*')
         .eq('timer_id', timer.id)
-        .single()
+        .maybeSingle()
       
       if (data) {
         setTimeLeft(data.time_left)
