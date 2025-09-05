@@ -728,7 +728,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
                       onClick={() => removeQuickMessage(msg.id)}
                       className="text-red-400 hover:text-red-300 p-1"
                     >
-                      🗑️
+                      ×
                     </button>
                   </div>
                 ))}
