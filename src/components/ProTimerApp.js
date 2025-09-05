@@ -355,6 +355,11 @@ export default function ProTimerApp({ session, bypassAuth }) {
       const lastUpdate = new Date(session.updated_at)
       const elapsedSinceUpdate = Math.floor((now - lastUpdate) / 1000)
       const currentTime = Math.max(0, session.time_left - elapsedSinceUpdate)
+      return formatTime(currentTime)
+    }
+    
+    return formatTime(session.time_left)
+  }
   const getProgressPercentage = () => {
     if (!selectedTimer) return 0
     return ((selectedTimer.duration - timeLeft) / selectedTimer.duration) * 100
