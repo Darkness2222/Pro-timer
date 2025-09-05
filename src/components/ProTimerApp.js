@@ -556,59 +556,59 @@ export default function ProTimerApp({ session, bypassAuth }) {
 
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
-  }
-
-  const formatTimeFromSession = (session, originalDuration) => {
-    if (!session) return formatTime(originalDuration)
-    
-    if (session.is_running) {
-      // Calculate time based on when it was last updated
-      const now = new Date(currentTime)
-      const lastUpdate = new Date(session.updated_at)
-      const elapsedSinceUpdate = Math.floor((now - lastUpdate) / 1000)
-      const calculatedTimeLeft = Math.max(0, session.time_left - elapsedSinceUpdate)
-      return formatTime(calculatedTimeLeft)
-    }
-    
-    return formatTime(session.time_left)
-  }
-  const getProgressPercentage = () => {
-    if (!selectedTimer) return 0
-    return ((selectedTimer.duration - timeLeft) / selectedTimer.duration) * 100
-  }
-
-  const getProgressPercentageFromSession = (session, originalDuration) => {
-    if (!session) return 0
-    
-    let currentTimeLeft = session.time_left
-    if (session.is_running) {
-      const now = new Date(currentTime)
-      const lastUpdate = new Date(session.updated_at)
-      const elapsedSinceUpdate = Math.floor((now - lastUpdate) / 1000)
-      currentTimeLeft = Math.max(0, session.time_left - elapsedSinceUpdate)
-    }
-    
-    return ((originalDuration - currentTimeLeft) / originalDuration) * 100
-  }
-
-  const generatePresenterUrl = () => {
-    if (!selectedTimer) return ''
-    const baseUrl = window.location.origin
-    return `${baseUrl}/app?presenter=${selectedTimer.id}&fullscreen=true`
-  }
-
-  const openPresenterView = () => {
-    if (!selectedTimer) return
-    const url = generatePresenterUrl()
-    window.open(url, '_blank')
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <div className="text-white text-xl">Loading timers...</div>
+        {/* Reports Tab */}
+        {activeTab === 'reports' && (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-bold text-white">Reports & Analytics</h2>
+            
+            <div className="bg-gray-800 rounded-lg p-6">
+              <h3 className="text-lg font-semibold text-white mb-4">Export Timer Data</h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Start Date
+                  </label>
+                  <input
+                    type="date"
+                    value={reportStartDate}
+                    onChange={(e) => setReportStartDate(e.target.value)}
+                    className="w-full p-2 bg-gray-700 border border-gray-600 rounded text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    End Date
+                  </label>
+                  <input
+                    type="date"
+                    value={reportEndDate}
+                    onChange={(e) => setReportEndDate(e.target.value)}
+                    className="w-full p-2 bg-gray-700 border border-gray-600 rounded text-white"
+                  />
+                </div>
+                <div className="flex items-end">
+                  <button
+                    onClick={exportTimerData}
+                    className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium"
+                  >
+                    Export CSV
+                  </button>
+                </div>
+              </div>
+              
+              <div className="text-sm text-gray-400">
+                <p>Export includes:</p>
+                <ul className="list-disc list-inside mt-2 space-y-1">
+                  <li>Timer creation and configuration data</li>
+                  <li>All timer activity logs (start, pause, stop, reset)</li>
+                  <li>Duration changes and time adjustments</li>
+                  <li>Messages sent to presenters</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     )
   }
@@ -993,8 +993,8 @@ export default function ProTimerApp({ session, bypassAuth }) {
                </div>
              )}
 
-             {/* Messages from Control - Floating Button */}
-             <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2">
+          </div>
+        )}
                <button
                  onClick={() => setMessagesExpanded(!messagesExpanded)}
                  className="bg-gray-800/80 backdrop-blur-sm hover:bg-gray-700/80 text-white px-6 py-3 rounded-full border border-gray-600 flex items-center gap-2 shadow-lg"
