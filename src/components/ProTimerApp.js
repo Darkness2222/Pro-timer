@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
-import { Play, Pause, Square, RotateCcw, Settings, MessageSquare, Plus, Minus, Clock, Users, Timer as TimerIcon } from 'lucide-react'
+import { Play, Pause, Square, RotateCcw, Settings, MessageSquare, Plus, Minus, Clock, Users, Timer as TimerIcon, QrCode, ExternalLink, FileText } from 'lucide-react'
 
 export default function ProTimerApp({ session, bypassAuth }) {
   const [currentView, setCurrentView] = useState('admin')
@@ -15,6 +15,10 @@ export default function ProTimerApp({ session, bypassAuth }) {
   const [timeLeft, setTimeLeft] = useState(0)
   const [isRunning, setIsRunning] = useState(false)
   const [messages, setMessages] = useState([])
+  const [timerSessions, setTimerSessions] = useState({})
+  const [timerLogs, setTimerLogs] = useState([])
+  const [showQRModal, setShowQRModal] = useState(false)
+  const [showLogsModal, setShowLogsModal] = useState(false)
   const [quickMessages, setQuickMessages] = useState([
     { id: 1, text: '⏰ 5 minutes remaining', emoji: '⏰' },
     { id: 2, text: '⚡ Please wrap up', emoji: '⚡' },
@@ -33,6 +37,12 @@ export default function ProTimerApp({ session, bypassAuth }) {
   // Load timers on component mount
   useEffect(() => {
     loadTimers()
+    // Update timer sessions every second
+    const sessionInterval = setInterval(() => {
+      updateTimerSessions()
+    }, 1000)
+    
+    return () => clearInterval(sessionInterval)
   }, [])
 
   // Timer countdown effect
@@ -54,6 +64,25 @@ export default function ProTimerApp({ session, bypassAuth }) {
     return () => clearInterval(intervalRef.current)
   }, [isRunning, timeLeft])
 
+  // Update timer sessions for all timers
+  const updateTimerSessions = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('timer_sessions')
+        .select('*')
+      
+      if (error) throw error
+      
+      const sessionsMap = {}
+      data?.forEach(session => {
+        sessionsMap[session.timer_id] = session
+      })
+      setTimerSessions(sessionsMap)
+    } catch (error) {
+      console.error('Error loading timer sessions:', error)
+    }
+  }
+
   const loadTimers = async () => {
     try {
       const { data, error } = await supabase
@@ -67,6 +96,40 @@ export default function ProTimerApp({ session, bypassAuth }) {
       console.error('Error loading timers:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadTimerLogs = async (timerId) => {
+    try {
+      const { data, error } = await supabase
+        .from('timer_logs')
+        .select('*')
+        .eq('timer_id', timerId)
+        .order('created_at', { ascending: false })
+        .limit(50)
+      
+      if (error) throw error
+      setTimerLogs(data || [])
+    } catch (error) {
+      console.error('Error loading timer logs:', error)
+    }
+  }
+
+  const logTimerAction = async (action, timeValue = null, durationChange = null, notes = null) => {
+    if (!selectedTimer) return
+    
+    try {
+      await supabase
+        .from('timer_logs')
+        .insert([{
+          timer_id: selectedTimer.id,
+          action,
+          time_value: timeValue,
+          duration_change: durationChange,
+          notes
+        }])
+    } catch (error) {
+      console.error('Error logging action:', error)
     }
   }
 
@@ -121,6 +184,9 @@ export default function ProTimerApp({ session, bypassAuth }) {
 
     // Load messages for this timer
     loadMessages(timer.id)
+    
+    // Load logs for this timer
+    loadTimerLogs(timer.id)
   }
 
   const loadMessages = async (timerId) => {
@@ -143,6 +209,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
     if (!selectedTimer) return
     
     setIsRunning(true)
+    logTimerAction('start', timeLeft)
     
     // Update session in database
     try {
@@ -161,6 +228,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
 
   const pauseTimer = async () => {
     setIsRunning(false)
+    logTimerAction('pause', timeLeft)
     
     // Update session in database
     try {
@@ -182,6 +250,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
     
     setIsRunning(false)
     setTimeLeft(selectedTimer.duration)
+    logTimerAction('reset', selectedTimer.duration)
     
     // Update session in database
     try {
@@ -201,6 +270,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
   const adjustTime = async (seconds) => {
     const newTime = Math.max(0, timeLeft + seconds)
     setTimeLeft(newTime)
+    logTimerAction('adjust', newTime, seconds, `${seconds > 0 ? 'Added' : 'Removed'} ${Math.abs(seconds)} seconds`)
     
     // Update session in database
     if (selectedTimer) {
@@ -235,6 +305,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
       // Reload messages
       loadMessages(selectedTimer.id)
       setNewMessage('')
+      logTimerAction('message', null, null, `Sent: ${messageText.trim()}`)
     } catch (error) {
       console.error('Error sending message:', error)
       alert('Error sending message: ' + error.message)
@@ -273,9 +344,50 @@ export default function ProTimerApp({ session, bypassAuth }) {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
   }
 
+  const formatTimeFromSession = (session, originalDuration) => {
+    if (!session) return formatTime(originalDuration)
+    
+    if (session.is_running) {
+      // Calculate time based on when it was last updated
+      const now = new Date()
+      const lastUpdate = new Date(session.updated_at)
+      const elapsedSinceUpdate = Math.floor((now - lastUpdate) / 1000)
+      const currentTime = Math.max(0, session.time_left - elapsedSinceUpdate)
+      return formatTime(currentTime)
+    }
+    
+    return formatTime(session.time_left)
+  }
+
   const getProgressPercentage = () => {
     if (!selectedTimer) return 0
     return ((selectedTimer.duration - timeLeft) / selectedTimer.duration) * 100
+  }
+
+  const getProgressPercentageFromSession = (session, originalDuration) => {
+    if (!session) return 0
+    
+    let currentTimeLeft = session.time_left
+    if (session.is_running) {
+      const now = new Date()
+      const lastUpdate = new Date(session.updated_at)
+      const elapsedSinceUpdate = Math.floor((now - lastUpdate) / 1000)
+      currentTimeLeft = Math.max(0, session.time_left - elapsedSinceUpdate)
+    }
+    
+    return ((originalDuration - currentTimeLeft) / originalDuration) * 100
+  }
+
+  const generatePresenterUrl = () => {
+    if (!selectedTimer) return ''
+    const baseUrl = window.location.origin
+    return `${baseUrl}/app?presenter=${selectedTimer.id}&fullscreen=true`
+  }
+
+  const openPresenterView = () => {
+    if (!selectedTimer) return
+    const url = generatePresenterUrl()
+    window.open(url, '_blank')
   }
 
   if (loading) {
@@ -353,6 +465,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
           {/* Timers Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {timers.map((timer) => (
+              const session = timerSessions[timer.id]
               <div
                 key={timer.id}
                 className={`bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border cursor-pointer transition-all ${
@@ -362,13 +475,24 @@ export default function ProTimerApp({ session, bypassAuth }) {
                 }`}
                 onClick={() => selectTimer(timer)}
               >
+                {/* Status Indicator */}
+                <div className="flex justify-between items-start mb-3">
+                  <div className={`w-3 h-3 rounded-full ${session?.is_running ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                </div>
                 <h3 className="text-xl font-semibold text-white mb-2">{timer.name}</h3>
                 <p className="text-gray-300 mb-4">Presenter: {timer.presenter_name}</p>
                 <div className="flex items-center justify-between">
                   <span className="text-2xl font-mono text-blue-400">
-                    {formatTime(timer.duration)}
+                    {formatTimeFromSession(session, timer.duration)}
                   </span>
                   <Clock className="w-6 h-6 text-gray-400" />
+                </div>
+                {/* Progress Bar */}
+                <div className="w-full bg-gray-700 rounded-full h-2 mt-3">
+                  <div
+                    className="bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 h-2 rounded-full transition-all duration-1000"
+                    style={{ width: `${getProgressPercentageFromSession(session, timer.duration)}%` }}
+                  ></div>
                 </div>
               </div>
             ))}
@@ -421,6 +545,31 @@ export default function ProTimerApp({ session, bypassAuth }) {
                 >
                   <Square className="w-5 h-5" />
                   Reset
+                </button>
+              </div>
+
+              {/* Share and Logs */}
+              <div className="flex justify-center gap-4 mb-6">
+                <button
+                  onClick={() => setShowQRModal(true)}
+                  className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2"
+                >
+                  <QrCode className="w-4 h-4" />
+                  Share Presenter View
+                </button>
+                <button
+                  onClick={openPresenterView}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  Open Presenter
+                </button>
+                <button
+                  onClick={() => setShowLogsModal(true)}
+                  className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2"
+                >
+                  <FileText className="w-4 h-4" />
+                  View Logs
                 </button>
               </div>
 
@@ -599,14 +748,22 @@ export default function ProTimerApp({ session, bypassAuth }) {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {timers.map((timer) => (
+              const session = timerSessions[timer.id]
               <div key={timer.id} className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700">
+                {/* Status Indicator */}
+                <div className="flex justify-between items-start mb-3">
+                  <div className={`w-3 h-3 rounded-full ${session?.is_running ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                </div>
                 <h3 className="text-xl font-semibold text-white mb-2">{timer.name}</h3>
                 <p className="text-gray-300 mb-4">Presenter: {timer.presenter_name}</p>
                 <div className="text-3xl font-mono text-blue-400 mb-4">
-                  {formatTime(timer.duration)}
+                  {formatTimeFromSession(session, timer.duration)}
                 </div>
                 <div className="w-full bg-gray-700 rounded-full h-2">
-                  <div className="bg-blue-500 h-2 rounded-full" style={{ width: '0%' }}></div>
+                  <div 
+                    className="bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 h-2 rounded-full transition-all duration-1000" 
+                    style={{ width: `${getProgressPercentageFromSession(session, timer.duration)}%` }}
+                  ></div>
                 </div>
               </div>
             ))}
@@ -675,6 +832,107 @@ export default function ProTimerApp({ session, bypassAuth }) {
               >
                 Create Timer
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* QR Code Modal */}
+      {showQRModal && selectedTimer && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-gray-800 rounded-xl p-6 w-full max-w-md border border-gray-700">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                <QrCode className="w-6 h-6" />
+                Share Presenter View
+              </h2>
+              <button
+                onClick={() => setShowQRModal(false)}
+                className="text-gray-400 hover:text-white text-2xl leading-none"
+              >
+                ×
+              </button>
+            </div>
+            
+            <div className="text-center mb-6">
+              <div className="bg-white p-4 rounded-lg mb-4 inline-block">
+                <div className="w-48 h-48 bg-gray-200 flex items-center justify-center text-gray-600">
+                  QR Code for:<br/>
+                  {generatePresenterUrl()}
+                </div>
+              </div>
+              <p className="text-gray-300 text-sm mb-4">
+                Scan this QR code or use the link below to open the presenter view on another device
+              </p>
+              <div className="bg-gray-700 p-3 rounded-lg mb-4">
+                <code className="text-green-400 text-xs break-all">
+                  {generatePresenterUrl()}
+                </code>
+              </div>
+            </div>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={() => navigator.clipboard.writeText(generatePresenterUrl())}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg font-medium"
+              >
+                Copy Link
+              </button>
+              <button
+                onClick={openPresenterView}
+                className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-lg font-medium"
+              >
+                Open Now
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Timer Logs Modal */}
+      {showLogsModal && selectedTimer && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-gray-800 rounded-xl p-6 w-full max-w-2xl border border-gray-700 max-h-[80vh] overflow-hidden">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                <FileText className="w-6 h-6" />
+                Timer Logs - {selectedTimer.name}
+              </h2>
+              <button
+                onClick={() => setShowLogsModal(false)}
+                className="text-gray-400 hover:text-white text-2xl leading-none"
+              >
+                ×
+              </button>
+            </div>
+            
+            <div className="overflow-y-auto max-h-96">
+              {timerLogs.length > 0 ? (
+                <div className="space-y-2">
+                  {timerLogs.map((log, index) => (
+                    <div key={index} className="bg-gray-700/50 rounded-lg p-3">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <span className="text-white font-medium capitalize">{log.action}</span>
+                          {log.time_value && (
+                            <span className="text-blue-400 ml-2">
+                              {formatTime(log.time_value)}
+                            </span>
+                          )}
+                          {log.notes && (
+                            <p className="text-gray-300 text-sm mt-1">{log.notes}</p>
+                          )}
+                        </div>
+                        <span className="text-gray-400 text-xs">
+                          {new Date(log.created_at).toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-400 text-center py-8">No logs available for this timer</p>
+              )}
             </div>
           </div>
         </div>
