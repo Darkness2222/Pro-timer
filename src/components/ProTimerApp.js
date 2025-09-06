@@ -533,6 +533,35 @@ export default function ProTimerApp({ session, bypassAuth }) {
     ])
   }
 
+  const handlePauseAll = async () => {
+    // Pause all running timers
+    const runningTimers = Object.entries(timerSessions).filter(([_, session]) => session?.is_running)
+    
+    for (const [timerId, session] of runningTimers) {
+      try {
+        await supabase
+          .from('timer_sessions')
+          .upsert({
+            timer_id: parseInt(timerId),
+            time_left: session.time_left,
+            is_running: false,
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'timer_id' })
+      } catch (error) {
+        console.error('Error pausing timer:', error)
+      }
+    }
+    
+    // If the selected timer is running, pause it locally too
+    if (selectedTimer && isRunning) {
+      setIsRunning(false)
+      logTimerAction('pause', timeLeft)
+    }
+    
+    // Update timer sessions
+    updateTimerSessions()
+  }
+
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60
@@ -1012,9 +1041,18 @@ export default function ProTimerApp({ session, bypassAuth }) {
       {/* Timer Overview */}
       {currentView === 'overview' && (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-white mb-2">Timer Overview</h1>
-            <p className="text-gray-300">Monitor all active timers</p>
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h1 className="text-3xl font-bold text-white mb-2">Timer Overview</h1>
+              <p className="text-gray-300">Monitor all active timers</p>
+            </div>
+            <button
+              onClick={handlePauseAll}
+              className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
+            >
+              <Pause className="w-4 h-4" />
+              Pause All
+            </button>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
