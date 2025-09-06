@@ -196,7 +196,9 @@ export default function ProTimerApp({ session, bypassAuth }) {
   }
 
   const selectTimer = async (timer) => {
+    console.log('Timer clicked:', timer.id, timer.name)
     setSelectedTimer(timer)
+    setActiveTab('admin')
     setTimeLeft(timer.duration)
     setIsRunning(false)
     
