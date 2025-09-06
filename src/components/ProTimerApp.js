@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
-import { Play, Pause, Square, RotateCcw, Settings, MessageSquare, Plus, Minus, Clock, Users, Timer as TimerIcon, QrCode, ExternalLink, FileText } from 'lucide-react'
+import { Play, Pause, Square, RotateCcw, Settings, MessageSquare, Plus, Minus, Clock, Users, Timer as TimerIcon, QrCode, ExternalLink, FileText, Crown, User, LogOut } from 'lucide-react'
+import SubscriptionModal from './SubscriptionModal'
 
 export default function ProTimerApp({ session, bypassAuth }) {
   const [currentView, setCurrentView] = useState('admin')
@@ -10,6 +11,8 @@ export default function ProTimerApp({ session, bypassAuth }) {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showMessageModal, setShowMessageModal] = useState(false)
   const [messagesExpanded, setMessagesExpanded] = useState(false)
+  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false)
+  const [userProfile, setUserProfile] = useState(null)
   
   // Timer state
   const [timeLeft, setTimeLeft] = useState(0)
@@ -38,6 +41,31 @@ export default function ProTimerApp({ session, bypassAuth }) {
   const [newMessage, setNewMessage] = useState('')
   
   const intervalRef = useRef(null)
+
+  // Load user profile
+  useEffect(() => {
+    if (session?.user && !bypassAuth) {
+      loadUserProfile()
+    }
+  }, [session, bypassAuth])
+
+  const loadUserProfile = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', session.user.id)
+        .single()
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error loading profile:', error)
+      } else if (data) {
+        setUserProfile(data)
+      }
+    } catch (error) {
+      console.error('Error loading profile:', error)
+    }
+  }
 
   // Load timers on component mount
   useEffect(() => {
@@ -562,6 +590,14 @@ export default function ProTimerApp({ session, bypassAuth }) {
     updateTimerSessions()
   }
 
+  const handleSignOut = async () => {
+    try {
+      await supabase.auth.signOut()
+    } catch (error) {
+      console.error('Error signing out:', error)
+    }
+  }
+
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60
@@ -672,6 +708,35 @@ export default function ProTimerApp({ session, bypassAuth }) {
                 <FileText className="w-4 h-4 mr-2" />
                 Reports
               </button>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <User className="w-5 h-5" />
+                <span className="text-sm">
+                  {session?.user?.email || 'Guest'}
+                  {userProfile?.is_pro && (
+                    <Crown className="w-4 h-4 text-yellow-500 inline ml-1" />
+                  )}
+                </span>
+              </div>
+              {!userProfile?.is_pro && !bypassAuth && (
+                <button
+                  onClick={() => setShowSubscriptionModal(true)}
+                  className="bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-1 rounded-lg text-sm font-medium transition-colors flex items-center gap-1"
+                >
+                  <Crown className="w-4 h-4" />
+                  Upgrade to Pro
+                </button>
+              )}
+              {session && !bypassAuth && (
+                <button
+                  onClick={handleSignOut}
+                  className="text-gray-300 hover:text-white transition-colors flex items-center gap-1"
+                >
+                  <LogOut className="w-4 h-4" />
+                  Sign Out
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -1273,6 +1338,12 @@ export default function ProTimerApp({ session, bypassAuth }) {
           </div>
         </div>
       )}
+
+      <SubscriptionModal
+        isOpen={showSubscriptionModal}
+        onClose={() => setShowSubscriptionModal(false)}
+        session={session}
+      />
 
       {/* Create Timer Modal */}
       {showCreateModal && (
