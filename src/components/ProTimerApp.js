@@ -1,94 +1,78 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
-import { Play, Pause, Square, RotateCcw, Clock, Users, BarChart3, MessageSquare, Send, Trash2 } from 'lucide-react'
+import { Play, Pause, Square, RotateCcw, Settings, MessageSquare, Plus, Minus, Clock, Users, Timer as TimerIcon, QrCode, ExternalLink, FileText } from 'lucide-react'
 
 export default function ProTimerApp({ session, bypassAuth }) {
-  const [activeTab, setActiveTab] = useState('admin')
-  const [timers, setTimers] = useState([])
+  const [currentView, setCurrentView] = useState('admin')
   const [selectedTimer, setSelectedTimer] = useState(null)
-  const [timerSessions, setTimerSessions] = useState({})
+  const [timers, setTimers] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [showMessageModal, setShowMessageModal] = useState(false)
+  const [messagesExpanded, setMessagesExpanded] = useState(false)
+  
+  // Timer state
+  const [timeLeft, setTimeLeft] = useState(0)
+  const [isRunning, setIsRunning] = useState(false)
   const [messages, setMessages] = useState([])
+  const [timerSessions, setTimerSessions] = useState({})
+  const [timerLogs, setTimerLogs] = useState([])
+  const [showQRModal, setShowQRModal] = useState(false)
+  const [showLogsModal, setShowLogsModal] = useState(false)
+  const [currentTime, setCurrentTime] = useState(Date.now())
+  const [allTimerLogs, setAllTimerLogs] = useState([])
+  const [reportDateRange, setReportDateRange] = useState({ start: '', end: '' })
+  const [quickMessages, setQuickMessages] = useState([
+    { id: 1, text: '⏰ 5 minutes remaining', emoji: '⏰' },
+    { id: 2, text: '⚡ Please wrap up', emoji: '⚡' },
+    { id: 3, text: '🎯 Final slide please', emoji: '🎯' },
+    { id: 4, text: '👏 Thank you!', emoji: '👏' }
+  ])
+  const [overrideTime, setOverrideTime] = useState('')
+  const [showOverride, setShowOverride] = useState(false)
   
   // Form states
   const [newTimerName, setNewTimerName] = useState('')
-  const [newPresenterName, setNewPresenterName] = useState('')
-  const [newDuration, setNewDuration] = useState('')
-  const [overrideDuration, setOverrideDuration] = useState('')
-  const [showOverride, setShowOverride] = useState(false)
-  const [customMessage, setCustomMessage] = useState('')
+  const [newTimerPresenter, setNewTimerPresenter] = useState('')
+  const [newTimerDuration, setNewTimerDuration] = useState('')
+  const [newMessage, setNewMessage] = useState('')
   
-  // Reports state
-  const [logs, setLogs] = useState([])
-  const [dateFrom, setDateFrom] = useState('')
-  const [dateTo, setDateTo] = useState('')
+  const intervalRef = useRef(null)
 
-  // Load data on component mount
+  // Load timers on component mount
   useEffect(() => {
     loadTimers()
-    loadLogs()
+    loadAllTimerLogs()
+    // Update timer sessions and current time every second
+    const sessionInterval = setInterval(() => {
+      updateTimerSessions()
+      setCurrentTime(Date.now())
+    }, 1000)
+    
+    return () => clearInterval(sessionInterval)
   }, [])
 
-  // Real-time subscriptions
+  // Timer countdown effect
   useEffect(() => {
-    const timersSubscription = supabase
-      .channel('timers')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'timers' }, () => {
-        loadTimers()
-      })
-      .subscribe()
-
-    const sessionsSubscription = supabase
-      .channel('timer_sessions')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'timer_sessions' }, () => {
-        loadTimerSessions()
-      })
-      .subscribe()
-
-    const messagesSubscription = supabase
-      .channel('timer_messages')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'timer_messages' }, () => {
-        loadMessages()
-      })
-      .subscribe()
-
-    const logsSubscription = supabase
-      .channel('timer_logs')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'timer_logs' }, () => {
-        loadLogs()
-      })
-      .subscribe()
-
-    return () => {
-      timersSubscription.unsubscribe()
-      sessionsSubscription.unsubscribe()
-      messagesSubscription.unsubscribe()
-      logsSubscription.unsubscribe()
+    if (isRunning && timeLeft > 0) {
+      intervalRef.current = setInterval(() => {
+        setTimeLeft(prev => {
+          if (prev <= 1) {
+            setIsRunning(false)
+            return 0
+          }
+          return prev - 1
+        })
+      }, 1000)
+    } else {
+      clearInterval(intervalRef.current)
     }
-  }, [])
 
-  // Load timer sessions when timers change
-  useEffect(() => {
-    if (timers.length > 0) {
-      loadTimerSessions()
-      loadMessages()
-    }
-  }, [timers])
+    return () => clearInterval(intervalRef.current)
+  }, [isRunning, timeLeft])
 
-  const loadTimers = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('timers')
-        .select('*')
-        .order('created_at', { ascending: false })
-      
-      if (error) throw error
-      setTimers(data || [])
-    } catch (error) {
-      console.error('Error loading timers:', error)
-    }
-  }
-
-  const loadTimerSessions = async () => {
+  // Update timer sessions for all timers
+  const updateTimerSessions = async () => {
     try {
       const { data, error } = await supabase
         .from('timer_sessions')
@@ -106,59 +90,90 @@ export default function ProTimerApp({ session, bypassAuth }) {
     }
   }
 
-  const loadMessages = async () => {
+  const loadTimers = async () => {
     try {
       const { data, error } = await supabase
-        .from('timer_messages')
+        .from('timers')
         .select('*')
-        .order('sent_at', { ascending: false })
+        .order('created_at', { ascending: false })
+      
+      if (error) throw error
+      setTimers(data || [])
+    } catch (error) {
+      console.error('Error loading timers:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const loadTimerLogs = async (timerId) => {
+    try {
+      const { data, error } = await supabase
+        .from('timer_logs')
+        .select('*')
+        .eq('timer_id', timerId)
+        .order('created_at', { ascending: false })
         .limit(50)
       
       if (error) throw error
-      setMessages(data || [])
+      setTimerLogs(data || [])
     } catch (error) {
-      console.error('Error loading messages:', error)
+      console.error('Error loading timer logs:', error)
     }
   }
 
-  const loadLogs = async () => {
+  const loadAllTimerLogs = async () => {
     try {
-      let query = supabase
+      const { data, error } = await supabase
         .from('timer_logs')
         .select(`
           *,
-          timers (name, presenter_name)
+          timers (
+            name,
+            presenter_name
+          )
         `)
         .order('created_at', { ascending: false })
-
-      if (dateFrom) {
-        query = query.gte('created_at', dateFrom)
-      }
-      if (dateTo) {
-        query = query.lte('created_at', dateTo + 'T23:59:59')
-      }
-
-      const { data, error } = await query
+        .limit(1000)
+      
       if (error) throw error
-      setLogs(data || [])
+      setAllTimerLogs(data || [])
     } catch (error) {
-      console.error('Error loading logs:', error)
+      console.error('Error loading all timer logs:', error)
     }
   }
 
-  const createTimer = async (e) => {
-    e.preventDefault()
-    if (!newTimerName.trim() || !newPresenterName.trim() || !newDuration) return
+  const logTimerAction = async (action, timeValue = null, durationChange = null, notes = null) => {
+    if (!selectedTimer) return
+    
+    try {
+      await supabase
+        .from('timer_logs')
+        .insert([{
+          timer_id: selectedTimer.id,
+          action,
+          time_value: timeValue,
+          duration_change: durationChange,
+          notes
+        }])
+    } catch (error) {
+      console.error('Error logging action:', error)
+    }
+    
+    // Reload all logs for reports
+    loadAllTimerLogs()
+  }
+
+  const createTimer = async () => {
+    if (!newTimerName.trim() || !newTimerPresenter.trim() || !newTimerDuration) return
 
     try {
-      const durationInSeconds = parseInt(newDuration) * 60
-      
       const { data, error } = await supabase
         .from('timers')
         .insert([{
           name: newTimerName.trim(),
-          presenter_name: newPresenterName.trim(),
-          duration: durationInSeconds,
+          presenter_name: newTimerPresenter.trim(),
+          duration: parseInt(newTimerDuration) * 60, // Convert minutes to seconds
           user_id: session?.user?.id || null
         }])
         .select()
@@ -166,43 +181,53 @@ export default function ProTimerApp({ session, bypassAuth }) {
 
       if (error) throw error
 
-      // Create initial timer session
-      await supabase
-        .from('timer_sessions')
-        .insert([{
-          timer_id: data.id,
-          time_left: durationInSeconds,
-          is_running: false
-        }])
-
-      // Log the creation
-      await supabase
-        .from('timer_logs')
-        .insert([{
-          timer_id: data.id,
-          action: 'created',
-          time_value: durationInSeconds,
-          notes: `Timer created: ${newTimerName} for ${newPresenterName}`
-        }])
-
+      setTimers(prev => [data, ...prev])
       setNewTimerName('')
-      setNewPresenterName('')
-      setNewDuration('')
-      loadTimers()
+      setNewTimerPresenter('')
+      setNewTimerDuration('')
+      setShowCreateModal(false)
+      
+      // Reload logs to include new timer
+      loadAllTimerLogs()
     } catch (error) {
       console.error('Error creating timer:', error)
       alert('Error creating timer: ' + error.message)
     }
   }
 
-  const selectTimer = (timerId) => {
-    const timer = timers.find(t => t.id === timerId)
+  const selectTimer = async (timer) => {
     setSelectedTimer(timer)
+    setTimeLeft(timer.duration)
+    setIsRunning(false)
+    
+    // Load existing session if any
+    try {
+      const { data } = await supabase
+        .from('timer_sessions')
+        .select('*')
+        .eq('timer_id', timer.id)
+        .maybeSingle()
+      
+      if (data) {
+        setTimeLeft(data.time_left)
+        setIsRunning(data.is_running)
+      }
+    } catch (error) {
+      console.log('No existing session found, using defaults')
+      // No existing session, use defaults - this is expected behavior
+    }
+
+    // Load messages and logs for this timer
+    try {
+      await loadMessages(timer.id)
+      await loadTimerLogs(timer.id)
+    } catch (error) {
+      console.error('Error loading timer data:', error)
+      // Don't throw the error, just log it
+    }
   }
 
-  const deleteTimer = async (timerId, e) => {
-    e.stopPropagation()
-    
+  const deleteTimer = async (timerId) => {
     if (!window.confirm('Are you sure you want to delete this timer? This action cannot be undone.')) {
       return
     }
@@ -215,235 +240,278 @@ export default function ProTimerApp({ session, bypassAuth }) {
 
       if (error) throw error
 
-      // Clear selected timer if it was deleted
+      setTimers(prev => prev.filter(timer => timer.id !== timerId))
+      
+      // If the deleted timer was selected, clear selection
       if (selectedTimer?.id === timerId) {
         setSelectedTimer(null)
+        setTimeLeft(0)
+        setIsRunning(false)
+        setMessages([])
       }
-
-      loadTimers()
+      
+      // Reload logs after deletion
+      loadAllTimerLogs()
     } catch (error) {
       console.error('Error deleting timer:', error)
       alert('Error deleting timer: ' + error.message)
     }
   }
 
-  const controlTimer = async (action) => {
-    if (!selectedTimer) return
-
+  const loadMessages = async (timerId) => {
     try {
-      const session = timerSessions[selectedTimer.id]
-      let updates = {}
-      let logData = {
-        timer_id: selectedTimer.id,
-        action: action,
-        time_value: session?.time_left || 0
-      }
-
-      switch (action) {
-        case 'start':
-          updates = { is_running: true }
-          break
-        case 'pause':
-          updates = { is_running: false }
-          break
-        case 'stop':
-          updates = { is_running: false }
-          break
-        case 'reset':
-          updates = { 
-            is_running: false, 
-            time_left: selectedTimer.duration 
-          }
-          logData.time_value = selectedTimer.duration
-          break
-      }
-
-      const { error } = await supabase
-        .from('timer_sessions')
-        .update(updates)
-        .eq('timer_id', selectedTimer.id)
-
-      if (error) throw error
-
-      // Log the action
-      await supabase
-        .from('timer_logs')
-        .insert([logData])
-
-      loadTimerSessions()
-    } catch (error) {
-      console.error('Error controlling timer:', error)
-    }
-  }
-
-  const adjustTimer = async (seconds) => {
-    if (!selectedTimer) return
-
-    try {
-      const session = timerSessions[selectedTimer.id]
-      const newTimeLeft = Math.max(0, (session?.time_left || 0) + seconds)
-
-      const { error } = await supabase
-        .from('timer_sessions')
-        .update({ time_left: newTimeLeft })
-        .eq('timer_id', selectedTimer.id)
-
-      if (error) throw error
-
-      // Log the adjustment
-      await supabase
-        .from('timer_logs')
-        .insert([{
-          timer_id: selectedTimer.id,
-          action: 'adjust',
-          time_value: newTimeLeft,
-          duration_change: seconds,
-          notes: `Adjusted by ${seconds > 0 ? '+' : ''}${seconds} seconds`
-        }])
-
-      loadTimerSessions()
-    } catch (error) {
-      console.error('Error adjusting timer:', error)
-    }
-  }
-
-  const handleOverrideDuration = async () => {
-    if (!selectedTimer || !overrideDuration) return
-
-    try {
-      const newDurationSeconds = parseInt(overrideDuration) * 60
+      const { data, error } = await supabase
+        .from('timer_messages')
+        .select('*')
+        .eq('timer_id', timerId)
+        .order('sent_at', { ascending: false })
+        .limit(10)
       
-      const { error } = await supabase
-        .from('timer_sessions')
-        .update({ 
-          time_left: newDurationSeconds,
-          is_running: false 
-        })
-        .eq('timer_id', selectedTimer.id)
-
       if (error) throw error
-
-      // Log the override
-      await supabase
-        .from('timer_logs')
-        .insert([{
-          timer_id: selectedTimer.id,
-          action: 'override',
-          time_value: newDurationSeconds,
-          notes: `Duration overridden to ${overrideDuration} minutes`
-        }])
-
-      setOverrideDuration('')
-      setShowOverride(false)
-      loadTimerSessions()
+      setMessages(data || [])
     } catch (error) {
-      console.error('Error overriding duration:', error)
+      console.error('Error loading messages:', error)
     }
   }
 
-  const sendQuickMessage = async (message) => {
+  const startTimer = async () => {
     if (!selectedTimer) return
+    
+    setIsRunning(true)
+    logTimerAction('start', timeLeft)
+    
+    // Update session in database
+    try {
+      await supabase
+        .from('timer_sessions')
+        .upsert({
+          timer_id: selectedTimer.id,
+          time_left: timeLeft,
+          is_running: true,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'timer_id' })
+    } catch (error) {
+      console.error('Error updating session:', error)
+    }
+  }
+
+  const pauseTimer = async () => {
+    setIsRunning(false)
+    logTimerAction('pause', timeLeft)
+    
+    // Update session in database
+    try {
+      await supabase
+        .from('timer_sessions')
+        .upsert({
+          timer_id: selectedTimer.id,
+          time_left: timeLeft,
+          is_running: false,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'timer_id' })
+    } catch (error) {
+      console.error('Error updating session:', error)
+    }
+  }
+
+  const stopTimer = async () => {
+    setIsRunning(false)
+    logTimerAction('stop', timeLeft)
+    
+    // Update session in database
+    try {
+      await supabase
+        .from('timer_sessions')
+        .upsert({
+          timer_id: selectedTimer.id,
+          time_left: timeLeft,
+          is_running: false,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'timer_id' })
+    } catch (error) {
+      console.error('Error updating session:', error)
+    }
+  }
+
+  const resetTimer = async () => {
+    if (!selectedTimer) return
+    
+    setIsRunning(false)
+    setTimeLeft(selectedTimer.duration)
+    logTimerAction('reset', selectedTimer.duration)
+    
+    // Update session in database
+    try {
+      await supabase
+        .from('timer_sessions')
+        .upsert({
+          timer_id: selectedTimer.id,
+          time_left: selectedTimer.duration,
+          is_running: false,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'timer_id' })
+    } catch (error) {
+      console.error('Error updating session:', error)
+    }
+  }
+
+  const adjustTime = async (seconds) => {
+    const newTime = Math.max(0, timeLeft + seconds)
+    setTimeLeft(newTime)
+    logTimerAction('adjust', newTime, seconds, `${seconds > 0 ? 'Added' : 'Removed'} ${Math.abs(seconds)} seconds`)
+    
+    // Update session in database
+    if (selectedTimer) {
+      try {
+        await supabase
+          .from('timer_sessions')
+          .upsert({
+            timer_id: selectedTimer.id,
+            time_left: newTime,
+            is_running: isRunning,
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'timer_id' })
+      } catch (error) {
+        console.error('Error updating session:', error)
+      }
+    }
+  }
+
+  const overrideTimerDuration = async () => {
+    if (!selectedTimer || !overrideTime) return
+    
+    const newDurationMinutes = parseInt(overrideTime)
+    if (isNaN(newDurationMinutes) || newDurationMinutes <= 0) {
+      alert('Please enter a valid number of minutes')
+      return
+    }
+    
+    const newDurationSeconds = newDurationMinutes * 60
+    setTimeLeft(newDurationSeconds)
+    logTimerAction('override', newDurationSeconds, newDurationSeconds - selectedTimer.duration, `Duration changed to ${newDurationMinutes} minutes`)
+    
+    // Update session in database
+    try {
+      await supabase
+        .from('timer_sessions')
+        .upsert({
+          timer_id: selectedTimer.id,
+          time_left: newDurationSeconds,
+          is_running: false,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'timer_id' })
+    } catch (error) {
+      console.error('Error updating session:', error)
+    }
+    
+    setOverrideTime('')
+    setShowOverride(false)
+  }
+
+  const sendMessage = async (messageText) => {
+    if (!selectedTimer || !messageText.trim()) return
 
     try {
       const { error } = await supabase
         .from('timer_messages')
         .insert([{
           timer_id: selectedTimer.id,
-          message: message
+          message: messageText.trim()
         }])
 
       if (error) throw error
 
-      // Log the message
-      await supabase
-        .from('timer_logs')
-        .insert([{
-          timer_id: selectedTimer.id,
-          action: 'message',
-          notes: `Message sent: ${message}`
-        }])
-
-      loadMessages()
+      // Reload messages
+      loadMessages(selectedTimer.id)
+      setNewMessage('')
+      logTimerAction('message', null, null, `Sent: ${messageText.trim()}`)
     } catch (error) {
       console.error('Error sending message:', error)
+      alert('Error sending message: ' + error.message)
     }
   }
 
-  const sendCustomMessage = async (e) => {
-    e.preventDefault()
-    if (!selectedTimer || !customMessage.trim()) return
-
-    try {
-      const { error } = await supabase
-        .from('timer_messages')
-        .insert([{
-          timer_id: selectedTimer.id,
-          message: customMessage.trim()
-        }])
-
-      if (error) throw error
-
-      // Log the message
-      await supabase
-        .from('timer_logs')
-        .insert([{
-          timer_id: selectedTimer.id,
-          action: 'message',
-          notes: `Custom message sent: ${customMessage.trim()}`
-        }])
-
-      setCustomMessage('')
-      loadMessages()
-    } catch (error) {
-      console.error('Error sending custom message:', error)
+  const addQuickMessage = () => {
+    if (!newMessage.trim()) return
+    
+    const newQuickMsg = {
+      id: Date.now(),
+      text: newMessage.trim(),
+      emoji: '💬'
     }
+    
+    setQuickMessages(prev => [...prev, newQuickMsg])
+    setNewMessage('')
   }
 
-  const exportCSV = () => {
+  const removeQuickMessage = (id) => {
+    setQuickMessages(prev => prev.filter(msg => msg.id !== id))
+  }
+
+  const exportTimersCSV = () => {
     const csvData = []
     
     // Add headers
     csvData.push([
-      'Date',
       'Timer Name',
       'Presenter',
+      'Duration (minutes)',
+      'Created At',
       'Action',
-      'Time Value (seconds)',
+      'Time Value',
       'Duration Change',
-      'Notes'
+      'Notes',
+      'Action Date'
     ])
-
-    // Add timer creation records
+    
+    // Filter logs by date range if specified
+    let filteredLogs = allTimerLogs
+    if (reportDateRange.start) {
+      filteredLogs = filteredLogs.filter(log => 
+        new Date(log.created_at) >= new Date(reportDateRange.start)
+      )
+    }
+    if (reportDateRange.end) {
+      filteredLogs = filteredLogs.filter(log => 
+        new Date(log.created_at) <= new Date(reportDateRange.end + 'T23:59:59')
+      )
+    }
+    
+    // Add timer creation rows
     timers.forEach(timer => {
       csvData.push([
-        new Date(timer.created_at).toLocaleString(),
         timer.name,
         timer.presenter_name,
-        'created',
-        timer.duration,
+        Math.round(timer.duration / 60),
+        new Date(timer.created_at).toLocaleString(),
+        'Timer Created',
         '',
-        `Timer created with ${timer.duration / 60} minute duration`
+        '',
+        '',
+        new Date(timer.created_at).toLocaleString()
       ])
     })
-
-    // Add log records
-    logs.forEach(log => {
+    
+    // Add log entries
+    filteredLogs.forEach(log => {
       csvData.push([
-        new Date(log.created_at).toLocaleString(),
-        log.timers?.name || 'Unknown',
-        log.timers?.presenter_name || 'Unknown',
+        log.timers?.name || 'Unknown Timer',
+        log.timers?.presenter_name || 'Unknown Presenter',
+        '',
+        '',
         log.action,
-        log.time_value || '',
+        log.time_value ? formatTime(log.time_value) : '',
         log.duration_change || '',
-        log.notes || ''
+        log.notes || '',
+        new Date(log.created_at).toLocaleString()
       ])
     })
-
+    
     // Convert to CSV string
     const csvString = csvData.map(row => 
       row.map(field => `"${field}"`).join(',')
     ).join('\n')
-
+    
     // Download file
     const blob = new Blob([csvString], { type: 'text/csv' })
     const url = window.URL.createObjectURL(blob)
@@ -456,637 +524,952 @@ export default function ProTimerApp({ session, bypassAuth }) {
     window.URL.revokeObjectURL(url)
   }
 
+  const resetToDefaults = () => {
+    setQuickMessages([
+      { id: 1, text: '⏰ 5 minutes remaining', emoji: '⏰' },
+      { id: 2, text: '⚡ Please wrap up', emoji: '⚡' },
+      { id: 3, text: '🎯 Final slide please', emoji: '🎯' },
+      { id: 4, text: '👏 Thank you!', emoji: '👏' }
+    ])
+  }
+
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60
-    return `${mins}:${secs.toString().padStart(2, '0')}`
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
   }
 
-  const getTimerStatus = (timer) => {
-    const session = timerSessions[timer.id]
-    if (!session) return 'stopped'
-    return session.is_running ? 'running' : 'stopped'
+  const formatTimeFromSession = (session, originalDuration) => {
+    if (!session) return formatTime(originalDuration)
+    
+    if (session.is_running) {
+      // Calculate time based on when it was last updated
+      const now = new Date(currentTime)
+      const lastUpdate = new Date(session.updated_at)
+      const elapsedSinceUpdate = Math.floor((now - lastUpdate) / 1000)
+      const calculatedTimeLeft = Math.max(0, session.time_left - elapsedSinceUpdate)
+      return formatTime(calculatedTimeLeft)
+    }
+    
+    return formatTime(session.time_left)
+  }
+  const getProgressPercentage = () => {
+    if (!selectedTimer) return 0
+    return ((selectedTimer.duration - timeLeft) / selectedTimer.duration) * 100
   }
 
-  const getProgressPercentage = (timer) => {
-    const session = timerSessions[timer.id]
+  const getProgressPercentageFromSession = (session, originalDuration) => {
     if (!session) return 0
-    return ((timer.duration - session.time_left) / timer.duration) * 100
+    
+    let currentTimeLeft = session.time_left
+    if (session.is_running) {
+      const now = new Date(currentTime)
+      const lastUpdate = new Date(session.updated_at)
+      const elapsedSinceUpdate = Math.floor((now - lastUpdate) / 1000)
+      currentTimeLeft = Math.max(0, session.time_left - elapsedSinceUpdate)
+    }
+    
+    return ((originalDuration - currentTimeLeft) / originalDuration) * 100
   }
 
-  const renderAdminDashboard = () => (
-    <div className="space-y-8">
-      {/* Create New Timer */}
-      <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-        <h2 className="text-2xl font-bold text-white mb-6">Create New Timer</h2>
-        <form onSubmit={createTimer} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Timer Name
-              </label>
-              <input
-                type="text"
-                value={newTimerName}
-                onChange={(e) => setNewTimerName(e.target.value)}
-                className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white"
-                placeholder="e.g., Keynote Speech"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Presenter Name
-              </label>
-              <input
-                type="text"
-                value={newPresenterName}
-                onChange={(e) => setNewPresenterName(e.target.value)}
-                className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white"
-                placeholder="e.g., John Smith"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Duration (minutes)
-              </label>
-              <input
-                type="text"
-                value={newDuration}
-                onChange={(e) => setNewDuration(e.target.value)}
-                className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white"
-                placeholder="e.g., 30"
-                required
-              />
+  const generatePresenterUrl = () => {
+    if (!selectedTimer) return ''
+    const baseUrl = window.location.origin
+    return `${baseUrl}/app?presenter=${selectedTimer.id}&fullscreen=true`
+  }
+
+  const openPresenterView = () => {
+    if (!selectedTimer) return
+    const url = generatePresenterUrl()
+    window.open(url, '_blank')
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-white text-xl">Loading timers...</div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900">
+      {/* Navigation */}
+      <nav className="bg-gray-800/50 backdrop-blur-sm border-b border-gray-700">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between h-16">
+            <div className="flex space-x-8">
+              <button
+                onClick={() => setCurrentView('admin')}
+                className={`inline-flex items-center px-4 py-2 border-b-2 text-sm font-medium ${
+                  currentView === 'admin'
+                    ? 'border-red-500 text-red-400'
+                    : 'border-transparent text-gray-300 hover:text-white hover:border-gray-300'
+                }`}
+              >
+                <Settings className="w-4 h-4 mr-2" />
+                Admin Dashboard
+              </button>
+              <button
+                onClick={() => setCurrentView('presenter')}
+                className={`inline-flex items-center px-4 py-2 border-b-2 text-sm font-medium ${
+                  currentView === 'presenter'
+                    ? 'border-blue-500 text-blue-400'
+                    : 'border-transparent text-gray-300 hover:text-white hover:border-gray-300'
+                }`}
+              >
+                <Users className="w-4 h-4 mr-2" />
+                Presenter View
+              </button>
+              <button
+                onClick={() => setCurrentView('overview')}
+                className={`inline-flex items-center px-4 py-2 border-b-2 text-sm font-medium ${
+                  currentView === 'overview'
+                    ? 'border-purple-500 text-purple-400'
+                    : 'border-transparent text-gray-300 hover:text-white hover:border-gray-300'
+                }`}
+              >
+                <TimerIcon className="w-4 h-4 mr-2" />
+                Timer Overview
+              </button>
+              <button
+                onClick={() => setCurrentView('reports')}
+                className={`inline-flex items-center px-4 py-2 border-b-2 text-sm font-medium ${
+                  currentView === 'reports'
+                    ? 'border-green-500 text-green-400'
+                    : 'border-transparent text-gray-300 hover:text-white hover:border-gray-300'
+                }`}
+              >
+                <FileText className="w-4 h-4 mr-2" />
+                Reports
+              </button>
             </div>
           </div>
-          <button
-            type="submit"
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium"
-          >
-            Create Timer
-          </button>
-        </form>
-      </div>
+        </div>
+      </nav>
 
-      {/* Timer Controls */}
-      <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-        <h2 className="text-2xl font-bold text-white mb-6">Timer Controls</h2>
-        
-        {selectedTimer ? (
-          <div className="space-y-6">
-            <div className="bg-gray-700 rounded-lg p-4">
-              <h3 className="text-xl font-semibold text-white mb-2">{selectedTimer.name}</h3>
-              <p className="text-gray-300">Presenter: {selectedTimer.presenter_name}</p>
-              <p className="text-gray-300">
-                Time: {formatTime(timerSessions[selectedTimer.id]?.time_left || selectedTimer.duration)}
-              </p>
-              <p className="text-gray-300">
-                Status: <span className={`font-semibold ${
-                  getTimerStatus(selectedTimer) === 'running' ? 'text-green-400' : 'text-red-400'
-                }`}>
-                  {getTimerStatus(selectedTimer)}
-                </span>
-              </p>
-            </div>
+      {/* Admin Dashboard */}
+      {currentView === 'admin' && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-white mb-2">Admin Dashboard</h1>
+            <p className="text-gray-300">Create and manage presentation timers</p>
+          </div>
 
-            {/* Control Buttons */}
-            <div className="flex flex-wrap gap-3">
-              <button
-                onClick={() => controlTimer('start')}
-                disabled={getTimerStatus(selectedTimer) === 'running'}
-                className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-4 py-2 rounded-lg flex items-center gap-2"
-              >
-                <Play size={16} />
-                Start
-              </button>
-              <button
-                onClick={() => controlTimer('pause')}
-                disabled={getTimerStatus(selectedTimer) !== 'running'}
-                className="bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-600 text-white px-4 py-2 rounded-lg flex items-center gap-2"
-              >
-                <Pause size={16} />
-                Pause
-              </button>
-              <button
-                onClick={() => controlTimer('stop')}
-                disabled={getTimerStatus(selectedTimer) !== 'running'}
-                className="bg-orange-600 hover:bg-orange-700 disabled:bg-gray-600 text-white px-4 py-2 rounded-lg flex items-center gap-2"
-              >
-                <Square size={16} />
-                Stop
-              </button>
-              <button
-                onClick={() => controlTimer('reset')}
-                className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg flex items-center gap-2"
-              >
-                <RotateCcw size={16} />
-                Reset
-              </button>
-            </div>
+          {/* Create Timer Button */}
+          <div className="mb-8">
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium flex items-center gap-2"
+            >
+              <Plus className="w-5 h-5" />
+              Create New Timer
+            </button>
+          </div>
 
-            {/* Time Adjustments */}
-            <div className="space-y-3">
-              <h4 className="text-lg font-semibold text-white">Quick Adjustments</h4>
-              <div className="flex flex-wrap gap-2">
+          {/* Timers Grid */}
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+            {timers.map((timer) => {
+              const session = timerSessions[timer.id];
+              return (
+              <div
+                key={timer.id}
+                className={`bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 border cursor-pointer transition-all aspect-square flex flex-col relative group ${
+                  selectedTimer?.id === timer.id
+                    ? 'border-blue-500 bg-blue-900/20'
+                    : 'border-gray-700 hover:border-gray-600'
+                }`}
+              >
+                {/* Delete Button */}
                 <button
-                  onClick={() => adjustTimer(-300)}
-                  className="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded text-sm"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    deleteTimer(timer.id)
+                  }}
+                  className="absolute top-2 right-2 w-6 h-6 bg-red-600 hover:bg-red-700 text-white rounded-full text-xs opacity-0 group-hover:opacity-100 transition-opacity z-10 flex items-center justify-center"
                 >
-                  -5 min
+                  ×
+                </button>
+                
+                {/* Main clickable area */}
+                <div className="flex-1 flex flex-col" onClick={() => selectTimer(timer)}>
+                  {/* Status Indicator */}
+                  <div className="flex justify-between items-start mb-2">
+                    <div className={`w-2 h-2 rounded-full ${session?.is_running ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                  </div>
+                  
+                  <h3 className="text-sm font-semibold text-white mb-1 line-clamp-2 leading-tight">{timer.name}</h3>
+                  <p className="text-gray-300 mb-2 text-xs truncate">Presenter: {timer.presenter_name}</p>
+                  
+                  <div className="mt-auto">
+                    <div className="text-lg font-mono text-blue-400 mb-2">
+                      {formatTimeFromSession(session, timer.duration)}
+                    </div>
+                    {/* Progress Bar */}
+                    <div className="w-full bg-gray-700 rounded-full h-1">
+                      <div
+                        className="bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 h-1 rounded-full transition-all duration-1000"
+                        style={{ width: `${getProgressPercentageFromSession(session, timer.duration)}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              );
+            })}
+          </div>
+
+          {/* Selected Timer Controls */}
+          {selectedTimer && (
+            <div className="mt-8 bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700">
+              <h2 className="text-2xl font-bold text-white mb-4">
+                Control: {selectedTimer.name}
+              </h2>
+              
+              {/* Timer Display */}
+              <div className="text-center mb-6">
+                <div className="text-6xl font-mono font-bold text-orange-400 mb-4">
+                  {formatTime(timeLeft)}
+                </div>
+                <div className="w-full bg-gray-700 rounded-full h-4 mb-4">
+                  <div
+                    className="bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 h-4 rounded-full transition-all duration-1000"
+                    style={{ width: `${getProgressPercentage()}%` }}
+                  ></div>
+                </div>
+                <p className="text-gray-300">
+                  {Math.round(getProgressPercentage())}% remaining
+                </p>
+              </div>
+
+              {/* Timer Controls */}
+              <div className="flex justify-center gap-4 mb-6">
+                <button
+                  onClick={startTimer}
+                  disabled={isRunning}
+                  className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-6 py-3 rounded-lg font-medium flex items-center gap-2"
+                >
+                  <Play className="w-5 h-5" />
+                  Start
                 </button>
                 <button
-                  onClick={() => adjustTimer(-60)}
-                  className="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded text-sm"
+                  onClick={pauseTimer}
+                  disabled={!isRunning}
+                  className="bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-600 text-white px-6 py-3 rounded-lg font-medium flex items-center gap-2"
                 >
-                  -1 min
+                  <Pause className="w-5 h-5" />
+                  Pause
                 </button>
                 <button
-                  onClick={() => adjustTimer(60)}
-                  className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-sm"
+                  onClick={stopTimer}
+                  disabled={!isRunning}
+                  className="bg-orange-600 hover:bg-orange-700 disabled:bg-gray-600 text-white px-6 py-3 rounded-lg font-medium flex items-center gap-2"
                 >
-                  +1 min
+                  <Square className="w-5 h-5" />
+                  Stop
                 </button>
                 <button
-                  onClick={() => adjustTimer(300)}
-                  className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-sm"
+                  onClick={resetTimer}
+                  className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-medium flex items-center gap-2"
                 >
-                  +5 min
+                  <RotateCcw className="w-5 h-5" />
+                  Reset
                 </button>
               </div>
-            </div>
 
-            {/* Override Duration */}
-            {getTimerStatus(selectedTimer) !== 'running' && (
-              <div className="space-y-3">
-                {!showOverride ? (
+              {/* Share and Logs */}
+              <div className="flex justify-center gap-4 mb-6">
+                <button
+                  onClick={() => setShowQRModal(true)}
+                  className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2"
+                >
+                  <QrCode className="w-4 h-4" />
+                  Share Presenter View
+                </button>
+                <button
+                  onClick={openPresenterView}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  Open Presenter
+                </button>
+                <button
+                  onClick={() => setShowLogsModal(true)}
+                  className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2"
+                >
+                  <FileText className="w-4 h-4" />
+                  View Logs
+                </button>
+              </div>
+
+              {/* Time Adjustment */}
+              <div className="flex justify-center gap-2 mb-4">
+                <button
+                  onClick={() => adjustTime(-60)}
+                  className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg flex items-center gap-1"
+                >
+                  <Minus className="w-4 h-4" />
+                  1m
+                </button>
+                <button
+                  onClick={() => adjustTime(-30)}
+                  className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg flex items-center gap-1"
+                >
+                  <Minus className="w-4 h-4" />
+                  30s
+                </button>
+                <button
+                  onClick={() => adjustTime(30)}
+                  className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg flex items-center gap-1"
+                >
+                  <Plus className="w-4 h-4" />
+                  30s
+                </button>
+                <button
+                  onClick={() => adjustTime(60)}
+                  className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg flex items-center gap-1"
+                >
+                  <Plus className="w-4 h-4" />
+                  1m
+                </button>
+              </div>
+
+              {/* Override Timer Duration */}
+              <div className="flex justify-center mb-6">
+                {!isRunning && !showOverride && (
                   <button
                     onClick={() => setShowOverride(true)}
-                    className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg"
+                    className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2"
                   >
+                    <Clock className="w-4 h-4" />
                     Override Duration
                   </button>
-                ) : (
-                  <div className="flex gap-2 items-center">
+                )}
+                
+                {showOverride && (
+                  <div className="flex items-center gap-3 bg-gray-700/50 rounded-lg p-4">
+                    <label className="text-white font-medium">New Duration:</label>
                     <input
-                      type="number"
-                      value={overrideDuration}
-                      onChange={(e) => setOverrideDuration(e.target.value)}
-                      placeholder="Minutes"
-                      className="w-32 p-2 bg-gray-700 border border-gray-600 rounded text-white"
+                      type="text"
+                      value={overrideTime}
+                      onChange={(e) => setOverrideTime(e.target.value)}
+                      className="w-20 p-2 bg-gray-600 border border-gray-500 rounded text-white text-center"
+                      placeholder="20"
                     />
+                    <span className="text-gray-300">minutes</span>
                     <button
-                      onClick={handleOverrideDuration}
-                      className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded"
+                      onClick={overrideTimerDuration}
+                      className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded font-medium"
                     >
                       Set
                     </button>
                     <button
                       onClick={() => {
                         setShowOverride(false)
-                        setOverrideDuration('')
+                        setOverrideTime('')
                       }}
-                      className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded"
+                      className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded font-medium"
                     >
                       Cancel
                     </button>
                   </div>
                 )}
               </div>
-            )}
-          </div>
-        ) : (
-          <p className="text-gray-400">Select a timer to control it</p>
-        )}
-      </div>
 
-      {/* Quick Messages */}
-      <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-        <h2 className="text-2xl font-bold text-white mb-6">Quick Messages</h2>
-        {selectedTimer ? (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <button
-              onClick={() => sendQuickMessage('Wrap up')}
-              className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg"
-            >
-              Wrap up
-            </button>
-            <button
-              onClick={() => sendQuickMessage('5 minutes left')}
-              className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg"
-            >
-              5 min left
-            </button>
-            <button
-              onClick={() => sendQuickMessage('Speak louder')}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
-            >
-              Speak louder
-            </button>
-            <button
-              onClick={() => sendQuickMessage('Slow down')}
-              className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg"
-            >
-              Slow down
-            </button>
-          </div>
-        ) : (
-          <p className="text-gray-400">Select a timer to send messages</p>
-        )}
-      </div>
-
-      {/* Custom Messages */}
-      <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-        <h2 className="text-2xl font-bold text-white mb-6">Custom Messages</h2>
-        {selectedTimer ? (
-          <form onSubmit={sendCustomMessage} className="flex gap-3">
-            <input
-              type="text"
-              value={customMessage}
-              onChange={(e) => setCustomMessage(e.target.value)}
-              placeholder="Type your custom message..."
-              className="flex-1 p-3 bg-gray-700 border border-gray-600 rounded-lg text-white"
-              onKeyPress={(e) => {
-                if (e.key === 'Enter') {
-                  sendCustomMessage(e)
-                }
-              }}
-            />
-            <button
-              type="submit"
-              disabled={!customMessage.trim()}
-              className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white px-6 py-3 rounded-lg flex items-center gap-2"
-            >
-              <Send size={16} />
-              Send
-            </button>
-          </form>
-        ) : (
-          <p className="text-gray-400">Select a timer to send custom messages</p>
-        )}
-      </div>
-
-      {/* Timer Grid - Moved to Bottom */}
-      <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-        <h2 className="text-2xl font-bold text-white mb-6">Active Timers</h2>
-        {timers.length > 0 ? (
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-            {timers.map((timer) => {
-              const session = timerSessions[timer.id]
-              const isSelected = selectedTimer?.id === timer.id
-              const status = getTimerStatus(timer)
-              const progress = getProgressPercentage(timer)
-              
-              return (
-                <div
-                  key={timer.id}
-                  onClick={() => selectTimer(timer.id)}
-                  className={`relative aspect-square p-3 rounded-lg border-2 cursor-pointer transition-all group ${
-                    isSelected 
-                      ? 'border-blue-500 bg-blue-900/30' 
-                      : 'border-gray-600 bg-gray-700 hover:border-gray-500'
-                  }`}
-                >
-                  {/* Delete Button */}
+              {/* Quick Messages */}
+              <div className="border-t border-gray-700 pt-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-semibold text-white">Quick Messages</h3>
                   <button
-                    onClick={(e) => deleteTimer(timer.id, e)}
-                    className="absolute -top-2 -right-2 w-6 h-6 bg-red-600 hover:bg-red-700 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    onClick={() => setShowMessageModal(true)}
+                    className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2"
                   >
-                    <Trash2 size={12} />
+                    <Settings className="w-4 h-4" />
+                    Manage
                   </button>
-                  
-                  <div className="h-full flex flex-col justify-between">
-                    <div>
-                      <h3 className="text-white font-semibold text-sm truncate mb-1">
-                        {timer.name}
-                      </h3>
-                      <p className="text-gray-300 text-xs truncate mb-2">
-                        {timer.presenter_name}
-                      </p>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <div className="text-center">
-                        <div className="text-lg font-mono text-white">
-                          {formatTime(session?.time_left || timer.duration)}
-                        </div>
-                        <div className={`text-xs font-semibold ${
-                          status === 'running' ? 'text-green-400' : 'text-red-400'
-                        }`}>
-                          {status.toUpperCase()}
-                        </div>
-                      </div>
-                      
-                      {/* Progress Bar */}
-                      <div className="w-full bg-gray-600 rounded-full h-1.5">
-                        <div 
-                          className="bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 h-1.5 rounded-full transition-all duration-300"
-                          style={{ width: `${Math.min(100, progress)}%` }}
-                        />
-                      </div>
-                    </div>
-                  </div>
                 </div>
-              )
-            })}
-          </div>
-        ) : (
-          <p className="text-gray-400">No timers created yet</p>
-        )}
-      </div>
-    </div>
-  )
-
-  const renderTimerOverview = () => (
-    <div className="space-y-6">
-      <h2 className="text-3xl font-bold text-white">Timer Overview</h2>
-      
-      {timers.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {timers.map((timer) => {
-            const session = timerSessions[timer.id]
-            const status = getTimerStatus(timer)
-            const progress = getProgressPercentage(timer)
-            
-            return (
-              <div
-                key={timer.id}
-                onClick={() => selectTimer(timer.id)}
-                className={`bg-gray-800 rounded-xl p-6 border-2 cursor-pointer transition-all ${
-                  selectedTimer?.id === timer.id 
-                    ? 'border-blue-500 bg-blue-900/20' 
-                    : 'border-gray-700 hover:border-gray-600'
-                }`}
-              >
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h3 className="text-xl font-semibold text-white mb-1">
-                      {timer.name}
-                    </h3>
-                    <p className="text-gray-300">
-                      Presenter: {timer.presenter_name}
-                    </p>
-                  </div>
-                  <div className={`px-3 py-1 rounded-full text-sm font-semibold ${
-                    status === 'running' 
-                      ? 'bg-green-600 text-white' 
-                      : 'bg-red-600 text-white'
-                  }`}>
-                    {status.toUpperCase()}
-                  </div>
-                </div>
-                
-                <div className="space-y-4">
-                  <div className="text-center">
-                    <div className="text-4xl font-mono font-bold text-white mb-2">
-                      {formatTime(session?.time_left || timer.duration)}
-                    </div>
-                    <div className="text-gray-400">
-                      of {formatTime(timer.duration)}
-                    </div>
-                  </div>
-                  
-                  {/* Progress Bar */}
-                  <div className="w-full bg-gray-700 rounded-full h-3">
-                    <div 
-                      className="bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 h-3 rounded-full transition-all duration-300"
-                      style={{ width: `${Math.min(100, progress)}%` }}
-                    />
-                  </div>
-                  
-                  <div className="text-sm text-gray-400">
-                    Created: {new Date(timer.created_at).toLocaleDateString()}
-                  </div>
+                <div className="grid grid-cols-2 gap-3">
+                  {quickMessages.map((msg) => (
+                    <button
+                      key={msg.id}
+                      onClick={() => sendMessage(msg.text)}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg text-left"
+                    >
+                      {msg.text}
+                    </button>
+                  ))}
                 </div>
               </div>
-            )
-          })}
-        </div>
-      ) : (
-        <div className="text-center py-12">
-          <Clock size={64} className="mx-auto text-gray-600 mb-4" />
-          <p className="text-xl text-gray-400">No timers created yet</p>
-          <p className="text-gray-500">Create your first timer in the Admin Dashboard</p>
+            </div>
+          )}
         </div>
       )}
-    </div>
-  )
 
-  const renderReports = () => (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-3xl font-bold text-white">Reports</h2>
-        <button
-          onClick={exportCSV}
-          className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg flex items-center gap-2"
-        >
-          <BarChart3 size={20} />
-          Export CSV
-        </button>
-      </div>
+      {/* Presenter View */}
+      {currentView === 'presenter' && (
+        <div className="min-h-screen flex flex-col items-center justify-center p-8 relative">
+          {selectedTimer ? (
+            <>
+             {/* Status Indicator */}
+             <div className="absolute top-8 right-8">
+               <div className={`w-4 h-4 rounded-full ${isRunning ? 'bg-green-500' : 'bg-red-500'} shadow-lg`}></div>
+             </div>
 
-      {/* Date Filters */}
-      <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-        <h3 className="text-xl font-semibold text-white mb-4">Filter by Date Range</h3>
-        <div className="flex gap-4 items-center">
-          <div>
-            <label className="block text-sm text-gray-300 mb-1">From</label>
-            <input
-              type="date"
-              value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
-              className="p-2 bg-gray-700 border border-gray-600 rounded text-white"
-            />
+             {/* Timer Info */}
+             <div className="text-center mb-8">
+               <h1 className="text-4xl font-bold text-white mb-2">{selectedTimer.name}</h1>
+               <p className="text-xl text-blue-300 flex items-center justify-center gap-2">
+                 <Users className="w-6 h-6" />
+                 {selectedTimer.presenter_name}
+               </p>
+             </div>
+
+             {/* Large Timer Display */}
+             <div className="text-center mb-8">
+               <div className="text-8xl md:text-9xl font-mono font-bold text-orange-400 mb-6">
+                 {formatTime(timeLeft)}
+               </div>
+               <div className="w-full max-w-4xl bg-gray-700 rounded-full h-6 mb-4">
+                 <div
+                   className="bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 h-6 rounded-full transition-all duration-1000"
+                   style={{ width: `${getProgressPercentage()}%` }}
+                 ></div>
+               </div>
+               <p className="text-2xl text-gray-300">
+                 {Math.round(getProgressPercentage())}% remaining
+               </p>
+             </div>
+
+             {/* Current Message Display */}
+             {messages && messages.length > 0 && (
+               <div className="bg-yellow-500/20 border border-yellow-500/50 rounded-xl p-6 mb-8 max-w-2xl">
+                 <div className="text-center">
+                   <div className="text-2xl mb-2">💬</div>
+                   <p className="text-xl text-yellow-100 font-medium">
+                     {messages[0].message}
+                   </p>
+                   <p className="text-sm text-yellow-200/70 mt-2">
+                     {new Date(messages[0].sent_at).toLocaleTimeString()}
+                   </p>
+                 </div>
+               </div>
+             )}
+
+             {/* Messages from Control - Floating Button */}
+             <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2">
+               <button
+                 onClick={() => setMessagesExpanded(!messagesExpanded)}
+                 className="bg-gray-800/80 backdrop-blur-sm hover:bg-gray-700/80 text-white px-6 py-3 rounded-full border border-gray-600 flex items-center gap-2 shadow-lg"
+               >
+                 <MessageSquare className="w-5 h-5" />
+                 Messages from Control
+                 <span className={`transform transition-transform ${messagesExpanded ? 'rotate-180' : ''}`}>
+                   ▼
+                 </span>
+               </button>
+
+               {/* Messages Popup */}
+               {messagesExpanded && (
+                 <div className="absolute bottom-full mb-4 left-1/2 transform -translate-x-1/2 w-96 bg-gray-800/90 backdrop-blur-sm rounded-xl border border-gray-600 shadow-xl">
+                   <div className="p-4">
+                     <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
+                       <MessageSquare className="w-5 h-5" />
+                       Messages from Control
+                     </h3>
+                     <div className="space-y-2 max-h-64 overflow-y-auto">
+                       {messages && messages.length > 0 ? (
+                         messages.slice(0, 5).map((message, index) => (
+                           <div key={index} className="bg-gray-700/50 rounded-lg p-3">
+                             <div className="flex items-start gap-2">
+                               <span className="text-lg">💬</span>
+                               <div className="flex-1">
+                                 <p className="text-white text-sm">{message.message}</p>
+                                 <p className="text-gray-400 text-xs mt-1">
+                                   {new Date(message.sent_at).toLocaleTimeString()}
+                                 </p>
+                               </div>
+                             </div>
+                           </div>
+                         ))
+                       ) : (
+                         <p className="text-gray-400 text-center py-4">No messages yet</p>
+                       )}
+                     </div>
+                   </div>
+                 </div>
+               )}
+             </div>
+           </>
+         ) : (
+           <div className="text-center">
+             <h1 className="text-4xl font-bold text-white mb-4">No Timer Selected</h1>
+             <p className="text-xl text-gray-300">Please select a timer from the Admin Dashboard</p>
+           </div>
+         )}
+       </div>
+     )}
+
+      {/* Timer Overview */}
+      {currentView === 'overview' && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-white mb-2">Timer Overview</h1>
+            <p className="text-gray-300">Monitor all active timers</p>
           </div>
-          <div>
-            <label className="block text-sm text-gray-300 mb-1">To</label>
-            <input
-              type="date"
-              value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
-              className="p-2 bg-gray-700 border border-gray-600 rounded text-white"
-            />
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {timers.map((timer) => {
+              const session = timerSessions[timer.id];
+              return (
+              <div key={timer.id} className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700">
+                {/* Status Indicator */}
+                <div className="flex justify-between items-start mb-3">
+                  <div className={`w-3 h-3 rounded-full ${session?.is_running ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                </div>
+                <h3 className="text-xl font-semibold text-white mb-2">{timer.name}</h3>
+                <p className="text-gray-300 mb-4">Presenter: {timer.presenter_name}</p>
+                <div className="text-3xl font-mono text-blue-400 mb-4">
+                  {(() => {
+                    if (!session) return formatTime(timer.duration);
+                    
+                    let timeLeft = session.time_left;
+                    if (session.is_running) {
+                      const now = new Date(currentTime);
+                      const lastUpdate = new Date(session.updated_at);
+                      const elapsedSinceUpdate = Math.floor((now - lastUpdate) / 1000);
+                      timeLeft = Math.max(0, session.time_left - elapsedSinceUpdate);
+                    }
+                    
+                    return formatTime(timeLeft);
+                  })()}
+                </div>
+                <div className="w-full bg-gray-700 rounded-full h-2">
+                  <div 
+                    className="bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 h-2 rounded-full transition-all duration-1000" 
+                    style={{ width: `${getProgressPercentageFromSession(session, timer.duration)}%` }}
+                  ></div>
+                </div>
+              </div>
+              );
+            })}
           </div>
-          <button
-            onClick={loadLogs}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded mt-6"
-          >
-            Apply Filter
-          </button>
         </div>
-      </div>
+      )}
 
-      {/* Summary Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-          <div className="flex items-center gap-3">
-            <Clock className="text-blue-400" size={24} />
-            <div>
-              <p className="text-2xl font-bold text-white">{timers.length}</p>
-              <p className="text-gray-400">Total Timers</p>
+      {/* Reports View */}
+      {currentView === 'reports' && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-white mb-2">Timer Reports</h1>
+            <p className="text-gray-300">View all timer activity and export data</p>
+          </div>
+
+          {/* Export Controls */}
+          <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700 mb-8">
+            <div className="flex flex-wrap items-center gap-4 mb-4">
+              <h2 className="text-xl font-semibold text-white">Export Data</h2>
+              <div className="flex items-center gap-2">
+                <label className="text-gray-300 text-sm">From:</label>
+                <input
+                  type="date"
+                  value={reportDateRange.start}
+                  onChange={(e) => setReportDateRange(prev => ({ ...prev, start: e.target.value }))}
+                  className="p-2 bg-gray-700 border border-gray-600 rounded text-white text-sm"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-gray-300 text-sm">To:</label>
+                <input
+                  type="date"
+                  value={reportDateRange.end}
+                  onChange={(e) => setReportDateRange(prev => ({ ...prev, end: e.target.value }))}
+                  className="p-2 bg-gray-700 border border-gray-600 rounded text-white text-sm"
+                />
+              </div>
+              <button
+                onClick={exportTimersCSV}
+                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2"
+              >
+                <FileText className="w-4 h-4" />
+                Export CSV
+              </button>
             </div>
+            <p className="text-gray-400 text-sm">
+              Export includes all timer creations and activity logs. Leave dates empty to export all data.
+            </p>
           </div>
-        </div>
-        <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-          <div className="flex items-center gap-3">
-            <BarChart3 className="text-green-400" size={24} />
-            <div>
-              <p className="text-2xl font-bold text-white">{logs.length}</p>
-              <p className="text-gray-400">Total Actions</p>
+
+          {/* Summary Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+            <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 border border-gray-700">
+              <h3 className="text-lg font-semibold text-white mb-2">Total Timers</h3>
+              <p className="text-3xl font-bold text-blue-400">{timers.length}</p>
             </div>
-          </div>
-        </div>
-        <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-          <div className="flex items-center gap-3">
-            <Play className="text-yellow-400" size={24} />
-            <div>
-              <p className="text-2xl font-bold text-white">
-                {Object.values(timerSessions).filter(s => s.is_running).length}
+            <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 border border-gray-700">
+              <h3 className="text-lg font-semibold text-white mb-2">Total Actions</h3>
+              <p className="text-3xl font-bold text-green-400">{allTimerLogs.length}</p>
+            </div>
+            <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 border border-gray-700">
+              <h3 className="text-lg font-semibold text-white mb-2">Active Sessions</h3>
+              <p className="text-3xl font-bold text-orange-400">
+                {Object.values(timerSessions).filter(session => session?.is_running).length}
               </p>
-              <p className="text-gray-400">Active Sessions</p>
             </div>
-          </div>
-        </div>
-        <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-          <div className="flex items-center gap-3">
-            <Users className="text-purple-400" size={24} />
-            <div>
-              <p className="text-2xl font-bold text-white">
-                {new Set(timers.map(t => t.presenter_name)).size}
+            <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 border border-gray-700">
+              <h3 className="text-lg font-semibold text-white mb-2">Total Presenters</h3>
+              <p className="text-3xl font-bold text-purple-400">
+                {new Set(timers.map(timer => timer.presenter_name)).size}
               </p>
-              <p className="text-gray-400">Unique Presenters</p>
+            </div>
+          </div>
+
+          {/* Timers Table */}
+          <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700 mb-8">
+            <div className="p-6 border-b border-gray-700">
+              <h2 className="text-xl font-semibold text-white">All Timers</h2>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-700/50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                      Timer Name
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                      Presenter
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                      Duration
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                      Created
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-700">
+                  {timers.map((timer) => {
+                    const session = timerSessions[timer.id];
+                    return (
+                      <tr key={timer.id} className="hover:bg-gray-700/30">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">
+                          {timer.name}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                          {timer.presenter_name}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                          {Math.round(timer.duration / 60)} minutes
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            session?.is_running 
+                              ? 'bg-green-100 text-green-800' 
+                              : 'bg-red-100 text-red-800'
+                          }`}>
+                            {session?.is_running ? 'Running' : 'Stopped'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                          {new Date(timer.created_at).toLocaleDateString()}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Activity Log */}
+          <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700">
+            <div className="p-6 border-b border-gray-700">
+              <h2 className="text-xl font-semibold text-white">Recent Activity</h2>
+            </div>
+            <div className="overflow-x-auto max-h-96 overflow-y-auto">
+              <table className="w-full">
+                <thead className="bg-gray-700/50 sticky top-0">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                      Timer
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                      Action
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                      Time Value
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                      Notes
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                      Date
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-700">
+                  {allTimerLogs.slice(0, 100).map((log, index) => (
+                    <tr key={index} className="hover:bg-gray-700/30">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">
+                        {log.timers?.name || 'Unknown Timer'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300 capitalize">
+                        {log.action}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-400">
+                        {log.time_value ? formatTime(log.time_value) : '-'}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-300 max-w-xs truncate">
+                        {log.notes || '-'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                        {new Date(log.created_at).toLocaleString()}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
-      {/* All Timers Table */}
-      <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-        <h3 className="text-xl font-semibold text-white mb-4">All Timers</h3>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="border-b border-gray-700">
-                <th className="pb-3 text-gray-300">Name</th>
-                <th className="pb-3 text-gray-300">Presenter</th>
-                <th className="pb-3 text-gray-300">Duration</th>
-                <th className="pb-3 text-gray-300">Status</th>
-                <th className="pb-3 text-gray-300">Created</th>
-              </tr>
-            </thead>
-            <tbody>
-              {timers.map((timer) => (
-                <tr key={timer.id} className="border-b border-gray-700">
-                  <td className="py-3 text-white">{timer.name}</td>
-                  <td className="py-3 text-gray-300">{timer.presenter_name}</td>
-                  <td className="py-3 text-gray-300">{formatTime(timer.duration)}</td>
-                  <td className="py-3">
-                    <span className={`px-2 py-1 rounded text-sm ${
-                      getTimerStatus(timer) === 'running' 
-                        ? 'bg-green-600 text-white' 
-                        : 'bg-red-600 text-white'
-                    }`}>
-                      {getTimerStatus(timer)}
-                    </span>
-                  </td>
-                  <td className="py-3 text-gray-300">
-                    {new Date(timer.created_at).toLocaleDateString()}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {/* Create Timer Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-gray-800 rounded-xl p-6 w-full max-w-md border border-gray-700">
+            <h2 className="text-2xl font-bold text-white mb-6">Create New Timer</h2>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Timer Name
+                </label>
+                <input
+                  type="text"
+                  value={newTimerName}
+                  onChange={(e) => setNewTimerName(e.target.value)}
+                  className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400"
+                  placeholder="e.g., Keynote Presentation"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Presenter Name
+                </label>
+                <input
+                  type="text"
+                  value={newTimerPresenter}
+                  onChange={(e) => setNewTimerPresenter(e.target.value)}
+                  className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400"
+                  placeholder="e.g., John Doe"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Duration (minutes)
+                </label>
+                <input
+                  type="number"
+                  value={newTimerDuration}
+                  onChange={(e) => setNewTimerDuration(e.target.value)}
+                  className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                  placeholder="5"
+                  min="1"
+                  max="180"
+                />
+              </div>
+            </div>
+            
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setShowCreateModal(false)}
+                className="flex-1 bg-gray-600 hover:bg-gray-700 text-white px-4 py-3 rounded-lg font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={createTimer}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg font-medium"
+              >
+                Create Timer
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Activity Log */}
-      <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-        <h3 className="text-xl font-semibold text-white mb-4">Activity Log</h3>
-        <div className="overflow-x-auto max-h-96 overflow-y-auto">
-          <table className="w-full text-left">
-            <thead className="sticky top-0 bg-gray-800">
-              <tr className="border-b border-gray-700">
-                <th className="pb-3 text-gray-300">Date</th>
-                <th className="pb-3 text-gray-300">Timer</th>
-                <th className="pb-3 text-gray-300">Action</th>
-                <th className="pb-3 text-gray-300">Time Value</th>
-                <th className="pb-3 text-gray-300">Notes</th>
-              </tr>
-            </thead>
-            <tbody>
-              {logs.map((log) => (
-                <tr key={log.id} className="border-b border-gray-700">
-                  <td className="py-2 text-gray-300 text-sm">
-                    {new Date(log.created_at).toLocaleString()}
-                  </td>
-                  <td className="py-2 text-white text-sm">
-                    {log.timers?.name || 'Unknown'}
-                  </td>
-                  <td className="py-2 text-gray-300 text-sm capitalize">
-                    {log.action}
-                  </td>
-                  <td className="py-2 text-gray-300 text-sm">
-                    {log.time_value ? formatTime(log.time_value) : '-'}
-                  </td>
-                  <td className="py-2 text-gray-300 text-sm">
-                    {log.notes || '-'}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {/* QR Code Modal */}
+      {showQRModal && selectedTimer && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-gray-800 rounded-xl p-6 w-full max-w-md border border-gray-700">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                <QrCode className="w-6 h-6" />
+                Share Presenter View
+              </h2>
+              <button
+                onClick={() => setShowQRModal(false)}
+                className="text-gray-400 hover:text-white text-2xl leading-none"
+              >
+                ×
+              </button>
+            </div>
+            
+            <div className="text-center mb-6">
+              <div className="bg-white p-4 rounded-lg mb-4 inline-block">
+                <div className="w-48 h-48 bg-gray-200 flex items-center justify-center text-gray-600">
+                  QR Code for:<br/>
+                  {generatePresenterUrl()}
+                </div>
+              </div>
+              <p className="text-gray-300 text-sm mb-4">
+                Scan this QR code or use the link below to open the presenter view on another device
+              </p>
+              <div className="bg-gray-700 p-3 rounded-lg mb-4">
+                <code className="text-green-400 text-xs break-all">
+                  {generatePresenterUrl()}
+                </code>
+              </div>
+            </div>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={() => navigator.clipboard.writeText(generatePresenterUrl())}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg font-medium"
+              >
+                Copy Link
+              </button>
+              <button
+                onClick={openPresenterView}
+                className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-lg font-medium"
+              >
+                Open Now
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
-  )
+      )}
 
-  return (
-    <div className="min-h-screen bg-gray-900">
-      {/* Navigation */}
-      <nav className="bg-gray-800 border-b border-gray-700">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="flex space-x-8">
+      {/* Timer Logs Modal */}
+      {showLogsModal && selectedTimer && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-gray-800 rounded-xl p-6 w-full max-w-2xl border border-gray-700 max-h-[80vh] overflow-hidden">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                <FileText className="w-6 h-6" />
+                Timer Logs - {selectedTimer.name}
+              </h2>
+              <button
+                onClick={() => setShowLogsModal(false)}
+                className="text-gray-400 hover:text-white text-2xl leading-none"
+              >
+                ×
+              </button>
+            </div>
+            
+            <div className="overflow-y-auto max-h-96">
+              {timerLogs.length > 0 ? (
+                <div className="space-y-2">
+                  {timerLogs.map((log, index) => (
+                    <div key={index} className="bg-gray-700/50 rounded-lg p-3">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <span className="text-white font-medium capitalize">{log.action}</span>
+                          {log.time_value && (
+                            <span className="text-blue-400 ml-2">
+                              {formatTime(log.time_value)}
+                            </span>
+                          )}
+                          {log.notes && (
+                            <p className="text-gray-300 text-sm mt-1">{log.notes}</p>
+                          )}
+                        </div>
+                        <span className="text-gray-400 text-xs">
+                          {new Date(log.created_at).toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-400 text-center py-8">No logs available for this timer</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Message Settings Modal */}
+      {showMessageModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-gray-800 rounded-xl p-6 w-full max-w-lg border border-gray-700">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                <Settings className="w-6 h-6" />
+                Message Settings
+              </h2>
+              <button
+                onClick={() => setShowMessageModal(false)}
+                className="text-gray-400 hover:text-white text-2xl leading-none"
+              >
+                ×
+              </button>
+            </div>
+            
+            {/* Add New Message */}
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-white mb-3">Add New Quick Message</h3>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  className="flex-1 p-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400"
+                  placeholder="e.g., 🔔 2 minutes left"
+                />
+                <button
+                  onClick={addQuickMessage}
+                  className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-3 rounded-lg"
+                >
+                  <Plus className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Current Messages */}
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-white mb-3">Current Quick Messages</h3>
+              <div className="space-y-2">
+                {quickMessages.map((msg) => (
+                  <div key={msg.id} className="flex items-center justify-between bg-gray-700/50 rounded-lg p-3">
+                    <span className="text-white">{msg.text}</span>
+                    <button
+                      onClick={() => removeQuickMessage(msg.id)}
+                      className="text-red-400 hover:text-red-300 p-1"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Reset Button */}
             <button
-              onClick={() => setActiveTab('admin')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'admin'
-                  ? 'border-blue-500 text-blue-400'
-                  : 'border-transparent text-gray-300 hover:text-gray-200'
-              }`}
+              onClick={resetToDefaults}
+              className="w-full bg-gray-600 hover:bg-gray-700 text-white px-4 py-3 rounded-lg font-medium flex items-center justify-center gap-2"
             >
-              Admin Dashboard
-            </button>
-            <button
-              onClick={() => setActiveTab('overview')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'overview'
-                  ? 'border-blue-500 text-blue-400'
-                  : 'border-transparent text-gray-300 hover:text-gray-200'
-              }`}
-            >
-              Timer Overview
-            </button>
-            <button
-              onClick={() => setActiveTab('reports')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'reports'
-                  ? 'border-blue-500 text-blue-400'
-                  : 'border-transparent text-gray-300 hover:text-gray-200'
-              }`}
-            >
-              Reports
+              <RotateCcw className="w-5 h-5" />
+              Reset to Defaults
             </button>
           </div>
         </div>
-      </nav>
-
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 py-8">
-        {activeTab === 'admin' && renderAdminDashboard()}
-        {activeTab === 'overview' && renderTimerOverview()}
-        {activeTab === 'reports' && renderReports()}
-      </main>
+      )}
     </div>
   )
 }
