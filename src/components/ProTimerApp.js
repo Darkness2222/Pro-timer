@@ -374,6 +374,9 @@ export default function ProTimerApp({ session, bypassAuth }) {
       try {
         try {
           const { data, error } = await supabase
+      } catch (error) {
+        console.error('Error selecting timer:', error)
+      }
             .from('timer_sessions')
             .select('*')
             .eq('timer_id', timer.id)
@@ -581,6 +584,10 @@ export default function ProTimerApp({ session, bypassAuth }) {
         } catch (error) {
           console.error('Error unsubscribing:', error)
         }
+      } catch (error) {
+        console.error('Error deleting timer:', error)
+        alert('Failed to delete timer. Please try again.')
+      }
     
     let currentTimeLeft = session.time_left
     if (session.is_running) {
