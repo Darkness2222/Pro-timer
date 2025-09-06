@@ -729,7 +729,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
               {/* Timer Display */}
               <div className="text-center mb-6">
                 <div className="text-6xl font-mono font-bold text-orange-400 mb-4">
-                  {formatTime(timeLeft)}
+                  {Math.round(((duration - timeLeft) / duration) * 100)}% Elapsed
                 </div>
                 <div className="w-full bg-gray-700 rounded-full h-4 mb-4">
                   <div
