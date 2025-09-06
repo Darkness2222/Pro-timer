@@ -7,7 +7,6 @@ function App() {
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(true)
   const [bypassAuth, setBypassAuth] = useState(false)
-  const [initialLoad, setInitialLoad] = useState(true)
 
   useEffect(() => {
     if (bypassAuth) {
@@ -22,18 +21,16 @@ function App() {
       }
       setSession(session)
       setLoading(false)
-      setInitialLoad(false)
     })
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!initialLoad) {
-        setSession(session)
-      }
+      console.log('Auth state changed:', _event, session)
+      setSession(session)
     })
 
     return () => subscription.unsubscribe()
-  }, [bypassAuth, initialLoad])
+  }, [bypassAuth])
 
   if (loading) {
     return (
