@@ -738,7 +738,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
                   ></div>
                 </div>
                 <p className="text-gray-300">
-                  {Math.round(getProgressPercentage())}% remaining
+                  {Math.round(getProgressPercentage())}% elapsed
                 </p>
               </div>
 
@@ -936,7 +936,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
                  ></div>
                </div>
                <p className="text-2xl text-gray-300">
-                 {Math.round(getProgressPercentage())}% remaining
+                 {Math.round(getProgressPercentage())}% elapsed
                </p>
              </div>
 
