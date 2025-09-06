@@ -3,7 +3,6 @@ import { supabase } from '../lib/supabase'
 
 export default function ProTimerApp({ session, bypassAuth }) {
   const [activeTab, setActiveTab] = useState('overview')
-  const [timers, setTimers] = useState([])
   const [selectedTimer, setSelectedTimer] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
