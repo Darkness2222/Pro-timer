@@ -5,6 +5,7 @@ import { Play, Pause, Square, RotateCcw, Settings, MessageSquare, Plus, Minus, C
 export default function ProTimerApp({ session, bypassAuth }) {
   const [currentView, setCurrentView] = useState('admin')
   const [selectedTimer, setSelectedTimer] = useState(null)
+  const [activeTab, setActiveTab] = useState('overview')
   const [timers, setTimers] = useState([])
   const [loading, setLoading] = useState(true)
   const [showCreateModal, setShowCreateModal] = useState(false)
