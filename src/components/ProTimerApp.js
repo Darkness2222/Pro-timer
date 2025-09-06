@@ -17,6 +17,15 @@ export default function ProTimerApp({ session, bypassAuth }) {
   const [messages, setMessages] = useState([])
   const [timerSessions, setTimerSessions] = useState({})
   const [timerLogs, setTimerLogs] = useState([])
+  const handleLogout = async () => {
+    if (session && !bypassAuth) {
+      await supabase.auth.signOut()
+    } else {
+      // For bypassed auth, we need to communicate back to App.js
+      window.location.reload()
+    }
+  }
+
   const handleLogout = () => {
     if (session) {
       supabase.auth.signOut()
