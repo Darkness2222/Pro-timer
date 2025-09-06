@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
-import { Timer, Settings, BarChart3, LogOut } from 'lucide-react'
+import { Timer, Play, Pause, Square, RotateCcw, Maximize, Settings, LogOut } from 'lucide-react'
 import { Play, Pause, Square, RotateCcw, Settings, MessageSquare, Plus, Minus, Clock, Users, Timer as TimerIcon, QrCode, ExternalLink, FileText } from 'lucide-react'
 
 export default function ProTimerApp({ session, bypassAuth }) {
