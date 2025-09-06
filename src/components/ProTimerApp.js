@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
+import { Timer, Settings, BarChart3, LogOut } from 'lucide-react'
 import { Play, Pause, Square, RotateCcw, Settings, MessageSquare, Plus, Minus, Clock, Users, Timer as TimerIcon, QrCode, ExternalLink, FileText } from 'lucide-react'
 
 export default function ProTimerApp({ session, bypassAuth }) {
@@ -597,7 +598,14 @@ export default function ProTimerApp({ session, bypassAuth }) {
       {/* Navigation */}
       <nav className="bg-gray-800/50 backdrop-blur-sm border-b border-gray-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
+          <div className="flex items-center gap-3">
+            <img 
+              src="/synccue-logo.png" 
+              alt="SyncCue" 
+              className="h-8 w-auto"
+            />
+            <h1 className="text-2xl font-bold">SyncCue Pro</h1>
+          </div>
             <div className="flex space-x-8">
               <button
                 onClick={() => setCurrentView('admin')}
@@ -956,7 +964,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
              )}
 
              {/* Messages from Control - Floating Button */}
-             <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2">
+              className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg text-sm flex items-center gap-2"
                <button
                  onClick={() => setMessagesExpanded(!messagesExpanded)}
                  className="bg-gray-800/80 backdrop-blur-sm hover:bg-gray-700/80 text-white px-6 py-3 rounded-full border border-gray-600 flex items-center gap-2 shadow-lg"
@@ -1464,6 +1472,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
               onClick={resetToDefaults}
               className="w-full bg-gray-600 hover:bg-gray-700 text-white px-4 py-3 rounded-lg font-medium flex items-center justify-center gap-2"
             >
+              <LogOut size={16} />
               <RotateCcw className="w-5 h-5" />
               Reset to Defaults
             </button>
