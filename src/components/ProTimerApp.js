@@ -47,6 +47,15 @@ export default function ProTimerApp({ session, bypassAuth }) {
   ])
   const [overrideTime, setOverrideTime] = useState('')
   const [showOverride, setShowOverride] = useState(false)
+  
+  // Form states
+  const [newTimerName, setNewTimerName] = useState('')
+  const [newTimerPresenter, setNewTimerPresenter] = useState('')
+  const [newTimerDuration, setNewTimerDuration] = useState('')
+  const [newMessage, setNewMessage] = useState('')
+  
+  const intervalRef = useRef(null)
+
   // Load timers on component mount
   useEffect(() => {
     loadTimers()
