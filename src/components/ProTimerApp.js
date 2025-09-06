@@ -196,6 +196,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
   }
 
   const selectTimer = async (timer) => {
+    console.log('Timer clicked:', timer)
     setSelectedTimer(timer)
     setTimeLeft(timer.duration)
     setIsRunning(false)
@@ -253,6 +254,12 @@ export default function ProTimerApp({ session, bypassAuth }) {
       // Reload logs after deletion
       loadAllTimerLogs()
     } catch (error) {
+  // Add error boundary to catch and handle errors
+  const handleError = (error) => {
+    console.error('ProTimerApp error:', error)
+    // Don't redirect to auth on errors, just log them
+  }
+
       console.error('Error deleting timer:', error)
       alert('Error deleting timer: ' + error.message)
     }
@@ -361,17 +368,26 @@ export default function ProTimerApp({ session, bypassAuth }) {
     logTimerAction('adjust', newTime, seconds, `${seconds > 0 ? 'Added' : 'Removed'} ${Math.abs(seconds)} seconds`)
     
     // Update session in database
+      if (!timer?.id) return
+      
     if (selectedTimer) {
       try {
-        await supabase
-          .from('timer_sessions')
-          .upsert({
-            timer_id: selectedTimer.id,
-            time_left: newTime,
-            is_running: isRunning,
-            updated_at: new Date().toISOString()
-          }, { onConflict: 'timer_id' })
+        try {
+          const { data, error } = await supabase
       } catch (error) {
+        console.error('Error selecting timer:', error)
+      }
+            .from('timer_sessions')
+            .select('*')
+            .eq('timer_id', timer.id)
+            .single()
+
+          if (data && !error) {
+            setCurrentTime(data.time_left || timer.duration)
+            setIsRunning(data.is_running || false)
+          }
+        } catch (error) {
+          console.error('Error fetching timer session:', error)
         console.error('Error updating session:', error)
       }
     }
@@ -549,17 +565,29 @@ export default function ProTimerApp({ session, bypassAuth }) {
       const elapsedSinceUpdate = Math.floor((now - lastUpdate) / 1000)
       const calculatedTimeLeft = Math.max(0, session.time_left - elapsedSinceUpdate)
       return formatTime(calculatedTimeLeft)
-    }
-    
-    return formatTime(session.time_left)
-  }
+          (payload) => {
+            try {
+              if (payload.new) {
+                setCurrentTime(payload.new.time_left || timer.duration)
+                setIsRunning(payload.new.is_running || false)
+              }
+            } catch (error) {
+              console.error('Error handling timer session update:', error)
   const getProgressPercentage = () => {
     if (!selectedTimer) return 0
     return ((selectedTimer.duration - timeLeft) / selectedTimer.duration) * 100
   }
 
   const getProgressPercentageFromSession = (session, originalDuration) => {
-    if (!session) return 0
+        try {
+          subscription.unsubscribe()
+        } catch (error) {
+          console.error('Error unsubscribing:', error)
+        }
+      } catch (error) {
+        console.error('Error deleting timer:', error)
+        alert('Failed to delete timer. Please try again.')
+      }
     
     let currentTimeLeft = session.time_left
     if (session.is_running) {
