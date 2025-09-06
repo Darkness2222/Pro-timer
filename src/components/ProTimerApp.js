@@ -651,6 +651,12 @@ export default function ProTimerApp({ session, bypassAuth }) {
                 <FileText className="w-4 h-4 mr-2" />
                 Reports
               </button>
+              <button
+                onClick={handleLogout}
+                className="px-4 py-2 text-red-400 hover:text-red-300 hover:bg-red-900/20 rounded-lg transition-colors"
+              >
+                Log out
+              </button>
             </div>
           </div>
         </div>
