@@ -17,6 +17,14 @@ export default function ProTimerApp({ session, bypassAuth }) {
   const [messages, setMessages] = useState([])
   const [timerSessions, setTimerSessions] = useState({})
   const [timerLogs, setTimerLogs] = useState([])
+  const handleLogout = () => {
+    if (session) {
+      supabase.auth.signOut()
+    } else if (bypassAuth && window.location.reload) {
+      window.location.reload()
+    }
+  }
+
   const [showQRModal, setShowQRModal] = useState(false)
   const [showLogsModal, setShowLogsModal] = useState(false)
   const [currentTime, setCurrentTime] = useState(Date.now())
@@ -738,7 +746,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
                   ></div>
                 </div>
                 <p className="text-gray-300">
-                  {Math.round(getProgressPercentage())}% elapsed
+                  {Math.round(getProgressPercentage())}% remaining
                 </p>
               </div>
 
@@ -936,7 +944,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
                  ></div>
                </div>
                <p className="text-2xl text-gray-300">
-                 {Math.round(getProgressPercentage())}% elapsed
+                 {Math.round(getProgressPercentage())}% remaining
                </p>
              </div>
 
