@@ -17,23 +17,6 @@ export default function ProTimerApp({ session, bypassAuth }) {
   const [messages, setMessages] = useState([])
   const [timerSessions, setTimerSessions] = useState({})
   const [timerLogs, setTimerLogs] = useState([])
-  const handleLogout = async () => {
-    if (session && !bypassAuth) {
-      await supabase.auth.signOut()
-    } else {
-      // For bypassed auth, we need to communicate back to App.js
-      window.location.reload()
-    }
-  }
-
-  const handleLogout = () => {
-    if (session) {
-      supabase.auth.signOut()
-    } else if (bypassAuth && window.location.reload) {
-      window.location.reload()
-    }
-  }
-
   const [showQRModal, setShowQRModal] = useState(false)
   const [showLogsModal, setShowLogsModal] = useState(false)
   const [currentTime, setCurrentTime] = useState(Date.now())
@@ -660,12 +643,6 @@ export default function ProTimerApp({ session, bypassAuth }) {
                 <FileText className="w-4 h-4 mr-2" />
                 Reports
               </button>
-              <button
-                onClick={handleLogout}
-                className="px-4 py-2 text-red-400 hover:text-red-300 hover:bg-red-900/20 rounded-lg transition-colors"
-              >
-                Log out
-              </button>
             </div>
           </div>
         </div>
@@ -761,7 +738,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
                   ></div>
                 </div>
                 <p className="text-gray-300">
-                  {Math.round(getProgressPercentage())}% remaining
+                  {Math.round(getProgressPercentage())}% elapsed
                 </p>
               </div>
 
@@ -959,7 +936,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
                  ></div>
                </div>
                <p className="text-2xl text-gray-300">
-                 {Math.round(getProgressPercentage())}% remaining
+                 {Math.round(getProgressPercentage())}% elapsed
                </p>
              </div>
 
