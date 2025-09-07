@@ -180,6 +180,8 @@ export default function ProTimerApp({ session, bypassAuth }) {
       setLoading(false)
     }
   }
+    }
+  }
 
   const loadTimerLogs = async (timerId) => {
     try {
