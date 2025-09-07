@@ -629,12 +629,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
       } catch (error) {
         console.error('Error pausing timer:', error)
       }
-      if (error) {
-        console.error('Error resetting timer:', error)
-        return
-      }
     
-    // If the selected timer is running, pause it locally too
       try {
         await logTimerAction(timerId, 'reset', 0)
       } catch (logError) {
@@ -642,7 +637,6 @@ export default function ProTimerApp({ session, bypassAuth }) {
         // Don't throw here, reset was successful
       }
       setIsRunning(false)
-      logTimerAction('pause', timeLeft)
     }
     
     // Update timer sessions
