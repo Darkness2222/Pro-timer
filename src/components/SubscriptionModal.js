@@ -1,60 +1,48 @@
 import React, { useState } from 'react'
 import { X, Crown, Check, Loader2 } from 'lucide-react'
-import stripePromise from '../lib/stripe'
+import { products } from '../stripe-config'
 import { supabase } from '../lib/supabase'
 
 export default function SubscriptionModal({ isOpen, onClose, session }) {
   const [loading, setLoading] = useState(false)
-  const [selectedPlan, setSelectedPlan] = useState('monthly')
+  const [selectedPlan, setSelectedPlan] = useState(products[1]?.priceId || '')
 
-  const plans = {
-    monthly: {
-      name: 'Pro Monthly',
-      price: '$9.99',
-      priceId: 'price_monthly_test', // Replace with actual Stripe price ID
-      interval: 'month'
-    },
-    yearly: {
-      name: 'Pro Yearly',
-      price: '$99.99',
-      priceId: 'price_yearly_test', // Replace with actual Stripe price ID
-      interval: 'year',
-      savings: 'Save 17%'
-    }
-  }
+  const planOptions = products.map(product => ({
+    ...product,
+    displayPrice: product.name === 'Yearly' ? 'C$99.00' : 'C$9.99',
+    interval: product.name === 'Yearly' ? 'year' : 'month',
+    savings: product.name === 'Yearly' ? 'Save 17%' : null
+  }))
 
   const handleSubscribe = async () => {
     if (!session?.user) {
-      alert('Please sign in to subscribe')
+      console.error('No user session found')
       return
     }
 
     setLoading(true)
     
     try {
-      const stripe = await stripePromise
-      
-      // Create checkout session via Supabase Edge Function
-      const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+      const { data, error } = await supabase.functions.invoke('stripe-checkout', {
         body: {
-          priceId: plans[selectedPlan].priceId,
-          userId: session.user.id,
-          userEmail: session.user.email
+          price_id: selectedPlan,
+          mode: 'subscription',
+          success_url: `${window.location.origin}/app?success=true`,
+          cancel_url: `${window.location.origin}/app?canceled=true`
         }
       })
 
       if (error) throw error
 
-      // Redirect to Stripe Checkout
-      const { error: stripeError } = await stripe.redirectToCheckout({
-        sessionId: data.sessionId
-      })
-
-      if (stripeError) throw stripeError
+      if (data?.url) {
+        window.location.href = data.url
+      } else {
+        throw new Error('No checkout URL received')
+      }
 
     } catch (error) {
       console.error('Subscription error:', error)
-      alert('Failed to start subscription process. Please try again.')
+      // You could add a toast notification here instead of alert
     } finally {
       setLoading(false)
     }
@@ -100,23 +88,23 @@ export default function SubscriptionModal({ isOpen, onClose, session }) {
         </div>
 
         <div className="space-y-3 mb-6">
-          {Object.entries(plans).map(([key, plan]) => (
+          {planOptions.map((plan) => (
             <div
-              key={key}
+              key={plan.priceId}
               className={`p-4 rounded-lg border cursor-pointer transition-colors ${
-                selectedPlan === key
+                selectedPlan === plan.priceId
                   ? 'border-blue-500 bg-blue-500 bg-opacity-10'
                   : 'border-gray-600 hover:border-gray-500'
               }`}
-              onClick={() => setSelectedPlan(key)}
+              onClick={() => setSelectedPlan(plan.priceId)}
             >
               <div className="flex justify-between items-center">
                 <div>
                   <div className="text-white font-medium">{plan.name}</div>
-                  <div className="text-gray-400 text-sm">Billed {plan.interval}ly</div>
+                  <div className="text-gray-400 text-sm">{plan.description}</div>
                 </div>
                 <div className="text-right">
-                  <div className="text-white font-bold">{plan.price}</div>
+                  <div className="text-white font-bold">{plan.displayPrice}</div>
                   {plan.savings && (
                     <div className="text-green-400 text-xs">{plan.savings}</div>
                   )}

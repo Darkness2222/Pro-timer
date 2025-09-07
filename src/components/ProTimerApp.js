@@ -1,7 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
+import { getProductByPriceId } from '../stripe-config'
 import { Play, Pause, Square, RotateCcw, Settings, MessageSquare, Plus, Minus, Clock, Users, Timer as TimerIcon, QrCode, ExternalLink, FileText, Crown, User, LogOut } from 'lucide-react'
 import SubscriptionModal from './SubscriptionModal'
+import SuccessPage from './SuccessPage'
 
 export default function ProTimerApp({ session, bypassAuth }) {
   const [currentView, setCurrentView] = useState('admin')
@@ -12,6 +14,44 @@ export default function ProTimerApp({ session, bypassAuth }) {
   const [showMessageModal, setShowMessageModal] = useState(false)
   const [messagesExpanded, setMessagesExpanded] = useState(false)
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false)
+  const [subscription, setSubscription] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [showSuccess, setShowSuccess] = useState(false)
+
+  // Check for success parameter in URL
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search)
+    if (urlParams.get('success') === 'true') {
+      setShowSuccess(true)
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname)
+    }
+  }, [])
+
+  const fetchSubscription = useCallback(async () => {
+    if (!session?.user && !bypassAuth) return
+    
+    try {
+      const { data, error } = await supabase
+        .from('stripe_user_subscriptions')
+        .select('*')
+        .maybeSingle()
+
+      if (error) {
+        console.error('Error fetching subscription:', error)
+      } else {
+        setSubscription(data)
+      }
+    } catch (error) {
+      console.error('Error:', error)
+    } finally {
+      setLoading(false)
+    }
+  }, [session?.user, bypassAuth])
+
+  useEffect(() => {
+    fetchSubscription()
+  }, [fetchSubscription])
   const [userProfile, setUserProfile] = useState(null)
   
   // Timer state
@@ -594,6 +634,27 @@ export default function ProTimerApp({ session, bypassAuth }) {
     try {
       await supabase.auth.signOut()
     } catch (error) {
+  const handleSuccessContinue = () => {
+    setShowSuccess(false)
+    fetchSubscription() // Refresh subscription data
+  }
+
+  const getSubscriptionDisplayName = () => {
+    if (!subscription?.price_id) return 'Free Plan'
+    
+    const product = getProductByPriceId(subscription.price_id)
+    return product ? `${product.name} Plan` : 'Pro Plan'
+  }
+
+  const isProUser = () => {
+    return subscription?.subscription_status === 'active' || 
+           subscription?.subscription_status === 'trialing'
+  }
+
+  if (showSuccess) {
+    return <SuccessPage onContinue={handleSuccessContinue} />
+  }
+
       console.error('Error signing out:', error)
     }
   }
@@ -664,6 +725,18 @@ export default function ProTimerApp({ session, bypassAuth }) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex space-x-8">
+            {loading ? (
+              <div className="text-gray-400 text-sm">Loading...</div>
+            ) : (
+              <div className="text-sm text-gray-300">
+                {getSubscriptionDisplayName()}
+                {isProUser() && (
+                  <span className="ml-2 px-2 py-1 bg-yellow-600 text-yellow-100 rounded-full text-xs">
+                    PRO
+                  </span>
+                )}
+              </div>
+            )}
               <button
                 onClick={() => setCurrentView('admin')}
                 className={`inline-flex items-center px-4 py-2 border-b-2 text-sm font-medium ${
@@ -1454,12 +1527,14 @@ export default function ProTimerApp({ session, bypassAuth }) {
                 Copy Link
               </button>
               <button
-                onClick={openPresenterView}
-                className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-lg font-medium"
+            {!isProUser() && (
+              <button
+                onClick={() => setShowSubscriptionModal(true)}
+                className="bg-yellow-600 hover:bg-yellow-700 px-4 py-2 rounded-lg text-sm font-medium"
               >
-                Open Now
+                Upgrade to Pro
               </button>
-            </div>
+            )}
           </div>
         </div>
       )}
@@ -1480,6 +1555,17 @@ export default function ProTimerApp({ session, bypassAuth }) {
                 ×
               </button>
             </div>
+          {isProUser() ? (
+            <div className="bg-green-900 border border-green-700 rounded-lg p-6 mb-8">
+              <h3 className="text-green-100 text-lg font-medium mb-2">
+                🎉 Pro Features Unlocked!
+              </h3>
+              <p className="text-green-200">
+                You now have access to all professional timer features including remote sync, 
+                custom cues, and priority support.
+              </p>
+            </div>
+          ) : (
             
             <div className="overflow-y-auto max-h-96">
               {timerLogs.length > 0 ? (
@@ -1571,6 +1657,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
             {/* Reset Button */}
             <button
               onClick={resetToDefaults}
+          )}
               className="w-full bg-gray-600 hover:bg-gray-700 text-white px-4 py-3 rounded-lg font-medium flex items-center justify-center gap-2"
             >
               <RotateCcw className="w-5 h-5" />

@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { AlertCircle, CheckCircle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
 export default function Auth() {
@@ -6,19 +7,27 @@ export default function Auth() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isSignUp, setIsSignUp] = useState(false)
+  const [message, setMessage] = useState('')
+  const [messageType, setMessageType] = useState('') // 'success' or 'error'
 
   const handleAuth = async (e) => {
     e.preventDefault()
     setLoading(true)
+    setMessage('')
 
     try {
       if (isSignUp) {
         const { error } = await supabase.auth.signUp({
           email,
           password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/app`
+          }
         })
         if (error) throw error
-        alert('Check your email for the confirmation link!')
+        setMessage('Account created successfully! You can now sign in.')
+        setMessageType('success')
+        setIsSignUp(false)
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email,
@@ -27,7 +36,8 @@ export default function Auth() {
         if (error) throw error
       }
     } catch (error) {
-      alert(error.message)
+      setMessage(error.message)
+      setMessageType('error')
     } finally {
       setLoading(false)
     }
@@ -39,6 +49,21 @@ export default function Auth() {
         <h2 className="text-3xl font-bold text-white text-center mb-8">
           {isSignUp ? 'Sign Up for' : 'Sign In to'} SyncCue Pro
         </h2>
+        
+        {message && (
+          <div className={`mb-6 p-4 rounded-lg flex items-center gap-3 ${
+            messageType === 'success' 
+              ? 'bg-green-900 border border-green-700 text-green-100' 
+              : 'bg-red-900 border border-red-700 text-red-100'
+          }`}>
+            {messageType === 'success' ? (
+              <CheckCircle className="w-5 h-5 text-green-400" />
+            ) : (
+              <AlertCircle className="w-5 h-5 text-red-400" />
+            )}
+            <span className="text-sm">{message}</span>
+          </div>
+        )}
         
         <form onSubmit={handleAuth} className="space-y-4">
           <div>
@@ -65,6 +90,7 @@ export default function Auth() {
               onChange={(e) => setPassword(e.target.value)}
               className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400"
               placeholder="••••••••"
+              minLength={6}
               required
             />
           </div>
