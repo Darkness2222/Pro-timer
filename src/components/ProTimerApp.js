@@ -15,7 +15,6 @@ export default function ProTimerApp({ session, bypassAuth }) {
   const [messagesExpanded, setMessagesExpanded] = useState(false)
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false)
   const [subscription, setSubscription] = useState(null)
-  const [loading, setLoading] = useState(true)
   const [showSuccess, setShowSuccess] = useState(false)
 
   // Check for success parameter in URL
@@ -83,13 +82,9 @@ export default function ProTimerApp({ session, bypassAuth }) {
   const intervalRef = useRef(null)
 
   // Load user profile
-  useEffect(() => {
-    if (session?.user && !bypassAuth) {
-      loadUserProfile()
-    }
-  }, [session, bypassAuth])
-
-  const loadUserProfile = async () => {
+  const loadUserProfile = useCallback(async () => {
+    if (!session?.user || bypassAuth) return
+    
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -105,7 +100,11 @@ export default function ProTimerApp({ session, bypassAuth }) {
     } catch (error) {
       console.error('Error loading profile:', error)
     }
-  }
+  }, [session?.user, bypassAuth])
+
+  useEffect(() => {
+    loadUserProfile()
+  }, [loadUserProfile])
 
   // Load timers on component mount
   useEffect(() => {
@@ -634,6 +633,10 @@ export default function ProTimerApp({ session, bypassAuth }) {
     try {
       await supabase.auth.signOut()
     } catch (error) {
+      console.error('Error signing out:', error)
+    }
+  }
+
   const handleSuccessContinue = () => {
     setShowSuccess(false)
     fetchSubscription() // Refresh subscription data
@@ -653,10 +656,6 @@ export default function ProTimerApp({ session, bypassAuth }) {
 
   if (showSuccess) {
     return <SuccessPage onContinue={handleSuccessContinue} />
-  }
-
-      console.error('Error signing out:', error)
-    }
   }
 
   const formatTime = (seconds) => {
@@ -1527,14 +1526,12 @@ export default function ProTimerApp({ session, bypassAuth }) {
                 Copy Link
               </button>
               <button
-            {!isProUser() && (
-              <button
-                onClick={() => setShowSubscriptionModal(true)}
-                className="bg-yellow-600 hover:bg-yellow-700 px-4 py-2 rounded-lg text-sm font-medium"
+                onClick={() => setShowQRModal(false)}
+                className="flex-1 bg-gray-600 hover:bg-gray-700 text-white px-4 py-3 rounded-lg font-medium"
               >
-                Upgrade to Pro
+                Close
               </button>
-            )}
+            </div>
           </div>
         </div>
       )}
@@ -1555,17 +1552,6 @@ export default function ProTimerApp({ session, bypassAuth }) {
                 ×
               </button>
             </div>
-          {isProUser() ? (
-            <div className="bg-green-900 border border-green-700 rounded-lg p-6 mb-8">
-              <h3 className="text-green-100 text-lg font-medium mb-2">
-                🎉 Pro Features Unlocked!
-              </h3>
-              <p className="text-green-200">
-                You now have access to all professional timer features including remote sync, 
-                custom cues, and priority support.
-              </p>
-            </div>
-          ) : (
             
             <div className="overflow-y-auto max-h-96">
               {timerLogs.length > 0 ? (
@@ -1657,7 +1643,6 @@ export default function ProTimerApp({ session, bypassAuth }) {
             {/* Reset Button */}
             <button
               onClick={resetToDefaults}
-          )}
               className="w-full bg-gray-600 hover:bg-gray-700 text-white px-4 py-3 rounded-lg font-medium flex items-center justify-center gap-2"
             >
               <RotateCcw className="w-5 h-5" />
