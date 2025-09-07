@@ -53,25 +53,6 @@ export default function Auth() {
     }
   }
 
-  const handleRememberMeLogin = () => {
-    const stored = localStorage.getItem('synccue_remember_credentials')
-    if (stored) {
-      try {
-        const { email: storedEmail, password: storedPassword } = JSON.parse(stored)
-        setEmail(storedEmail)
-        setPassword(storedPassword)
-        setRememberMe(true)
-        setMessage('Credentials loaded from memory')
-        setMessageType('success')
-      } catch (error) {
-        setMessage('Failed to load stored credentials')
-        setMessageType('error')
-      }
-    } else {
-      setMessage('No stored credentials found')
-      setMessageType('error')
-    }
-  }
   return (
     <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
       <div className="max-w-md w-full bg-gray-800 rounded-xl p-8 border border-gray-700">
@@ -147,18 +128,6 @@ export default function Auth() {
             {loading ? 'Loading...' : (isSignUp ? 'Sign Up' : 'Sign In')}
           </button>
         </form>
-        
-        {!isSignUp && (
-          <div className="mt-4">
-            <button
-              onClick={handleRememberMeLogin}
-              className="w-full bg-yellow-600 hover:bg-yellow-700 px-6 py-3 rounded-lg font-medium text-white transition-colors flex items-center justify-center gap-2"
-            >
-              <span>🔑</span>
-              Remember Me Login
-            </button>
-          </div>
-        )}
         
         <div className="text-center mt-6">
           <button
