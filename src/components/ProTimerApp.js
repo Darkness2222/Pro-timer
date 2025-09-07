@@ -735,6 +735,42 @@ export default function ProTimerApp({ session, bypassAuth }) {
     updateTimerSessions()
   }
 
+  const handlePlayAll = async () => {
+    // Start all timers that are currently paused (have time_left > 0 but not running)
+    const pausedTimers = Object.entries(timerSessions).filter(([_, session]) => 
+      session && !session.is_running && session.time_left > 0
+    )
+    
+    for (const [timerId, session] of pausedTimers) {
+      console.log('Starting timer:', timerId)
+      
+      try {
+        await supabase
+          .from('timer_sessions')
+          .upsert(
+            {
+              timer_id: timerId,
+              time_left: session.time_left,
+              is_running: true,
+              updated_at: new Date().toISOString()
+            },
+            { onConflict: 'timer_id' }
+          )
+      } catch (error) {
+        console.error('Error starting timer:', error)
+      }
+    
+      try {
+        await logTimerAction(timerId, 'start', session.time_left)
+      } catch (logError) {
+        console.error('Error logging start action:', logError)
+        // Don't throw here, start was successful
+      }
+    }
+    
+    // Update timer sessions
+    updateTimerSessions()
+  }
   const handleSignOut = async () => {
     try {
       await supabase.auth.signOut()
@@ -1342,13 +1378,22 @@ export default function ProTimerApp({ session, bypassAuth }) {
               <h1 className="text-3xl font-bold text-white mb-2">Timer Overview</h1>
               <p className="text-gray-300">Monitor all active timers</p>
             </div>
-            <button
-              onClick={handlePauseAll}
-              className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
-            >
-              <Pause className="w-4 h-4" />
-              Pause All
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handlePlayAll}
+                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
+              >
+                <Play className="w-4 h-4" />
+                Play All
+              </button>
+              <button
+                onClick={handlePauseAll}
+                className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
+              >
+                <Pause className="w-4 h-4" />
+                Pause All
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
