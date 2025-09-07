@@ -10,7 +10,6 @@ export default function ProTimerApp({ session, bypassAuth }) {
   const [currentView, setCurrentView] = useState('overview')
   const [selectedTimer, setSelectedTimer] = useState(null)
   const [timers, setTimers] = useState([])
-  const [timerSessions, setTimerSessions] = useState([])
   const [loading, setLoading] = useState(true)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showMessageModal, setShowMessageModal] = useState(false)
