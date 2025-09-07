@@ -115,7 +115,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
   }, [session, bypassAuth])
 
   // Load timers on component mount
-  useEffect(() => {
+  useEffect(()     => {
     loadTimers()
     loadAllTimerLogs()
     // Update timer sessions and current time every second
