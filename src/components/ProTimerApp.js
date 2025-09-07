@@ -612,22 +612,35 @@ export default function ProTimerApp({ session, bypassAuth }) {
     const runningTimers = Object.entries(timerSessions).filter(([_, session]) => session?.is_running)
     
     for (const [timerId, session] of runningTimers) {
+      console.log('Resetting timer:', timerId)
+      
       try {
         await supabase
           .from('timer_sessions')
-          .upsert({
+        .upsert(
+          {
             timer_id: parseInt(timerId),
             time_left: session.time_left,
             is_running: false,
             updated_at: new Date().toISOString()
-          }, { onConflict: 'timer_id' })
+          },
+          { onConflict: 'timer_id' }
+        )
       } catch (error) {
         console.error('Error pausing timer:', error)
       }
-    }
+      if (error) {
+        console.error('Error resetting timer:', error)
+        return
+      }
     
     // If the selected timer is running, pause it locally too
-    if (selectedTimer && isRunning) {
+      try {
+        await logTimerAction(timerId, 'reset', 0)
+      } catch (logError) {
+        console.error('Error logging reset action:', logError)
+        // Don't throw here, reset was successful
+      }
       setIsRunning(false)
       logTimerAction('pause', timeLeft)
     }
@@ -639,8 +652,11 @@ export default function ProTimerApp({ session, bypassAuth }) {
   const handleSignOut = async () => {
     try {
       await supabase.auth.signOut()
+      
+      console.log('Timer reset successfully')
     } catch (error) {
       console.error('Error signing out:', error)
+      // Don't re-throw the error to prevent auth issues
     }
   }
 
