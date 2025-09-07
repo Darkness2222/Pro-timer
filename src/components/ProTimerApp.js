@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { getProductByPriceId } from '../stripe-config'
+import { v4 as uuidv4 } from 'uuid'
 import { Play, Pause, Square, RotateCcw, Settings, MessageSquare, Plus, Minus, Clock, Users, Timer as TimerIcon, QrCode, ExternalLink, FileText, Crown, User, LogOut } from 'lucide-react'
 import SubscriptionModal from './SubscriptionModal'
 import SuccessPage from './SuccessPage'
@@ -124,7 +125,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
     if (isRunning && timeLeft > 0) {
       intervalRef.current = setInterval(() => {
         setTimeLeft(prev => {
-          if (prev <= 1) {
+          timer_id: timerId, // This is now guaranteed to be a valid UUID
             setIsRunning(false)
             return 0
           }
@@ -248,7 +249,11 @@ export default function ProTimerApp({ session, bypassAuth }) {
 
       if (error) throw error
 
-      setTimers(prev => [data, ...prev])
+      const timerId = data?.id
+      
+      if (!timerId) {
+        throw new Error('Failed to create timer - no ID returned')
+      }
       setNewTimerName('')
       setNewTimerPresenter('')
       setNewTimerDuration('')
