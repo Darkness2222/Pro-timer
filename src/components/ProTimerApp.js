@@ -1,10 +1,9 @@
-import { Timer, Users, Settings, LogOut, Crown, LayoutGrid } from 'lucide-react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { getProductByPriceId } from '../stripe-config'
 import { Play, Pause, Square, RotateCcw, Settings, MessageSquare, Plus, Minus, Clock, Users, Timer as TimerIcon, QrCode, ExternalLink, FileText, Crown, User, LogOut } from 'lucide-react'
 import SubscriptionModal from './SubscriptionModal'
 import SuccessPage from './SuccessPage'
-import TimerOverview from './TimerOverview'
 
 export default function ProTimerApp({ session, bypassAuth }) {
   const [currentView, setCurrentView] = useState('admin')
@@ -16,7 +15,6 @@ export default function ProTimerApp({ session, bypassAuth }) {
   const [messagesExpanded, setMessagesExpanded] = useState(false)
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false)
   const [subscription, setSubscription] = useState(null)
-  const [showOverview, setShowOverview] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
 
   // Check for success parameter in URL
@@ -899,18 +897,6 @@ export default function ProTimerApp({ session, bypassAuth }) {
                 <div className="text-6xl font-mono font-bold text-orange-400 mb-4">
                   {formatTime(timeLeft)}
                 </div>
-          {activeTab === 'overview' && (
-            <TimerOverview
-              timers={timers}
-              timerSessions={timerSessions}
-              onStartTimer={handleStartTimer}
-              onPauseTimer={handlePauseTimer}
-              onStopTimer={handleStopTimer}
-              onResetTimer={handleResetTimer}
-              onViewLogs={handleViewLogs}
-            />
-          )}
-
                 <div className="w-full bg-gray-700 rounded-full h-4 mb-4">
                   <div
                     className="bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 h-4 rounded-full transition-all duration-1000"
