@@ -152,7 +152,6 @@ export default function ProTimerApp({ session, bypassAuth }) {
       const { data, error } = await supabase
         .from('timer_sessions')
         .select('*')
-          timer_id: timerId,
       if (error) throw error
       
       const sessionsMap = {}
