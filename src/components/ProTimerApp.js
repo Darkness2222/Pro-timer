@@ -1668,5 +1668,3 @@ export default function ProTimerApp({ session, bypassAuth }) {
         </div>
       )}
     </div>
-  )
-}
