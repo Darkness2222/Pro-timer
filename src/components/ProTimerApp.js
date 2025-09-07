@@ -125,7 +125,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
     if (isRunning && timeLeft > 0) {
       intervalRef.current = setInterval(() => {
         setTimeLeft(prev => {
-          timer_id: timerId, // This is now guaranteed to be a valid UUID
+          if (prev <= 1) {
             setIsRunning(false)
             return 0
           }
@@ -254,6 +254,8 @@ export default function ProTimerApp({ session, bypassAuth }) {
       if (!timerId) {
         throw new Error('Failed to create timer - no ID returned')
       }
+      
+      loadTimers()
       setNewTimerName('')
       setNewTimerPresenter('')
       setNewTimerDuration('')
