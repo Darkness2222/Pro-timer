@@ -743,6 +743,12 @@ export default function ProTimerApp({ session, bypassAuth }) {
     
     for (const [timerId, session] of pausedTimers) {
       console.log('Starting timer:', timerId)
+        // Skip if timer_id is null or invalid
+        if (!session.timer_id) {
+          console.warn('Skipping session with invalid timer_id:', session)
+          continue
+        }
+
       
       try {
         await supabase
