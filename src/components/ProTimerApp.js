@@ -1,14 +1,17 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
+import TimerOverview from './TimerOverview'
 import { getProductByPriceId } from '../stripe-config'
 import { Play, Pause, Square, RotateCcw, Settings, MessageSquare, Plus, Minus, Clock, Users, Timer as TimerIcon, QrCode, ExternalLink, FileText, Crown, User, LogOut } from 'lucide-react'
 import SubscriptionModal from './SubscriptionModal'
 import SuccessPage from './SuccessPage'
 
 export default function ProTimerApp({ session, bypassAuth }) {
+  const [currentView, setCurrentView] = useState('overview')
   const [currentView, setCurrentView] = useState('admin')
   const [selectedTimer, setSelectedTimer] = useState(null)
   const [timers, setTimers] = useState([])
+  const [timerSessions, setTimerSessions] = useState([])
   const [loading, setLoading] = useState(true)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showMessageModal, setShowMessageModal] = useState(false)
@@ -109,6 +112,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
   // Load timers on component mount
   useEffect(() => {
     loadTimers()
+    loadTimerSessions()
     loadAllTimerLogs()
     // Update timer sessions and current time every second
     const sessionInterval = setInterval(() => {
@@ -170,6 +174,96 @@ export default function ProTimerApp({ session, bypassAuth }) {
       console.error('Error loading timers:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadTimerSessions = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('timer_sessions')
+        .select('*')
+
+      if (error) throw error
+      setTimerSessions(data || [])
+    } catch (error) {
+      console.error('Error loading timer sessions:', error)
+    }
+  }
+
+  const handleStartTimer = async (timerId) => {
+    try {
+      const timer = timers.find(t => t.id === timerId)
+      if (!timer) return
+
+      const { error } = await supabase
+        .from('timer_sessions')
+        .upsert({
+          timer_id: timerId,
+          time_left: timer.duration,
+          is_running: true,
+          updated_at: new Date().toISOString()
+        })
+
+      if (error) throw error
+      await loadTimerSessions()
+    } catch (error) {
+      console.error('Error starting timer:', error)
+    }
+  }
+
+  const handlePauseTimer = async (timerId) => {
+    try {
+      const { error } = await supabase
+        .from('timer_sessions')
+        .update({
+          is_running: false,
+          updated_at: new Date().toISOString()
+        })
+        .eq('timer_id', timerId)
+
+      if (error) throw error
+      await loadTimerSessions()
+    } catch (error) {
+      console.error('Error pausing timer:', error)
+    }
+  }
+
+  const handleStopTimer = async (timerId) => {
+    try {
+      const { error } = await supabase
+        .from('timer_sessions')
+        .update({
+          is_running: false,
+          time_left: 0,
+          updated_at: new Date().toISOString()
+        })
+        .eq('timer_id', timerId)
+
+      if (error) throw error
+      await loadTimerSessions()
+    } catch (error) {
+      console.error('Error stopping timer:', error)
+    }
+  }
+
+  const handleResetTimer = async (timerId) => {
+    try {
+      const timer = timers.find(t => t.id === timerId)
+      if (!timer) return
+
+      const { error } = await supabase
+        .from('timer_sessions')
+        .upsert({
+          timer_id: timerId,
+          time_left: timer.duration,
+          is_running: false,
+          updated_at: new Date().toISOString()
+        })
+
+      if (error) throw error
+      await loadTimerSessions()
+    } catch (error) {
+      console.error('Error resetting timer:', error)
     }
   }
 
@@ -720,6 +814,48 @@ export default function ProTimerApp({ session, bypassAuth }) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900">
       {/* Navigation */}
+      <nav className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between h-16">
+            <div className="flex items-center">
+              <h1 className="text-xl font-semibold text-gray-900">SyncCue Pro</h1>
+            </div>
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={() => setCurrentView('overview')}
+                className={`px-3 py-2 rounded-md text-sm font-medium ${
+                  currentView === 'overview'
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Overview
+              </button>
+              <button
+                onClick={() => setCurrentView('create')}
+                className={`px-3 py-2 rounded-md text-sm font-medium ${
+                  currentView === 'create'
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Create Timer
+              </button>
+              {session && (
+                <button
+                  onClick={() => supabase.auth.signOut()}
+                  className="text-gray-500 hover:text-gray-700 px-3 py-2 rounded-md text-sm font-medium"
+                >
+                  Sign Out
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      {/* Main Content */}
+      {/* Navigation */}
       <nav className="bg-gray-800/50 backdrop-blur-sm border-b border-gray-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
@@ -1016,54 +1152,31 @@ export default function ProTimerApp({ session, bypassAuth }) {
                   <div className="flex items-center gap-3 bg-gray-700/50 rounded-lg p-4">
                     <label className="text-white font-medium">New Duration:</label>
                     <input
-                      type="text"
-                      value={overrideTime}
-                      onChange={(e) => setOverrideTime(e.target.value)}
-                      className="w-20 p-2 bg-gray-600 border border-gray-500 rounded text-white text-center"
-                      placeholder="20"
-                    />
-                    <span className="text-gray-300">minutes</span>
-                    <button
-                      onClick={overrideTimerDuration}
-                      className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded font-medium"
-                    >
-                      Set
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowOverride(false)
-                        setOverrideTime('')
-                      }}
-                      className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded font-medium"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Quick Messages */}
-              <div className="border-t border-gray-700 pt-6">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-semibold text-white">Quick Messages</h3>
-                  <button
-                    onClick={() => setShowMessageModal(true)}
-                    className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2"
-                  >
-                    <Settings className="w-4 h-4" />
-                    Manage
-                  </button>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  {quickMessages.map((msg) => (
-                    <button
-                      key={msg.id}
-                      onClick={() => sendMessage(msg.text)}
-                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg text-left"
-                    >
-                      {msg.text}
-                    </button>
-                  ))}
+        <div className="px-4 sm:px-0">
+          {currentView === 'overview' && (
+            <TimerOverview
+              timers={timers}
+              timerSessions={timerSessions}
+              onStartTimer={handleStartTimer}
+              onPauseTimer={handlePauseTimer}
+              onStopTimer={handleStopTimer}
+              onResetTimer={handleResetTimer}
+            />
+          )}
+          
+          {currentView === 'create' && (
+            <div className="bg-white shadow rounded-lg p-6">
+              <h2 className="text-xl font-semibold text-gray-800 mb-4">Create New Timer</h2>
+              <p className="text-gray-600 mb-6">
+                Create a new presentation timer with custom settings.
+              </p>
+              
+              <div className="space-y-4">
+                <div className="p-4 bg-blue-50 rounded-lg">
+                  <h3 className="font-medium text-blue-900">Timer Creation Coming Soon</h3>
+                  <p className="mt-2 text-blue-800 text-sm">
+                    Timer creation interface will be implemented in the next update.
+                  </p>
                 </div>
               </div>
             </div>
