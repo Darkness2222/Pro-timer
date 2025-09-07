@@ -9,6 +9,7 @@ export default function Auth() {
   const [isSignUp, setIsSignUp] = useState(false)
   const [message, setMessage] = useState('')
   const [messageType, setMessageType] = useState('') // 'success' or 'error'
+  const [rememberMe, setRememberMe] = useState(false)
 
   const handleAuth = async (e) => {
     e.preventDefault()
@@ -34,6 +35,15 @@ export default function Auth() {
           password,
         })
         if (error) throw error
+        
+        // Store remember me preference
+        if (rememberMe) {
+          localStorage.setItem('synccue_remember_credentials', JSON.stringify({
+            email,
+            password,
+            timestamp: Date.now()
+          }))
+        }
       }
     } catch (error) {
       setMessage(error.message)
@@ -43,6 +53,25 @@ export default function Auth() {
     }
   }
 
+  const handleRememberMeLogin = () => {
+    const stored = localStorage.getItem('synccue_remember_credentials')
+    if (stored) {
+      try {
+        const { email: storedEmail, password: storedPassword } = JSON.parse(stored)
+        setEmail(storedEmail)
+        setPassword(storedPassword)
+        setRememberMe(true)
+        setMessage('Credentials loaded from memory')
+        setMessageType('success')
+      } catch (error) {
+        setMessage('Failed to load stored credentials')
+        setMessageType('error')
+      }
+    } else {
+      setMessage('No stored credentials found')
+      setMessageType('error')
+    }
+  }
   return (
     <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
       <div className="max-w-md w-full bg-gray-800 rounded-xl p-8 border border-gray-700">
@@ -95,6 +124,21 @@ export default function Auth() {
             />
           </div>
           
+          {!isSignUp && (
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="rememberMe"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
+              />
+              <label htmlFor="rememberMe" className="ml-2 text-sm text-gray-300">
+                Remember my credentials
+              </label>
+            </div>
+          )}
+          
           <button
             type="submit"
             disabled={loading}
@@ -103,6 +147,18 @@ export default function Auth() {
             {loading ? 'Loading...' : (isSignUp ? 'Sign Up' : 'Sign In')}
           </button>
         </form>
+        
+        {!isSignUp && (
+          <div className="mt-4">
+            <button
+              onClick={handleRememberMeLogin}
+              className="w-full bg-yellow-600 hover:bg-yellow-700 px-6 py-3 rounded-lg font-medium text-white transition-colors flex items-center justify-center gap-2"
+            >
+              <span>🔑</span>
+              Remember Me Login
+            </button>
+          </div>
+        )}
         
         <div className="text-center mt-6">
           <button
