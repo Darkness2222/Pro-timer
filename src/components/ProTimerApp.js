@@ -8,7 +8,6 @@ import SuccessPage from './SuccessPage'
 
 export default function ProTimerApp({ session, bypassAuth }) {
   const [currentView, setCurrentView] = useState('overview')
-  const [currentView, setCurrentView] = useState('admin')
   const [selectedTimer, setSelectedTimer] = useState(null)
   const [timers, setTimers] = useState([])
   const [timerSessions, setTimerSessions] = useState([])
