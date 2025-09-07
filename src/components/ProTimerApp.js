@@ -155,7 +155,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
     }
   }
       
-      const sessionsMap = {}
+   const sessionsMap = {};
       data?.forEach(session => {
         sessionsMap[session.timer_id] = session
       })
