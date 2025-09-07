@@ -711,7 +711,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
           .from('timer_sessions')
         .upsert(
           {
-            timer_id: parseInt(timerId),
+            timer_id: timerId,
             time_left: session.time_left,
             is_running: false,
             updated_at: new Date().toISOString()
