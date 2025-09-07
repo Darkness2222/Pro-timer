@@ -251,8 +251,8 @@ export default function ProTimerApp({ session, bypassAuth }) {
       setTimers(prev => [data, ...prev])
       setNewTimerName('')
       setNewTimerPresenter('')
-      setNewTimerDuration('')
-      setShowCreateModal(false)
+        .upsert({
+          timer_id: data.id,
       
       // Reload logs to include new timer
       loadAllTimerLogs()
