@@ -148,6 +148,13 @@ export default function ProTimerApp({ session, bypassAuth }) {
       
       if (error) throw error
       
+      // Process the data here if needed
+      console.log('Timer sessions:', data)
+    } catch (error) {
+      console.error('Error updating timer sessions:', error)
+    }
+  }
+      
       const sessionsMap = {}
       data?.forEach(session => {
         sessionsMap[session.timer_id] = session
