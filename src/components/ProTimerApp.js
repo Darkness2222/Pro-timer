@@ -242,7 +242,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
           name: newTimerName.trim(),
           presenter_name: newTimerPresenter.trim(),
           duration: parseInt(newTimerDuration) * 60, // Convert minutes to seconds
-          user_id: session?.user?.id || null
+          user_id: session?.user?.id || null,
         }])
         .select()
         .single()
