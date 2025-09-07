@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { X, Crown, Check, Loader2 } from 'lucide-react'
-import { products } from '../stripe-config'
+import { products } from '../stripe-config.js'
 import { supabase } from '../lib/supabase'
 
 export default function SubscriptionModal({ isOpen, onClose, session }) {
