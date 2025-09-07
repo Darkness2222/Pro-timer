@@ -40,7 +40,6 @@ export default function Auth() {
         if (rememberMe) {
           localStorage.setItem('synccue_remember_credentials', JSON.stringify({
             email,
-            password,
             timestamp: Date.now()
           }))
         }

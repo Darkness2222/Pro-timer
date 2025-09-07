@@ -106,6 +106,14 @@ export default function ProTimerApp({ session, bypassAuth }) {
     loadUserProfile()
   }, [loadUserProfile])
 
+  // Add session validation
+  useEffect(() => {
+    if (!bypassAuth && !session) {
+      console.log('No session found, user should be redirected to auth')
+      return
+    }
+  }, [session, bypassAuth])
+
   // Load timers on component mount
   useEffect(() => {
     loadTimers()
