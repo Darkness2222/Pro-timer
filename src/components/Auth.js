@@ -4,15 +4,8 @@ import { supabase } from '../lib/supabase'
 
 export default function Auth() {
   const [loading, setLoading] = useState(false)
-  const [email, setEmail] = useState(() => {
-    return localStorage.getItem('synccue_remembered_email') || ''
-  })
-  const [password, setPassword] = useState(() => {
-    return localStorage.getItem('synccue_remembered_password') || ''
-  })
-  const [rememberMe, setRememberMe] = useState(() => {
-    return localStorage.getItem('synccue_remember_me') === 'true'
-  })
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [isSignUp, setIsSignUp] = useState(false)
   const [message, setMessage] = useState('')
   const [messageType, setMessageType] = useState('') // 'success' or 'error'
@@ -41,17 +34,6 @@ export default function Auth() {
           password,
         })
         if (error) throw error
-        
-        // Handle Remember Me functionality
-        if (rememberMe) {
-          localStorage.setItem('synccue_remembered_email', email)
-          localStorage.setItem('synccue_remembered_password', password)
-          localStorage.setItem('synccue_remember_me', 'true')
-        } else {
-          localStorage.removeItem('synccue_remembered_email')
-          localStorage.removeItem('synccue_remembered_password')
-          localStorage.removeItem('synccue_remember_me')
-        }
       }
     } catch (error) {
       setMessage(error.message)
@@ -112,21 +94,6 @@ export default function Auth() {
               required
             />
           </div>
-          
-          {!isSignUp && (
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                id="rememberMe"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-                className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"
-              />
-              <label htmlFor="rememberMe" className="ml-2 text-sm text-gray-300 cursor-pointer">
-                Remember me
-              </label>
-            </div>
-          )}
           
           <button
             type="submit"
