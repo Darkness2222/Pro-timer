@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { getProductByPriceId } from '../stripe-config'
-import { v4 as uuidv4 } from 'uuid'
 import { Play, Pause, Square, RotateCcw, Settings, MessageSquare, Plus, Minus, Clock, Users, Timer as TimerIcon, QrCode, ExternalLink, FileText, Crown, User, LogOut } from 'lucide-react'
 import SubscriptionModal from './SubscriptionModal'
 import SuccessPage from './SuccessPage'
@@ -148,14 +147,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
       
       if (error) throw error
       
-      // Process the data here if needed
-      console.log('Timer sessions:', data)
-    } catch (error) {
-      console.error('Error updating timer sessions:', error)
-    }
-  }
-      
-   const sessionsMap = {};
+      const sessionsMap = {}
       data?.forEach(session => {
         sessionsMap[session.timer_id] = session
       })
@@ -178,8 +170,6 @@ export default function ProTimerApp({ session, bypassAuth }) {
       console.error('Error loading timers:', error)
     } finally {
       setLoading(false)
-    }
-  }
     }
   }
 
@@ -251,20 +241,14 @@ export default function ProTimerApp({ session, bypassAuth }) {
           name: newTimerName.trim(),
           presenter_name: newTimerPresenter.trim(),
           duration: parseInt(newTimerDuration) * 60, // Convert minutes to seconds
-          user_id: session?.user?.id || null,
+          user_id: session?.user?.id || null
         }])
         .select()
         .single()
 
       if (error) throw error
 
-      const timerId = data?.id
-      
-      if (!timerId) {
-        throw new Error('Failed to create timer - no ID returned')
-      }
-      
-      loadTimers()
+      setTimers(prev => [data, ...prev])
       setNewTimerName('')
       setNewTimerPresenter('')
       setNewTimerDuration('')
@@ -1668,3 +1652,5 @@ export default function ProTimerApp({ session, bypassAuth }) {
         </div>
       )}
     </div>
+  )
+}
