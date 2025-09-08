@@ -1613,6 +1613,11 @@ export default function ProTimerApp({ session, bypassAuth }) {
       {/* Reports View */}
       {currentView === 'reports' && (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* Debug info */}
+          <div className="mb-4 p-2 bg-blue-900/20 rounded text-blue-300 text-sm">
+            Debug: Reports view is active. Current view: {currentView}
+          </div>
+          
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-white mb-2">Timer Reports</h1>
             <p className="text-gray-300">View all timer activity and export data</p>
