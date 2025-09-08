@@ -121,7 +121,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
     loadAllTimerLogs()
     updateTimerSessions()
     
-    // Update current time every second for accurate calculations
+    // Update current time every second for session calculations
     const sessionInterval = setInterval(() => {
       if (isRunning && timeLeft > 0) {
         setTimeLeft(prev => prev - 1)
