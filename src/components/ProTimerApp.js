@@ -524,6 +524,27 @@ export default function ProTimerApp({ session, bypassAuth }) {
     }
   }
 
+  const finishTimer = async () => {
+    if (!selectedTimer) return
+    
+    setIsRunning(false)
+    setTimeLeft(0)
+    logTimerAction('finished', timeLeft, null, `Timer completed early with ${formatTime(timeLeft)} remaining`)
+    
+    // Update session in database to mark as finished
+    try {
+      await supabase
+        .from('timer_sessions')
+        .upsert({
+          timer_id: selectedTimer.id,
+          time_left: 0,
+          is_running: false,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'timer_id' })
+    } catch (error) {
+      console.error('Error updating session:', error)
+    }
+  }
   // NEW: Finish timer function
   const finishTimer = async () => {
     if (!selectedTimer) return
@@ -1121,6 +1142,14 @@ export default function ProTimerApp({ session, bypassAuth }) {
                 >
                   <RotateCcw className="w-5 h-5" />
                   Reset
+                </button>
+                <button
+                  onClick={finishTimer}
+                  disabled={timeLeft === 0}
+                  className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-6 py-3 rounded-lg font-medium flex items-center gap-2"
+                >
+                  <CheckCircle className="w-5 h-5" />
+                  Finish
                 </button>
               </div>
 
