@@ -130,7 +130,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
         setTimeLeft(prev => prev - 1)
         // Only log expiration once when it first hits 0
         if (timeLeft === 0) {
-          logAction('expired', 0, 0, `Timer expired naturally, continuing into overtime`)
+          logTimerAction('expired', 0, 0, `Timer expired naturally, continuing into overtime`)
         }
       }
       setCurrentTime(Date.now())
