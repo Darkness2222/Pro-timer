@@ -152,6 +152,14 @@ export default function ProTimerApp({ session, bypassAuth }) {
     return () => clearInterval(intervalRef.current)
   }, [isRunning, timeLeft, selectedTimer])
 
+  // Handle timer expiration and overtime tracking
+  useEffect(() => {
+    if (timeLeft === 0 && selectedTimer && isRunning) {
+      setIsRunning(false)
+      logTimerAction('expired', 0, null, 'Timer reached 00:00 - presenter went over time')
+    }
+  }, [timeLeft, selectedTimer, isRunning])
+
   // Update timer sessions for all timers
   const updateTimerSessions = async () => {
     try {
@@ -547,6 +555,31 @@ export default function ProTimerApp({ session, bypassAuth }) {
       console.error('Error updating session:', error)
     }
   }
+
+  const handleFinishTimer = async () => {
+    if (!selectedTimer) return
+    
+    setIsRunning(false)
+    const remainingTime = timeLeft
+    setTimeLeft(0)
+    
+    logTimerAction('finished', remainingTime, null, `Timer finished early with ${formatTime(remainingTime)} remaining`)
+    
+    // Update session in database
+    try {
+      await supabase
+        .from('timer_sessions')
+        .upsert({
+          timer_id: selectedTimer.id,
+          time_left: 0,
+          is_running: false,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'timer_id' })
+    } catch (error) {
+      console.error('Error updating session:', error)
+    }
+  }
+
   const adjustTime = async (seconds) => {
     const newTime = Math.max(0, timeLeft + seconds)
     setTimeLeft(newTime)
@@ -1076,6 +1109,11 @@ export default function ProTimerApp({ session, bypassAuth }) {
                 }`}>
                   {formatTime(timeLeft)}
                 </div>
+                {timeLeft === 0 && (
+                  <div className="text-2xl font-bold text-red-500 mb-2 animate-pulse">
+                    ⚠️ OVERTIME ⚠️
+                  </div>
+                )}
                 <div className="w-full bg-gray-700 rounded-full h-4 mb-4">
                   <div
                     className="bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 h-4 rounded-full transition-all duration-1000"
@@ -1083,7 +1121,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
                   ></div>
                 </div>
                 <p className="text-gray-300">
-                  {Math.round(getProgressPercentage())}% elapsed
+                  {timeLeft === 0 ? 'PRESENTER IS OVER TIME' : `${Math.round(getProgressPercentage())}% elapsed`}
                 </p>
               </div>
 
@@ -1112,6 +1150,14 @@ export default function ProTimerApp({ session, bypassAuth }) {
                 >
                   <Square className="w-5 h-5" />
                   Stop
+                </button>
+                <button
+                  onClick={handleFinishTimer}
+                  disabled={timeLeft === 0}
+                  className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-6 py-3 rounded-lg font-medium flex items-center gap-2"
+                >
+                  <CheckCircle className="w-5 h-5" />
+                  Finish
                 </button>
                 <button
                   onClick={resetTimer}
@@ -1654,14 +1700,18 @@ export default function ProTimerApp({ session, bypassAuth }) {
                         {log.timers?.name || 'Unknown Timer'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300 capitalize flex items-center gap-2">
-                        {log.action === 'expired' && <span className="text-red-400">⚠️</span>}
-                        {log.action === 'finished' && <span className="text-green-400">✅</span>}
-                        {log.action}
+                        <div className="flex items-center gap-2">
+                          {log.action === 'expired' && <span className="text-red-500">⚠️</span>}
+                          {log.action === 'finished' && <span className="text-green-500">✅</span>}
+                          <span className={log.action === 'expired' ? 'text-red-400' : ''}>{log.action}</span>
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-400">
                         {log.time_value ? formatTime(log.time_value) : '-'}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-300 max-w-xs truncate">
+                      <td className={`px-6 py-4 text-sm max-w-xs truncate ${
+                        log.action === 'expired' ? 'bg-red-900/20 text-red-300' : 'text-gray-300'
+                      }`}>
                         {log.notes || '-'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
