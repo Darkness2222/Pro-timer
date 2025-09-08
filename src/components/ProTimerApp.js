@@ -16,6 +16,7 @@
 +    }
 -  }, [session, bypassAuth])
 +  }, [session, bypassAuth])
+
 -  // Load timers on component mount
 -  useEffect(() => {
 -    loadTimers()
@@ -30,21 +31,6 @@
 -    }, 1000)
 -    
 -    return () => clearInterval(sessionInterval)
-    // Load initial data when we have a valid session or bypass
-    if (session || bypassAuth) {
-      loadTimers()
-      updateTimerSessions()
-      loadAllTimerLogs()
-    }
-  }, [session, bypassAuth])
-
-  // Update current time every second for real-time calculations
-  useEffect(() => {
-    const timeInterval = setInterval(() => {
-      setCurrentTime(Date.now())
-    }, 1000)
-    
-    return () => clearInterval(timeInterval)
 -  }, [])
 +  // Update current time every second for real-time calculations
 +  useEffect(() => {
