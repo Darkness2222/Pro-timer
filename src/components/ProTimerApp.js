@@ -1405,6 +1405,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
               setCurrentView('admin')
             }}
             selectedTimer={selectedTimer}
+          />
         )}
         
         {currentView === 'create' && (
