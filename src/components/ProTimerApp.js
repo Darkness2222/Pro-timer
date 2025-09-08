@@ -34,8 +34,8 @@ export default function ProTimerApp({ session, bypassAuth }) {
     
     try {
       const { data, error } = await supabase
-        .from('stripe_user_subscriptions')
-        .select('*')
+        .select('time_left, is_running')
+        .eq('timer_id', timer.id)
         .maybeSingle()
 
       if (error) {
@@ -43,7 +43,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
         const { data: timer, error: timerError } = await supabase
           .from('timers')
           .select('duration')
-          .eq('id', timerId)
+          .eq('id', timer.id)
           .single()
         
         if (!timerError && timer) {
