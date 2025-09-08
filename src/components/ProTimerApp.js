@@ -118,11 +118,13 @@ export default function ProTimerApp({ session, bypassAuth }) {
   // Load timers on component mount
   useEffect(() => {
     loadTimers()
-    loadTimerSessions()
-    loadAllTimerLogs()
-    // Update timer sessions and current time every second
-    const sessionInterval = setInterval(() => {
-      updateTimerSessions()
+      } else if (isRunning && timeLeft <= 0) {
+        // Timer continues into overtime
+        setTimeLeft(prev => prev - 1)
+        // Only log expiration once when it first hits 0
+        if (timeLeft === 0) {
+          logAction('expired', 0, 0, `Timer expired naturally, continuing into overtime`)
+        }
       setCurrentTime(Date.now())
     }, 1000)
     
@@ -1144,8 +1146,8 @@ export default function ProTimerApp({ session, bypassAuth }) {
                 </button>
                 <button
                   onClick={finishTimer}
-                  disabled={timeLeft <= 0}
-                  className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-6 py-3 rounded-lg font-medium flex items-center gap-2"
+                  disabled={loading}
+                  className="bg-green-600 hover:bg-green-700 disabled:bg-green-800 px-4 py-2 rounded-lg font-medium text-white transition-colors flex items-center gap-2"
                 >
                   <CheckCircle className="w-5 h-5" />
                   Finish
