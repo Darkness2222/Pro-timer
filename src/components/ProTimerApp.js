@@ -129,18 +129,17 @@ export default function ProTimerApp({ session, bypassAuth }) {
     return () => clearInterval(sessionInterval)
   }, [])
 
-  // Timer countdown effect
+  // Timer countdown effect with overtime tracking
   useEffect(() => {
-    if (isRunning && timeLeft > 0) {
+    if (isRunning && timeLeft >= 0) {
       intervalRef.current = setInterval(() => {
         setTimeLeft(prev => {
           if (prev <= 1) {
-            setIsRunning(false)
-            // Log when timer naturally expires (goes over time)
+            // Timer expired - log overtime
             if (selectedTimer) {
               logTimerAction('expired', 0, null, 'Timer reached 00:00 - presenter went over time')
             }
-            return 0
+            return prev - 1 // Allow negative values for overtime
           }
           return prev - 1
         })
@@ -151,14 +150,6 @@ export default function ProTimerApp({ session, bypassAuth }) {
 
     return () => clearInterval(intervalRef.current)
   }, [isRunning, timeLeft, selectedTimer])
-
-  // Handle timer expiration and overtime tracking
-  useEffect(() => {
-    if (timeLeft === 0 && selectedTimer && isRunning) {
-      setIsRunning(false)
-      logTimerAction('expired', 0, null, 'Timer reached 00:00 - presenter went over time')
-    }
-  }, [timeLeft, selectedTimer, isRunning])
 
   // Update timer sessions for all timers
   const updateTimerSessions = async () => {
@@ -533,37 +524,14 @@ export default function ProTimerApp({ session, bypassAuth }) {
     }
   }
 
+  // NEW: Finish timer function
   const finishTimer = async () => {
     if (!selectedTimer) return
     
     setIsRunning(false)
-    const remainingTime = timeLeft
+    const remainingTime = Math.max(0, timeLeft)
     setTimeLeft(0)
-    logTimerAction('finished', remainingTime, null, `Timer finished early with ${formatTime(remainingTime)} remaining`)
-    
-    // Update session in database
-    try {
-      await supabase
-        .from('timer_sessions')
-        .upsert({
-          timer_id: selectedTimer.id,
-          time_left: 0,
-          is_running: false,
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'timer_id' })
-    } catch (error) {
-      console.error('Error updating session:', error)
-    }
-  }
-
-  const handleFinishTimer = async () => {
-    if (!selectedTimer) return
-    
-    setIsRunning(false)
-    const remainingTime = timeLeft
-    setTimeLeft(0)
-    
-    logTimerAction('finished', remainingTime, null, `Timer finished early with ${formatTime(remainingTime)} remaining`)
+    logTimerAction('finished', remainingTime, null, `Timer completed early with ${formatTime(remainingTime)} remaining`)
     
     // Update session in database
     try {
@@ -763,7 +731,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
     const runningTimers = Object.entries(timerSessions).filter(([_, session]) => session?.is_running)
     
     for (const [timerId, session] of runningTimers) {
-      console.log('Resetting timer:', timerId)
+      console.log('Pausing timer:', timerId)
       
       try {
         await supabase
@@ -780,14 +748,6 @@ export default function ProTimerApp({ session, bypassAuth }) {
       } catch (error) {
         console.error('Error pausing timer:', error)
       }
-    
-      try {
-        await logTimerAction(timerId, 'reset', 0)
-      } catch (logError) {
-        console.error('Error logging reset action:', logError)
-        // Don't throw here, reset was successful
-      }
-      setIsRunning(false)
     }
     
     // Update timer sessions
@@ -823,13 +783,6 @@ export default function ProTimerApp({ session, bypassAuth }) {
           )
       } catch (error) {
         console.error('Error starting timer:', error)
-      }
-    
-      try {
-        await logTimerAction(timerId, 'start', session.time_left)
-      } catch (logError) {
-        console.error('Error logging start action:', logError)
-        // Don't throw here, start was successful
       }
     }
     
@@ -869,9 +822,12 @@ export default function ProTimerApp({ session, bypassAuth }) {
   }
 
   const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+    const isNegative = seconds < 0
+    const absSeconds = Math.abs(seconds)
+    const mins = Math.floor(absSeconds / 60)
+    const secs = absSeconds % 60
+    const timeString = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+    return isNegative ? `-${timeString}` : timeString
   }
 
   const formatTimeFromSession = (session, originalDuration) => {
@@ -882,7 +838,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
       const now = new Date(currentTime)
       const lastUpdate = new Date(session.updated_at)
       const elapsedSinceUpdate = Math.floor((now - lastUpdate) / 1000)
-      const calculatedTimeLeft = Math.max(0, session.time_left - elapsedSinceUpdate)
+      const calculatedTimeLeft = session.time_left - elapsedSinceUpdate
       return formatTime(calculatedTimeLeft)
     }
     
@@ -901,7 +857,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
       const now = new Date(currentTime)
       const lastUpdate = new Date(session.updated_at)
       const elapsedSinceUpdate = Math.floor((now - lastUpdate) / 1000)
-      currentTimeLeft = Math.max(0, session.time_left - elapsedSinceUpdate)
+      currentTimeLeft = session.time_left - elapsedSinceUpdate
     }
     
     return ((originalDuration - currentTimeLeft) / originalDuration) * 100
@@ -1105,23 +1061,23 @@ export default function ProTimerApp({ session, bypassAuth }) {
               {/* Timer Display */}
               <div className="text-center mb-6">
                 <div className={`text-6xl font-mono font-bold mb-4 ${
-                  timeLeft === 0 ? 'text-red-500 animate-pulse' : 'text-orange-400'
+                  timeLeft < 0 ? 'text-red-500 animate-pulse' : 'text-orange-400'
                 }`}>
                   {formatTime(timeLeft)}
                 </div>
-                {timeLeft === 0 && (
-                  <div className="text-2xl font-bold text-red-500 mb-2 animate-pulse">
+                {timeLeft < 0 && (
+                  <div className="text-2xl font-bold text-red-500 mb-2">
                     ⚠️ OVERTIME ⚠️
                   </div>
                 )}
                 <div className="w-full bg-gray-700 rounded-full h-4 mb-4">
                   <div
                     className="bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 h-4 rounded-full transition-all duration-1000"
-                    style={{ width: `${getProgressPercentage()}%` }}
+                    style={{ width: `${Math.min(100, getProgressPercentage())}%` }}
                   ></div>
                 </div>
                 <p className="text-gray-300">
-                  {timeLeft === 0 ? 'PRESENTER IS OVER TIME' : `${Math.round(getProgressPercentage())}% elapsed`}
+                  {timeLeft < 0 ? 'PRESENTER IS OVER TIME' : `${Math.round(getProgressPercentage())}% elapsed`}
                 </p>
               </div>
 
@@ -1152,8 +1108,8 @@ export default function ProTimerApp({ session, bypassAuth }) {
                   Stop
                 </button>
                 <button
-                  onClick={handleFinishTimer}
-                  disabled={timeLeft === 0}
+                  onClick={finishTimer}
+                  disabled={timeLeft <= 0}
                   className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-6 py-3 rounded-lg font-medium flex items-center gap-2"
                 >
                   <CheckCircle className="w-5 h-5" />
@@ -1368,24 +1324,23 @@ export default function ProTimerApp({ session, bypassAuth }) {
              {/* Large Timer Display */}
              <div className="text-center mb-8">
                <div className={`text-8xl md:text-9xl font-mono font-bold mb-6 ${
-                 timeLeft === 0 ? 'text-red-500 animate-pulse' : 'text-orange-400'
+                 timeLeft < 0 ? 'text-red-500 animate-pulse' : 'text-orange-400'
                }`}>
                  {formatTime(timeLeft)}
-                 {timeLeft === 0 && (
-                   <div className="text-4xl text-red-400 mt-4">⚠️ OVERTIME ⚠️</div>
-                 )}
-                  {timeLeft === 0 && (
-                    <div className="text-2xl text-red-400 mt-2">⚠️ OVERTIME ⚠️</div>
-                  )}
                </div>
+               {timeLeft < 0 && (
+                 <div className="text-4xl font-bold text-red-500 mb-4 animate-pulse">
+                   ⚠️ OVERTIME ⚠️
+                 </div>
+               )}
                <div className="w-full max-w-4xl bg-gray-700 rounded-full h-6 mb-4">
                  <div
                    className="bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 h-6 rounded-full transition-all duration-1000"
-                   style={{ width: `${getProgressPercentage()}%` }}
+                   style={{ width: `${Math.min(100, getProgressPercentage())}%` }}
                  ></div>
                </div>
                <p className="text-2xl text-gray-300">
-                 {timeLeft === 0 ? 'PRESENTER IS OVER TIME' : `${Math.round(getProgressPercentage())}% elapsed`}
+                 {timeLeft < 0 ? 'PRESENTER IS OVER TIME' : `${Math.round(getProgressPercentage())}% elapsed`}
                </p>
              </div>
 
@@ -1416,14 +1371,6 @@ export default function ProTimerApp({ session, bypassAuth }) {
                    ▼
                  </span>
                </button>
-                <button
-                  onClick={finishTimer}
-                  disabled={timeLeft === 0}
-                  className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-6 py-3 rounded-lg font-medium flex items-center gap-2"
-                >
-                  <CheckCircle className="w-5 h-5" />
-                  Finish
-                </button>
 
                {/* Messages Popup */}
                {messagesExpanded && (
@@ -1496,42 +1443,42 @@ export default function ProTimerApp({ session, bypassAuth }) {
             {timers.map((timer) => {
               const session = timerSessions[timer.id];
               return (
-              <div 
-                key={timer.id} 
-                className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700 cursor-pointer hover:border-gray-600 transition-colors"
-                onClick={() => {
-                  setSelectedTimer(timer)
-                  setCurrentView('admin')
-                }}
-              >
-                {/* Status Indicator */}
-                <div className="flex justify-between items-start mb-3">
-                  <div className={`w-3 h-3 rounded-full ${session?.is_running ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                <div 
+                  key={timer.id} 
+                  className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700 cursor-pointer hover:border-gray-600 transition-colors"
+                  onClick={() => {
+                    setSelectedTimer(timer)
+                    setCurrentView('admin')
+                  }}
+                >
+                  {/* Status Indicator */}
+                  <div className="flex justify-between items-start mb-3">
+                    <div className={`w-3 h-3 rounded-full ${session?.is_running ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                  </div>
+                  <h3 className="text-xl font-semibold text-white mb-2">{timer.name}</h3>
+                  <p className="text-gray-300 mb-4">Presenter: {timer.presenter_name}</p>
+                  <div className="text-3xl font-mono text-blue-400 mb-4">
+                    {(() => {
+                      if (!session) return formatTime(timer.duration);
+                      
+                      let timeLeft = session.time_left;
+                      if (session.is_running) {
+                        const now = new Date(currentTime);
+                        const lastUpdate = new Date(session.updated_at);
+                        const elapsedSinceUpdate = Math.floor((now - lastUpdate) / 1000);
+                        timeLeft = session.time_left - elapsedSinceUpdate;
+                      }
+                      
+                      return formatTime(timeLeft);
+                    })()}
+                  </div>
+                  <div className="w-full bg-gray-700 rounded-full h-2">
+                    <div 
+                      className="bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 h-2 rounded-full transition-all duration-1000" 
+                      style={{ width: `${getProgressPercentageFromSession(session, timer.duration)}%` }}
+                    ></div>
+                  </div>
                 </div>
-                <h3 className="text-xl font-semibold text-white mb-2">{timer.name}</h3>
-                <p className="text-gray-300 mb-4">Presenter: {timer.presenter_name}</p>
-                <div className="text-3xl font-mono text-blue-400 mb-4">
-                  {(() => {
-                    if (!session) return formatTime(timer.duration);
-                    
-                    let timeLeft = session.time_left;
-                    if (session.is_running) {
-                      const now = new Date(currentTime);
-                      const lastUpdate = new Date(session.updated_at);
-                      const elapsedSinceUpdate = Math.floor((now - lastUpdate) / 1000);
-                      timeLeft = Math.max(0, session.time_left - elapsedSinceUpdate);
-                    }
-                    
-                    return formatTime(timeLeft);
-                  })()}
-                </div>
-                <div className="w-full bg-gray-700 rounded-full h-2">
-                  <div 
-                    className="bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 h-2 rounded-full transition-all duration-1000" 
-                    style={{ width: `${getProgressPercentageFromSession(session, timer.duration)}%` }}
-                  ></div>
-                </div>
-              </div>
               );
             })}
           </div>
@@ -1699,19 +1646,15 @@ export default function ProTimerApp({ session, bypassAuth }) {
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">
                         {log.timers?.name || 'Unknown Timer'}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300 capitalize flex items-center gap-2">
-                        <div className="flex items-center gap-2">
-                          {log.action === 'expired' && <span className="text-red-500">⚠️</span>}
-                          {log.action === 'finished' && <span className="text-green-500">✅</span>}
-                          <span className={log.action === 'expired' ? 'text-red-400' : ''}>{log.action}</span>
-                        </div>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300 capitalize">
+                        {log.action === 'expired' && '⚠️ '}
+                        {log.action === 'finished' && '✅ '}
+                        {log.action}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-400">
                         {log.time_value ? formatTime(log.time_value) : '-'}
                       </td>
-                      <td className={`px-6 py-4 text-sm max-w-xs truncate ${
-                        log.action === 'expired' ? 'bg-red-900/20 text-red-300' : 'text-gray-300'
-                      }`}>
+                      <td className="px-6 py-4 text-sm text-gray-300 max-w-xs truncate">
                         {log.notes || '-'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
@@ -1872,10 +1815,16 @@ export default function ProTimerApp({ session, bypassAuth }) {
               {timerLogs.length > 0 ? (
                 <div className="space-y-2">
                   {timerLogs.map((log, index) => (
-                    <div key={index} className="bg-gray-700/50 rounded-lg p-3">
+                    <div key={index} className={`rounded-lg p-3 ${
+                      log.action === 'expired' ? 'bg-red-900/30' : 'bg-gray-700/50'
+                    }`}>
                       <div className="flex justify-between items-start">
                         <div>
-                          <span className="text-white font-medium capitalize">{log.action}</span>
+                          <span className="text-white font-medium capitalize">
+                            {log.action === 'expired' && '⚠️ '}
+                            {log.action === 'finished' && '✅ '}
+                            {log.action}
+                          </span>
                           {log.time_value && (
                             <span className="text-blue-400 ml-2">
                               {formatTime(log.time_value)}
