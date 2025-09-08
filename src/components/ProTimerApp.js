@@ -17,6 +17,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false)
   const [subscription, setSubscription] = useState(null)
   const [showSuccess, setShowSuccess] = useState(false)
+  const [presenterReportData, setPresenterReportData] = useState([])
 
   // Check for success parameter in URL
   useEffect(() => {
@@ -862,6 +863,68 @@ export default function ProTimerApp({ session, bypassAuth }) {
            subscription?.subscription_status === 'trialing'
   }
 
+  // Generate Presenter Performance Report
+  const generatePresenterReport = async () => {
+    try {
+      // Fetch all timers
+      const { data: timersData, error: timersError } = await supabase
+        .from('timers')
+        .select('id, name, presenter_name, duration')
+
+      if (timersError) throw timersError
+
+      // Fetch all messages
+      const { data: messagesData, error: messagesError } = await supabase
+        .from('timer_messages')
+        .select('timer_id')
+
+      if (messagesError) throw messagesError
+
+      // Process data to create presenter report
+      const presenterStats = {}
+
+      // Initialize presenter stats from timers
+      timersData.forEach(timer => {
+        const presenter = timer.presenter_name
+        if (!presenterStats[presenter]) {
+          presenterStats[presenter] = {
+            presenter_name: presenter,
+            timer_count: 0,
+            total_duration: 0,
+            message_count: 0
+          }
+        }
+        presenterStats[presenter].timer_count += 1
+        presenterStats[presenter].total_duration += timer.duration
+      })
+
+      // Count messages per presenter
+      messagesData.forEach(message => {
+        const timer = timersData.find(t => t.id === message.timer_id)
+        if (timer) {
+          const presenter = timer.presenter_name
+          if (presenterStats[presenter]) {
+            presenterStats[presenter].message_count += 1
+          }
+        }
+      })
+
+      // Convert to array and sort by timer count
+      const reportArray = Object.values(presenterStats).sort((a, b) => b.timer_count - a.timer_count)
+      setPresenterReportData(reportArray)
+
+    } catch (error) {
+      console.error('Error generating presenter report:', error)
+    }
+  }
+
+  // Load report data when switching to reports view
+  useEffect(() => {
+    if (currentView === 'reports') {
+      generatePresenterReport()
+    }
+  }, [currentView])
+
   if (showSuccess) {
     return <SuccessPage onContinue={handleSuccessContinue} />
   }
@@ -1594,6 +1657,83 @@ export default function ProTimerApp({ session, bypassAuth }) {
               <p className="text-3xl font-bold text-purple-400">
                 {new Set(timers.map(timer => timer.presenter_name)).size}
               </p>
+            </div>
+          </div>
+
+          {/* Presenter Performance Report */}
+          <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700 mb-8">
+            <div className="p-6 border-b border-gray-700">
+              <h2 className="text-xl font-semibold text-white">Presenter Performance Report</h2>
+              <p className="text-gray-400 text-sm mt-1">Overview of presenter activity and engagement</p>
+            </div>
+            <div className="overflow-x-auto">
+              {presenterReportData.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="text-gray-400 mb-4">No presenter data available</div>
+                  <p className="text-gray-500">Create timers and send messages to generate reports</p>
+                </div>
+              ) : (
+                <table className="w-full">
+                  <thead className="bg-gray-700/50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                        Presenter Name
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                        Timers
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                        Total Duration
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                        Messages Received
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                        Avg Duration per Timer
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-700">
+                    {presenterReportData.map((presenter, index) => (
+                      <tr key={presenter.presenter_name} className="hover:bg-gray-700/30">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-white">
+                            {presenter.presenter_name}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-300">
+                            {presenter.timer_count}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-300">
+                            {formatTime(presenter.total_duration)}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-300">
+                            {presenter.message_count}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-300">
+                            {formatTime(Math.round(presenter.total_duration / presenter.timer_count))}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+            <div className="p-6 border-t border-gray-700">
+              <button
+                onClick={generatePresenterReport}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+              >
+                Refresh Report
+              </button>
             </div>
           </div>
 
