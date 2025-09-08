@@ -39,7 +39,16 @@ export default function ProTimerApp({ session, bypassAuth }) {
         .maybeSingle()
 
       if (error) {
-        console.error('Error fetching subscription:', error)
+        // If no session exists, initialize with timer's original duration
+        const { data: timer, error: timerError } = await supabase
+          .from('timers')
+          .select('duration')
+          .eq('id', timerId)
+          .single()
+        
+        if (!timerError && timer) {
+          setTimeLeft(timer.duration)
+        }
       } else {
         setSubscription(data)
       }
@@ -377,7 +386,6 @@ export default function ProTimerApp({ session, bypassAuth }) {
 
   const selectTimer = async (timer) => {
     setSelectedTimer(timer)
-    setTimeLeft(timer.duration)
     setIsRunning(false)
     
     // Load existing session if any
@@ -548,6 +556,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
     } catch (error) {
       console.error('Error updating timer session:', error)
     }
+      setTimeLeft(0)
   }
 
   const handleFinishTimer = async (timerId) => {
@@ -564,6 +573,18 @@ export default function ProTimerApp({ session, bypassAuth }) {
       // Log the finish action
       await logTimerAction(timerId, 'finished', 0, 0, `Timer finished early with ${Math.floor(remainingTime / 60)}:${(remainingTime % 60).toString().padStart(2, '0')} remaining`)
       
+      // Update the timers list to reflect the finished state
+      setTimers(prevTimers => 
+        prevTimers.map(timer => 
+          timer.id === selectedTimer.id 
+            ? { ...timer, time_left: 0, is_running: false }
+            : timer
+        )
+      )
+
+      // Update selected timer state
+      setSelectedTimer(prev => prev ? { ...prev, time_left: 0, is_running: false } : null)
+
       console.log(`Timer ${timerId} finished early`)
     } catch (error) {
       console.error('Error finishing timer:', error)
