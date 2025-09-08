@@ -550,7 +550,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
       const remainingTime = timerSessions[timerId]?.time_left || 0
       
       // Update timer session to finished state
-      await updateTimerSession(timerId, 0, false)
+      await updateTimerSession(timerId, { time_left: 0, is_running: false })
       
       // Log the finish action
       await logTimerAction(timerId, 'finished', 0, 0, `Timer finished early with ${Math.floor(remainingTime / 60)}:${(remainingTime % 60).toString().padStart(2, '0')} remaining`)
