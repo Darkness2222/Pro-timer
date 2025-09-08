@@ -524,6 +524,21 @@ export default function ProTimerApp({ session, bypassAuth }) {
     }
   }
 
+  const updateTimerSession = async (timerId, updates) => {
+    try {
+      const { error } = await supabase
+        .from('timer_sessions')
+        .update(updates)
+        .eq('timer_id', timerId)
+      
+      if (error) {
+        console.error('Error updating timer session:', error)
+      }
+    } catch (error) {
+      console.error('Error updating timer session:', error)
+    }
+  }
+
   const handleFinishTimer = async (timerId) => {
     try {
       // Stop the timer and set to 0
