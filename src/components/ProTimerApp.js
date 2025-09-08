@@ -97,11 +97,11 @@ export default function ProTimerApp({ session, bypassAuth }) {
     if (!session?.user || bypassAuth) return
     
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', session.user.id)
-        .single()
+     const { data: session, error } = await supabase
+       .from('timer_sessions')
+       .select('*')
+       .eq('timer_id', timer.id)
+       .single()
 
       if (error && error.code !== 'PGRST116') {
         console.error('Error loading profile:', error)
@@ -621,7 +621,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
     logTimerAction('adjust', newTime, seconds, `${seconds > 0 ? 'Added' : 'Removed'} ${Math.abs(seconds)} seconds`)
     
     // Update session in database
-    if (selectedTimer) {
+         .eq('id', timer.id)
       try {
         await supabase
           .from('timer_sessions')
@@ -1409,7 +1409,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
             onPauseTimer={handlePauseTimer}
             onStopTimer={handleStopTimer}
             onResetTimer={handleResetTimer}
-          />
+         .eq('id', timer.id)
         )}
         
         {currentView === 'create' && (
