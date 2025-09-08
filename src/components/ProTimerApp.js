@@ -34,21 +34,12 @@ export default function ProTimerApp({ session, bypassAuth }) {
     
     try {
       const { data, error } = await supabase
-        .select('time_left, is_running')
-        .eq('timer_id', timer.id)
+        .from('stripe_user_subscriptions')
+        .select('*')
         .maybeSingle()
 
       if (error) {
-        // If no session exists, initialize with timer's original duration
-        const { data: timer, error: timerError } = await supabase
-          .from('timers')
-          .select('duration')
-          .eq('id', timer.id)
-          .single()
-        
-        if (!timerError && timer) {
-          setTimeLeft(timer.duration)
-        }
+        console.error('Error fetching subscription:', error)
       } else {
         setSubscription(data)
       }
@@ -97,11 +88,11 @@ export default function ProTimerApp({ session, bypassAuth }) {
     if (!session?.user || bypassAuth) return
     
     try {
-     const { data: session, error } = await supabase
-       .from('timer_sessions')
-       .select('*')
-       .eq('timer_id', timer.id)
-       .single()
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', session.user.id)
+        .single()
 
       if (error && error.code !== 'PGRST116') {
         console.error('Error loading profile:', error)
@@ -556,7 +547,6 @@ export default function ProTimerApp({ session, bypassAuth }) {
     } catch (error) {
       console.error('Error updating timer session:', error)
     }
-      setTimeLeft(0)
   }
 
   const handleFinishTimer = async (timerId) => {
@@ -576,14 +566,18 @@ export default function ProTimerApp({ session, bypassAuth }) {
       // Update the timers list to reflect the finished state
       setTimers(prevTimers => 
         prevTimers.map(timer => 
-          timer.id === selectedTimer.id 
+          timer.id === timerId 
             ? { ...timer, time_left: 0, is_running: false }
             : timer
         )
       )
 
       // Update selected timer state
-      setSelectedTimer(prev => prev ? { ...prev, time_left: 0, is_running: false } : null)
+      if (selectedTimer?.id === timerId) {
+        setSelectedTimer(prev => prev ? { ...prev, time_left: 0, is_running: false } : null)
+        setTimeLeft(0)
+        setIsRunning(false)
+      }
 
       console.log(`Timer ${timerId} finished early`)
     } catch (error) {
@@ -621,19 +615,17 @@ export default function ProTimerApp({ session, bypassAuth }) {
     logTimerAction('adjust', newTime, seconds, `${seconds > 0 ? 'Added' : 'Removed'} ${Math.abs(seconds)} seconds`)
     
     // Update session in database
-         .eq('id', timer.id)
-      try {
-        await supabase
-          .from('timer_sessions')
-          .upsert({
-            timer_id: selectedTimer.id,
-            time_left: newTime,
-            is_running: isRunning,
-            updated_at: new Date().toISOString()
-          }, { onConflict: 'timer_id' })
-      } catch (error) {
-        console.error('Error updating session:', error)
-      }
+    try {
+      await supabase
+        .from('timer_sessions')
+        .upsert({
+          timer_id: selectedTimer.id,
+          time_left: newTime,
+          is_running: isRunning,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'timer_id' })
+    } catch (error) {
+      console.error('Error updating session:', error)
     }
   }
 
@@ -834,7 +826,6 @@ export default function ProTimerApp({ session, bypassAuth }) {
           console.warn('Skipping session with invalid timer_id:', session)
           continue
         }
-
       
       try {
         await supabase
@@ -1409,7 +1400,11 @@ export default function ProTimerApp({ session, bypassAuth }) {
             onPauseTimer={handlePauseTimer}
             onStopTimer={handleStopTimer}
             onResetTimer={handleResetTimer}
-         .eq('id', timer.id)
+            onSelectTimer={(timer) => {
+              setSelectedTimer(timer)
+              setCurrentView('admin')
+            }}
+            selectedTimer={selectedTimer}
         )}
         
         {currentView === 'create' && (
