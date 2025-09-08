@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import TimerOverview from './TimerOverview'
 import { getProductByPriceId } from '../stripe-config'
-import { Play, Pause, Square, RotateCcw, Settings, MessageSquare, Plus, Minus, Clock, Users, Timer as TimerIcon, QrCode, ExternalLink, FileText, Crown, User, LogOut } from 'lucide-react'
+import { Play, Pause, Square, RotateCcw, Settings, MessageSquare, Plus, Minus, Clock, Users, Timer as TimerIcon, QrCode, ExternalLink, FileText, Crown, User, LogOut, CheckCircle } from 'lucide-react'
 import SubscriptionModal from './SubscriptionModal'
 import SuccessPage from './SuccessPage'
 
@@ -136,6 +136,10 @@ export default function ProTimerApp({ session, bypassAuth }) {
         setTimeLeft(prev => {
           if (prev <= 1) {
             setIsRunning(false)
+            // Log when timer naturally expires (goes over time)
+            if (selectedTimer) {
+              logTimerAction('expired', 0, null, 'Timer reached 00:00 - presenter went over time')
+            }
             return 0
           }
           return prev - 1
@@ -146,7 +150,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
     }
 
     return () => clearInterval(intervalRef.current)
-  }, [isRunning, timeLeft])
+  }, [isRunning, timeLeft, selectedTimer])
 
   // Update timer sessions for all timers
   const updateTimerSessions = async () => {
@@ -521,6 +525,28 @@ export default function ProTimerApp({ session, bypassAuth }) {
     }
   }
 
+  const finishTimer = async () => {
+    if (!selectedTimer) return
+    
+    setIsRunning(false)
+    const remainingTime = timeLeft
+    setTimeLeft(0)
+    logTimerAction('finished', remainingTime, null, `Timer finished early with ${formatTime(remainingTime)} remaining`)
+    
+    // Update session in database
+    try {
+      await supabase
+        .from('timer_sessions')
+        .upsert({
+          timer_id: selectedTimer.id,
+          time_left: 0,
+          is_running: false,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'timer_id' })
+    } catch (error) {
+      console.error('Error updating session:', error)
+    }
+  }
   const adjustTime = async (seconds) => {
     const newTime = Math.max(0, timeLeft + seconds)
     setTimeLeft(newTime)
@@ -1045,7 +1071,9 @@ export default function ProTimerApp({ session, bypassAuth }) {
               
               {/* Timer Display */}
               <div className="text-center mb-6">
-                <div className="text-6xl font-mono font-bold text-orange-400 mb-4">
+                <div className={`text-6xl font-mono font-bold mb-4 ${
+                  timeLeft === 0 ? 'text-red-500 animate-pulse' : 'text-orange-400'
+                }`}>
                   {formatTime(timeLeft)}
                 </div>
                 <div className="w-full bg-gray-700 rounded-full h-4 mb-4">
@@ -1293,8 +1321,16 @@ export default function ProTimerApp({ session, bypassAuth }) {
 
              {/* Large Timer Display */}
              <div className="text-center mb-8">
-               <div className="text-8xl md:text-9xl font-mono font-bold text-orange-400 mb-6">
+               <div className={`text-8xl md:text-9xl font-mono font-bold mb-6 ${
+                 timeLeft === 0 ? 'text-red-500 animate-pulse' : 'text-orange-400'
+               }`}>
                  {formatTime(timeLeft)}
+                 {timeLeft === 0 && (
+                   <div className="text-4xl text-red-400 mt-4">⚠️ OVERTIME ⚠️</div>
+                 )}
+                  {timeLeft === 0 && (
+                    <div className="text-2xl text-red-400 mt-2">⚠️ OVERTIME ⚠️</div>
+                  )}
                </div>
                <div className="w-full max-w-4xl bg-gray-700 rounded-full h-6 mb-4">
                  <div
@@ -1303,7 +1339,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
                  ></div>
                </div>
                <p className="text-2xl text-gray-300">
-                 {Math.round(getProgressPercentage())}% elapsed
+                 {timeLeft === 0 ? 'PRESENTER IS OVER TIME' : `${Math.round(getProgressPercentage())}% elapsed`}
                </p>
              </div>
 
@@ -1334,6 +1370,14 @@ export default function ProTimerApp({ session, bypassAuth }) {
                    ▼
                  </span>
                </button>
+                <button
+                  onClick={finishTimer}
+                  disabled={timeLeft === 0}
+                  className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-6 py-3 rounded-lg font-medium flex items-center gap-2"
+                >
+                  <CheckCircle className="w-5 h-5" />
+                  Finish
+                </button>
 
                {/* Messages Popup */}
                {messagesExpanded && (
@@ -1603,11 +1647,15 @@ export default function ProTimerApp({ session, bypassAuth }) {
                 </thead>
                 <tbody className="divide-y divide-gray-700">
                   {allTimerLogs.slice(0, 100).map((log, index) => (
-                    <tr key={index} className="hover:bg-gray-700/30">
+                    <tr key={index} className={`hover:bg-gray-700/30 ${
+                      log.action === 'expired' ? 'bg-red-900/20' : ''
+                    }`}>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">
                         {log.timers?.name || 'Unknown Timer'}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300 capitalize">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300 capitalize flex items-center gap-2">
+                        {log.action === 'expired' && <span className="text-red-400">⚠️</span>}
+                        {log.action === 'finished' && <span className="text-green-400">✅</span>}
                         {log.action}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-400">
