@@ -1406,6 +1406,10 @@ export default function ProTimerApp({ session, bypassAuth }) {
             {timers.map((timer) => {
               const session = timerSessions[timer.id];
               return (
+                    onClick={() => {
+                      setSelectedTimer(timer)
+                      setCurrentView('admin')
+                    }}
               <div key={timer.id} className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700">
                 {/* Status Indicator */}
                 <div className="flex justify-between items-start mb-3">
