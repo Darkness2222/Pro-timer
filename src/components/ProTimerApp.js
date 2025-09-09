@@ -174,6 +174,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
       const { data, error } = await supabase
         .from('timers')
         .select('*')
+        .eq('status', 'active')
         .order('created_at', { ascending: false })
       
       if (error) throw error
@@ -228,6 +229,14 @@ export default function ProTimerApp({ session, bypassAuth }) {
           updated_at: new Date().toISOString()
         })
         .eq('timer_id', timerId)
+
+      // Update timer status to finished_early
+      await supabase
+        .from('timers')
+        .update({
+          status: 'finished_early'
+        })
+        .eq('id', timerId)
 
       if (error) throw error
       await loadTimerSessions()
@@ -571,6 +580,15 @@ export default function ProTimerApp({ session, bypassAuth }) {
     // Update session in database
     try {
       await supabase
+      // Remove timer from local state since it's no longer active
+      setTimers(prev => prev.filter(timer => timer.id !== timerId))
+      
+      // If this was the selected timer, clear selection
+      if (selectedTimer?.id === timerId) {
+        setSelectedTimer(null)
+        setCurrentView('overview')
+      }
+
         .from('timer_sessions')
         .upsert({
           timer_id: selectedTimer.id,
