@@ -2,20 +2,6 @@ import React from 'react'
 import { Clock, Users, Timer as TimerIcon } from 'lucide-react'
 
 export default function TimerOverview({ timers, onSelectTimer, selectedTimer }) {
-  const formatTime = (seconds) => {
-    const mins = Math.floor(Math.abs(seconds) / 60)
-    const secs = Math.abs(seconds) % 60
-    const sign = seconds < 0 ? '-' : ''
-    return `${sign}${mins}:${secs.toString().padStart(2, '0')}`
-  }
-
-  const getProgressPercentage = (timeLeft, duration) => {
-    if (duration === 0) return 0
-    const elapsed = duration - timeLeft
-    const percentage = (elapsed / duration) * 100
-    return Math.min(Math.max(percentage, 0), 100) // Clamp between 0-100%
-  }
-
   return (
     <div className="p-6">
       <div className="mb-6">
@@ -54,36 +40,11 @@ export default function TimerOverview({ timers, onSelectTimer, selectedTimer }) 
                 </div>
                 <div className="text-right">
                   <div className="text-white font-mono">
-                    {formatTime(timer.timeLeft || timer.duration)}
+                    {Math.floor(timer.duration / 60)}:{(timer.duration % 60).toString().padStart(2, '0')}
                   </div>
-                  <div className="text-xs text-gray-500">
-                    {timer.timeLeft < 0 ? 'Overtime' : 'Remaining'}
-                  </div>
+                  <div className="text-xs text-gray-500">Duration</div>
                 </div>
               </div>
-              
-              {/* Progress Bar */}
-              <div className="w-full bg-gray-700 rounded-full h-2 overflow-hidden">
-                <div 
-                  className={`h-full transition-all duration-1000 ${
-                    timer.timeLeft < 0 
-                      ? 'bg-red-500' 
-                      : timer.timeLeft <= timer.duration * 0.1 
-                        ? 'bg-yellow-500' 
-                        : 'bg-green-500'
-                  }`}
-                  style={{ 
-                    width: `${getProgressPercentage(timer.timeLeft || timer.duration, timer.duration)}%` 
-                  }}
-                />
-              </div>
-              
-              {/* Status indicator */}
-              {timer.timeLeft < 0 && (
-                <div className="text-xs text-red-400 mt-1 text-center">
-                  ⚠️ OVERTIME
-                </div>
-              )}
             </div>
           ))}
         </div>
