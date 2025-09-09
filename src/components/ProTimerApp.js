@@ -832,11 +832,11 @@ export default function ProTimerApp({ session, bypassAuth }) {
     
     for (const [timerId, session] of pausedTimers) {
       console.log('Starting timer:', timerId)
-        // Skip if timer_id is null or invalid
-        if (!session.timer_id) {
-          console.warn('Skipping session with invalid timer_id:', session)
-          continue
-        }
+      // Skip if timer_id is null or invalid
+      if (!session.timer_id) {
+        console.warn('Skipping session with invalid timer_id:', session)
+        continue
+      }
       
       try {
         await supabase
@@ -858,6 +858,12 @@ export default function ProTimerApp({ session, bypassAuth }) {
     // Update timer sessions
     updateTimerSessions()
   }
+
+  const handleSelectTimer = (timer) => {
+    setSelectedTimer(timer)
+    setCurrentView('admin')
+  }
+
   const handleSignOut = async () => {
     try {
       await supabase.auth.signOut()
@@ -1413,42 +1419,6 @@ export default function ProTimerApp({ session, bypassAuth }) {
         </div>
       )}
 
-      <div className="px-4 sm:px-0">
-        {currentView === 'overview' && (
-          <TimerOverview
-            timers={timers}
-            timerSessions={timerSessions}
-            onStartTimer={handleStartTimer}
-            onPauseTimer={handlePauseTimer}
-            onStopTimer={handleStopTimer}
-            onResetTimer={handleResetTimer}
-            onSelectTimer={(timer) => {
-              setSelectedTimer(timer)
-              setCurrentView('admin')
-            }}
-            selectedTimer={selectedTimer}
-          />
-        )}
-        
-        {currentView === 'create' && (
-          <div className="bg-white shadow rounded-lg p-6">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">Create New Timer</h2>
-            <p className="text-gray-600 mb-6">
-              Create a new presentation timer with custom settings.
-            </p>
-            
-            <div className="space-y-4">
-              <div className="p-4 bg-blue-50 rounded-lg">
-                <h3 className="font-medium text-blue-900">Timer Creation Coming Soon</h3>
-                <p className="mt-2 text-blue-800 text-sm">
-                  Timer creation interface will be implemented in the next update.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
       {/* Presenter View */}
       {currentView === 'presenter' && (
         <div className="min-h-screen flex flex-col items-center justify-center p-8 relative">
@@ -1562,17 +1532,16 @@ export default function ProTimerApp({ session, bypassAuth }) {
 
       {/* Timer Overview */}
       {currentView === 'overview' && (
-        <div>
-          {/* Add error boundary for Timer Overview */}
-          <TimerOverview 
-            timers={timers.map(timer => ({
-              ...timer,
-              timeLeft: timerSessions[timer.id]?.time_left ?? timer.duration
-            }))}
-            onSelectTimer={handleSelectTimer}
-            selectedTimer={selectedTimer}
-          />
-        </div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-white mb-2">Timer Overview</h1>
+            <p className="text-gray-300">Monitor and control all your timers</p>
+          </div>
+
+          {/* Bulk Controls */}
+          <div className="mb-6">
+            <div className="flex gap-4">
+              <button
                 onClick={handlePlayAll}
                 className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
               >
@@ -1589,49 +1558,15 @@ export default function ProTimerApp({ session, bypassAuth }) {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {timers.map((timer) => {
-              const session = timerSessions[timer.id];
-              return (
-                <div 
-                  key={timer.id} 
-                  className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700 cursor-pointer hover:border-gray-600 transition-colors"
-                  onClick={() => {
-                    setSelectedTimer(timer)
-                    setCurrentView('admin')
-                  }}
-                >
-                  {/* Status Indicator */}
-                  <div className="flex justify-between items-start mb-3">
-                    <div className={`w-3 h-3 rounded-full ${session?.is_running ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                  </div>
-                  <h3 className="text-xl font-semibold text-white mb-2">{timer.name}</h3>
-                  <p className="text-gray-300 mb-4">Presenter: {timer.presenter_name}</p>
-                  <div className="text-3xl font-mono text-blue-400 mb-4">
-                    {(() => {
-                      if (!session) return formatTime(timer.duration);
-                      
-                      let timeLeft = session.time_left;
-                      if (session.is_running) {
-                        const now = new Date(currentTime);
-                        const lastUpdate = new Date(session.updated_at);
-                        const elapsedSinceUpdate = Math.floor((now - lastUpdate) / 1000);
-                        timeLeft = session.time_left - elapsedSinceUpdate;
-                      }
-                      
-                      return formatTime(timeLeft);
-                    })()}
-                  </div>
-                  <div className="w-full bg-gray-700 rounded-full h-2">
-                    <div 
-                      className="bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 h-2 rounded-full transition-all duration-1000" 
-                      style={{ width: `${getProgressPercentageFromSession(session, timer.duration)}%` }}
-                    ></div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          {/* Timer Overview Component */}
+          <TimerOverview 
+            timers={timers.map(timer => ({
+              ...timer,
+              timeLeft: timerSessions[timer.id]?.time_left ?? timer.duration
+            }))}
+            onSelectTimer={handleSelectTimer}
+            selectedTimer={selectedTimer}
+          />
         </div>
       )}
 
