@@ -1130,7 +1130,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
                   Stop
                 </button>
                 <button
-                  onClick={finishTimer}
+                  onClick={() => handleFinishTimer(selectedTimer?.id)}
                   className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
                 >
                   <CheckCircle className="w-5 h-5" />
