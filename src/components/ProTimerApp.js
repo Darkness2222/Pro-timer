@@ -17,6 +17,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false)
   const [subscription, setSubscription] = useState(null)
   const [showSuccess, setShowSuccess] = useState(false)
+  const [presenterReportData, setPresenterReportData] = useState([])
 
   // Check for success parameter in URL
   useEffect(() => {
@@ -110,19 +111,28 @@ export default function ProTimerApp({ session, bypassAuth }) {
   // Add session validation
   useEffect(() => {
     if (!bypassAuth && !session) {
-      console.log('No session found, user should be redirected to auth')
-      return
+      console.log('No session found, but staying in app to prevent redirect loops')
     }
   }, [session, bypassAuth])
 
   // Load timers on component mount
   useEffect(() => {
     loadTimers()
-    loadTimerSessions()
     loadAllTimerLogs()
-    // Update timer sessions and current time every second
+    updateTimerSessions()
+    
+    // Update current time every second for session calculations
     const sessionInterval = setInterval(() => {
-      updateTimerSessions()
+      if (isRunning && timeLeft > 0) {
+        setTimeLeft(prev => prev - 1)
+      } else if (isRunning && timeLeft <= 0) {
+        // Timer continues into overtime
+        setTimeLeft(prev => prev - 1)
+        // Only log expiration once when it first hits 0
+        if (timeLeft === 0) {
+          logTimerAction('expired', 0, 0, `Timer expired naturally, continuing into overtime`)
+        }
+      }
       setCurrentTime(Date.now())
     }, 1000)
     
@@ -327,6 +337,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
         }])
     } catch (error) {
       console.error('Error logging action:', error)
+      // Don't throw error to prevent auth redirect
     }
     
     // Reload all logs for reports
@@ -360,13 +371,13 @@ export default function ProTimerApp({ session, bypassAuth }) {
       loadAllTimerLogs()
     } catch (error) {
       console.error('Error creating timer:', error)
-      alert('Error creating timer: ' + error.message)
+      // Don't show alert to prevent auth issues
+      console.error('Failed to create timer:', error.message)
     }
   }
 
   const selectTimer = async (timer) => {
     setSelectedTimer(timer)
-    setTimeLeft(timer.duration)
     setIsRunning(false)
     
     // Load existing session if any
@@ -384,6 +395,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
     } catch (error) {
       console.log('No existing session found, using defaults')
       // No existing session, use defaults - this is expected behavior
+      // Don't throw error to prevent auth redirect
     }
 
     // Load messages and logs for this timer
@@ -423,7 +435,8 @@ export default function ProTimerApp({ session, bypassAuth }) {
       loadAllTimerLogs()
     } catch (error) {
       console.error('Error deleting timer:', error)
-      alert('Error deleting timer: ' + error.message)
+      // Don't show alert to prevent auth issues
+      console.error('Failed to delete timer:', error.message)
     }
   }
 
@@ -521,6 +534,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
         }, { onConflict: 'timer_id' })
     } catch (error) {
       console.error('Error updating session:', error)
+      // Don't throw error to prevent auth redirect
     }
   }
 
@@ -553,6 +567,22 @@ export default function ProTimerApp({ session, bypassAuth }) {
       // Log the finish action
       await logTimerAction(timerId, 'finished', 0, 0, `Timer finished early with ${Math.floor(remainingTime / 60)}:${(remainingTime % 60).toString().padStart(2, '0')} remaining`)
       
+      // Update the timers list to reflect the finished state
+      setTimers(prevTimers => 
+        prevTimers.map(timer => 
+          timer.id === timerId 
+            ? { ...timer, time_left: 0, is_running: false }
+            : timer
+        )
+      )
+
+      // Update selected timer state
+      if (selectedTimer?.id === timerId) {
+        setSelectedTimer(prev => prev ? { ...prev, time_left: 0, is_running: false } : null)
+        setTimeLeft(0)
+        setIsRunning(false)
+      }
+
       console.log(`Timer ${timerId} finished early`)
     } catch (error) {
       console.error('Error finishing timer:', error)
@@ -589,19 +619,17 @@ export default function ProTimerApp({ session, bypassAuth }) {
     logTimerAction('adjust', newTime, seconds, `${seconds > 0 ? 'Added' : 'Removed'} ${Math.abs(seconds)} seconds`)
     
     // Update session in database
-    if (selectedTimer) {
-      try {
-        await supabase
-          .from('timer_sessions')
-          .upsert({
-            timer_id: selectedTimer.id,
-            time_left: newTime,
-            is_running: isRunning,
-            updated_at: new Date().toISOString()
-          }, { onConflict: 'timer_id' })
-      } catch (error) {
-        console.error('Error updating session:', error)
-      }
+    try {
+      await supabase
+        .from('timer_sessions')
+        .upsert({
+          timer_id: selectedTimer.id,
+          time_left: newTime,
+          is_running: isRunning,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'timer_id' })
+    } catch (error) {
+      console.error('Error updating session:', error)
     }
   }
 
@@ -655,7 +683,8 @@ export default function ProTimerApp({ session, bypassAuth }) {
       logTimerAction('message', null, null, `Sent: ${messageText.trim()}`)
     } catch (error) {
       console.error('Error sending message:', error)
-      alert('Error sending message: ' + error.message)
+      // Don't show alert to prevent auth issues
+      console.error('Failed to send message:', error.message)
     }
   }
 
@@ -677,6 +706,12 @@ export default function ProTimerApp({ session, bypassAuth }) {
   }
 
   const exportTimersCSV = () => {
+    // Don't run if no session and not bypassing auth
+    if (!session?.user && !bypassAuth) {
+      console.log('No session available for exporting CSV')
+      return
+    }
+
     const csvData = []
     
     // Add headers
@@ -797,12 +832,11 @@ export default function ProTimerApp({ session, bypassAuth }) {
     
     for (const [timerId, session] of pausedTimers) {
       console.log('Starting timer:', timerId)
-        // Skip if timer_id is null or invalid
-        if (!session.timer_id) {
-          console.warn('Skipping session with invalid timer_id:', session)
-          continue
-        }
-
+      // Skip if timer_id is null or invalid
+      if (!session.timer_id) {
+        console.warn('Skipping session with invalid timer_id:', session)
+        continue
+      }
       
       try {
         await supabase
@@ -824,11 +858,15 @@ export default function ProTimerApp({ session, bypassAuth }) {
     // Update timer sessions
     updateTimerSessions()
   }
+
+  const handleSelectTimer = (timer) => {
+    setSelectedTimer(timer)
+    setCurrentView('admin')
+  }
+
   const handleSignOut = async () => {
     try {
       await supabase.auth.signOut()
-      
-      console.log('Timer reset successfully')
     } catch (error) {
       console.error('Error signing out:', error)
       // Don't re-throw the error to prevent auth issues
@@ -851,6 +889,81 @@ export default function ProTimerApp({ session, bypassAuth }) {
     return subscription?.subscription_status === 'active' || 
            subscription?.subscription_status === 'trialing'
   }
+
+  // Generate Presenter Performance Report
+  const generatePresenterReport = async () => {
+    // Don't run if no session and not bypassing auth
+    if (!session?.user && !bypassAuth) {
+      console.log('No session available for generating reports')
+      return
+    }
+
+    try {
+      // Fetch all timers
+      const { data: timersData, error: timersError } = await supabase
+        .from('timers')
+        .select('id, name, presenter_name, duration')
+
+      if (timersError) {
+        console.error('Error fetching timers for report:', timersError)
+        return
+      }
+
+      // Fetch all messages
+      const { data: messagesData, error: messagesError } = await supabase
+        .from('timer_messages')
+        .select('timer_id')
+
+      if (messagesError) {
+        console.error('Error fetching messages for report:', messagesError)
+        return
+      }
+
+      // Process data to create presenter report
+      const presenterStats = {}
+
+      // Initialize presenter stats from timers
+      timersData?.forEach(timer => {
+        const presenter = timer.presenter_name
+        if (!presenterStats[presenter]) {
+          presenterStats[presenter] = {
+            presenter_name: presenter,
+            timer_count: 0,
+            total_duration: 0,
+            message_count: 0
+          }
+        }
+        presenterStats[presenter].timer_count += 1
+        presenterStats[presenter].total_duration += timer.duration
+      })
+
+      // Count messages per presenter
+      messagesData?.forEach(message => {
+        const timer = timersData?.find(t => t.id === message.timer_id)
+        if (timer) {
+          const presenter = timer.presenter_name
+          if (presenterStats[presenter]) {
+            presenterStats[presenter].message_count += 1
+          }
+        }
+      })
+
+      // Convert to array and sort by timer count
+      const reportArray = Object.values(presenterStats).sort((a, b) => b.timer_count - a.timer_count)
+      setPresenterReportData(reportArray)
+
+    } catch (error) {
+      console.error('Error generating presenter report:', error)
+      // Don't throw the error - just log it and continue
+    }
+  }
+
+  // Load report data when switching to reports view
+  useEffect(() => {
+    if (currentView === 'reports' && (session?.user || bypassAuth)) {
+      generatePresenterReport()
+    }
+  }, [currentView])
 
   if (showSuccess) {
     return <SuccessPage onContinue={handleSuccessContinue} />
@@ -1144,8 +1257,8 @@ export default function ProTimerApp({ session, bypassAuth }) {
                 </button>
                 <button
                   onClick={finishTimer}
-                  disabled={timeLeft <= 0}
-                  className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-6 py-3 rounded-lg font-medium flex items-center gap-2"
+                  disabled={loading}
+                  className="bg-green-600 hover:bg-green-700 disabled:bg-green-800 px-4 py-2 rounded-lg font-medium text-white transition-colors flex items-center gap-2"
                 >
                   <CheckCircle className="w-5 h-5" />
                   Finish
@@ -1306,37 +1419,6 @@ export default function ProTimerApp({ session, bypassAuth }) {
         </div>
       )}
 
-      <div className="px-4 sm:px-0">
-        {currentView === 'overview' && (
-          <TimerOverview
-            timers={timers}
-            timerSessions={timerSessions}
-            onStartTimer={handleStartTimer}
-            onPauseTimer={handlePauseTimer}
-            onStopTimer={handleStopTimer}
-            onResetTimer={handleResetTimer}
-          />
-        )}
-        
-        {currentView === 'create' && (
-          <div className="bg-white shadow rounded-lg p-6">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">Create New Timer</h2>
-            <p className="text-gray-600 mb-6">
-              Create a new presentation timer with custom settings.
-            </p>
-            
-            <div className="space-y-4">
-              <div className="p-4 bg-blue-50 rounded-lg">
-                <h3 className="font-medium text-blue-900">Timer Creation Coming Soon</h3>
-                <p className="mt-2 text-blue-800 text-sm">
-                  Timer creation interface will be implemented in the next update.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
       {/* Presenter View */}
       {currentView === 'presenter' && (
         <div className="min-h-screen flex flex-col items-center justify-center p-8 relative">
@@ -1451,12 +1533,14 @@ export default function ProTimerApp({ session, bypassAuth }) {
       {/* Timer Overview */}
       {currentView === 'overview' && (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h1 className="text-3xl font-bold text-white mb-2">Timer Overview</h1>
-              <p className="text-gray-300">Monitor all active timers</p>
-            </div>
-            <div className="flex items-center gap-3">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-white mb-2">Timer Overview</h1>
+            <p className="text-gray-300">Monitor and control all your timers</p>
+          </div>
+
+          {/* Bulk Controls */}
+          <div className="mb-6">
+            <div className="flex gap-4">
               <button
                 onClick={handlePlayAll}
                 className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
@@ -1474,55 +1558,39 @@ export default function ProTimerApp({ session, bypassAuth }) {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {timers.map((timer) => {
-              const session = timerSessions[timer.id];
-              return (
-                <div 
-                  key={timer.id} 
-                  className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700 cursor-pointer hover:border-gray-600 transition-colors"
-                  onClick={() => {
-                    setSelectedTimer(timer)
-                    setCurrentView('admin')
-                  }}
-                >
-                  {/* Status Indicator */}
-                  <div className="flex justify-between items-start mb-3">
-                    <div className={`w-3 h-3 rounded-full ${session?.is_running ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                  </div>
-                  <h3 className="text-xl font-semibold text-white mb-2">{timer.name}</h3>
-                  <p className="text-gray-300 mb-4">Presenter: {timer.presenter_name}</p>
-                  <div className="text-3xl font-mono text-blue-400 mb-4">
-                    {(() => {
-                      if (!session) return formatTime(timer.duration);
-                      
-                      let timeLeft = session.time_left;
-                      if (session.is_running) {
-                        const now = new Date(currentTime);
-                        const lastUpdate = new Date(session.updated_at);
-                        const elapsedSinceUpdate = Math.floor((now - lastUpdate) / 1000);
-                        timeLeft = session.time_left - elapsedSinceUpdate;
-                      }
-                      
-                      return formatTime(timeLeft);
-                    })()}
-                  </div>
-                  <div className="w-full bg-gray-700 rounded-full h-2">
-                    <div 
-                      className="bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 h-2 rounded-full transition-all duration-1000" 
-                      style={{ width: `${getProgressPercentageFromSession(session, timer.duration)}%` }}
-                    ></div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          {/* Timer Overview Component */}
+          <TimerOverview 
+            timers={timers.map(timer => ({
+              ...timer,
+              timeLeft: timerSessions[timer.id]?.time_left ?? timer.duration
+            }))}
+            onSelectTimer={(timer) => {
+              setSelectedTimer(timer)
+              setCurrentView('admin')
+            }}
+            selectedTimer={selectedTimer}
+          />
+        </div>
+      )}
+          <TimerOverview 
+            timers={timers.map(timer => ({
+              ...timer,
+              timeLeft: timerSessions[timer.id]?.time_left ?? timer.duration
+            }))}
+            onSelectTimer={handleSelectTimer}
+            selectedTimer={selectedTimer}
+          />
         </div>
       )}
 
       {/* Reports View */}
       {currentView === 'reports' && (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* Debug info */}
+          <div className="mb-4 p-2 bg-blue-900/20 rounded text-blue-300 text-sm">
+            Debug: Reports view is active. Current view: {currentView}
+          </div>
+          
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-white mb-2">Timer Reports</h1>
             <p className="text-gray-300">View all timer activity and export data</p>
@@ -1552,7 +1620,8 @@ export default function ProTimerApp({ session, bypassAuth }) {
               </div>
               <button
                 onClick={exportTimersCSV}
-                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2"
+                className="bg-green-600 hover:bg-green-700 disabled:bg-green-800 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2"
+                disabled={!session?.user && !bypassAuth}
               >
                 <FileText className="w-4 h-4" />
                 Export CSV
@@ -1584,6 +1653,84 @@ export default function ProTimerApp({ session, bypassAuth }) {
               <p className="text-3xl font-bold text-purple-400">
                 {new Set(timers.map(timer => timer.presenter_name)).size}
               </p>
+            </div>
+          </div>
+
+          {/* Presenter Performance Report */}
+          <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700 mb-8">
+            <div className="p-6 border-b border-gray-700">
+              <h2 className="text-xl font-semibold text-white">Presenter Performance Report</h2>
+              <p className="text-gray-400 text-sm mt-1">Overview of presenter activity and engagement</p>
+            </div>
+            <div className="overflow-x-auto">
+              {presenterReportData.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="text-gray-400 mb-4">No presenter data available</div>
+                  <p className="text-gray-500">Create timers and send messages to generate reports</p>
+                </div>
+              ) : (
+                <table className="w-full">
+                  <thead className="bg-gray-700/50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                        Presenter Name
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                        Timers
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                        Total Duration
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                        Messages Received
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                        Avg Duration per Timer
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-700">
+                    {presenterReportData.map((presenter, index) => (
+                      <tr key={presenter.presenter_name} className="hover:bg-gray-700/30">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-white">
+                            {presenter.presenter_name}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-300">
+                            {presenter.timer_count}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-300">
+                            {formatTime(presenter.total_duration)}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-300">
+                            {presenter.message_count}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-300">
+                            {formatTime(Math.round(presenter.total_duration / presenter.timer_count))}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+            <div className="p-6 border-t border-gray-700">
+              <button
+                onClick={generatePresenterReport}
+                className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white px-4 py-2 rounded-lg transition-colors"
+                disabled={!session?.user && !bypassAuth}
+              >
+                Refresh Report
+              </button>
             </div>
           </div>
 
