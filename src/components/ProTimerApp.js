@@ -6,7 +6,7 @@ import { Play, Pause, Square, RotateCcw, Settings, MessageSquare, Plus, Minus, C
 import SubscriptionModal from './SubscriptionModal'
 import SuccessPage from './SuccessPage'
 
-export default function ProTimerApp({ session, bypassAuth }) {
+export default function ProTimerApp({ session }) {
   const [currentView, setCurrentView] = useState('overview')
   const [selectedTimer, setSelectedTimer] = useState(null)
   const [timers, setTimers] = useState([])
@@ -29,7 +29,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
   }, [])
 
   const fetchSubscription = useCallback(async () => {
-    if (!session?.user && !bypassAuth) return
+    if (!session?.user) return
     
     try {
       const { data, error } = await supabase
@@ -47,7 +47,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
     } finally {
       setLoading(false)
     }
-  }, [session?.user, bypassAuth])
+  }, [session?.user])
 
   useEffect(() => {
     fetchSubscription()
@@ -84,7 +84,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
 
   // Load user profile
   const loadUserProfile = useCallback(async () => {
-    if (!session?.user || bypassAuth) return
+    if (!session?.user) return
     
     try {
       const { data, error } = await supabase
@@ -101,7 +101,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
     } catch (error) {
       console.error('Error loading profile:', error)
     }
-  }, [session?.user, bypassAuth])
+  }, [session?.user])
 
   useEffect(() => {
     loadUserProfile()
@@ -109,11 +109,11 @@ export default function ProTimerApp({ session, bypassAuth }) {
 
   // Add session validation
   useEffect(() => {
-    if (!bypassAuth && !session) {
+    if (!session) {
       console.log('No session found, user should be redirected to auth')
       return
     }
-  }, [session, bypassAuth])
+  }, [session])
 
   // Load timers on component mount
   useEffect(() => {
@@ -1012,7 +1012,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
                   )}
                 </span>
               </div>
-              {!userProfile?.is_pro && !bypassAuth && (
+              {!userProfile?.is_pro && (
                 <button
                   onClick={() => setShowSubscriptionModal(true)}
                   className="bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-1 rounded-lg text-sm font-medium transition-colors flex items-center gap-1"
@@ -1021,7 +1021,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
                   Upgrade to Pro
                 </button>
               )}
-              {session && !bypassAuth && (
+              {session && (
                 <button
                   onClick={handleSignOut}
                   className="text-gray-300 hover:text-white transition-colors flex items-center gap-1"

@@ -6,14 +6,8 @@ import ProTimerApp from './components/ProTimerApp'
 function App() {
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [bypassAuth, setBypassAuth] = useState(false)
 
   useEffect(() => {
-    if (bypassAuth) {
-      setLoading(false)
-      return
-    }
-
     // Get initial session
     supabase.auth.getSession().then(({ data: { session }, error }) => {
       if (error) {
@@ -30,7 +24,7 @@ function App() {
     })
 
     return () => subscription.unsubscribe()
-  }, [bypassAuth])
+  }, [])
 
   if (loading) {
     return (
@@ -41,25 +35,15 @@ function App() {
   }
 
   // Show bypass option on auth screen
-  if (!session && !bypassAuth) {
+  if (!session) {
     return (
-      <div>
-        <Auth />
-        <div className="fixed bottom-4 left-4">
-          <button
-            onClick={() => setBypassAuth(true)}
-            className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg text-sm"
-          >
-            Skip Auth (Testing)
-          </button>
-        </div>
-      </div>
+      <Auth />
     )
   }
 
   return (
     <div className="App">
-      <ProTimerApp session={session} bypassAuth={bypassAuth} />
+      <ProTimerApp session={session} />
     </div>
   )
 }
