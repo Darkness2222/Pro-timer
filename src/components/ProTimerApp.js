@@ -112,7 +112,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
   useEffect(() => {
     if (!bypassAuth && !session) {
       console.log('No session found, user should be redirected to auth')
-      return
+      // Don't automatically redirect, let parent component handle this
     }
   }, [session, bypassAuth])
 
@@ -338,6 +338,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
         }])
     } catch (error) {
       console.error('Error logging action:', error)
+      // Don't throw error to prevent auth redirect
     }
     
     // Reload all logs for reports
@@ -371,7 +372,8 @@ export default function ProTimerApp({ session, bypassAuth }) {
       loadAllTimerLogs()
     } catch (error) {
       console.error('Error creating timer:', error)
-      alert('Error creating timer: ' + error.message)
+      // Show error without alert to prevent auth issues
+      console.error('Failed to create timer:', error.message)
     }
   }
 
@@ -394,6 +396,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
     } catch (error) {
       console.log('No existing session found, using defaults')
       // No existing session, use defaults - this is expected behavior
+      // Don't throw error to prevent auth redirect
     }
 
     // Load messages and logs for this timer
@@ -433,7 +436,8 @@ export default function ProTimerApp({ session, bypassAuth }) {
       loadAllTimerLogs()
     } catch (error) {
       console.error('Error deleting timer:', error)
-      alert('Error deleting timer: ' + error.message)
+      // Show error without alert to prevent auth issues
+      console.error('Failed to delete timer:', error.message)
     }
   }
 
@@ -531,6 +535,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
         }, { onConflict: 'timer_id' })
     } catch (error) {
       console.error('Error updating session:', error)
+      // Don't throw error to prevent auth redirect
     }
   }
 
@@ -679,7 +684,8 @@ export default function ProTimerApp({ session, bypassAuth }) {
       logTimerAction('message', null, null, `Sent: ${messageText.trim()}`)
     } catch (error) {
       console.error('Error sending message:', error)
-      alert('Error sending message: ' + error.message)
+      // Show error without alert to prevent auth issues
+      console.error('Failed to send message:', error.message)
     }
   }
 
