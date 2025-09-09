@@ -91,9 +91,9 @@ export default function ProTimerApp({ session }) {
         .from('profiles')
         .select('*')
         .eq('id', session.user.id)
-        .single()
+        .maybeSingle()
 
-      if (error && error.code !== 'PGRST116') {
+      if (error && error.code !== 'PGRST116' && error.status !== 406) {
         console.error('Error loading profile:', error)
       } else if (data) {
         setUserProfile(data)
