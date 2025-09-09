@@ -560,7 +560,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
       await updateTimerSession(timerId, 0, false)
       
       // Log the finish action
-      await logTimerAction(timerId, 'finished', 0, 0, `Timer finished early with ${Math.floor(remainingTime / 60)}:${(remainingTime % 60).toString().padStart(2, '0')} remaining`)
+      await logTimerAction(timerId, 'finished', remainingTime, 0, `Timer finished early with ${Math.floor(remainingTime / 60)}:${(remainingTime % 60).toString().padStart(2, '0')} remaining`)
       
       console.log(`Timer ${timerId} finished early`)
     } catch (error) {
