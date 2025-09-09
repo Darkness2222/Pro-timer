@@ -111,8 +111,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
   // Add session validation
   useEffect(() => {
     if (!bypassAuth && !session) {
-      console.log('No session found, user should be redirected to auth')
-      // Don't automatically redirect, let parent component handle this
+      console.log('No session found, but staying in app to prevent redirect loops')
     }
   }, [session, bypassAuth])
 
@@ -372,7 +371,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
       loadAllTimerLogs()
     } catch (error) {
       console.error('Error creating timer:', error)
-      // Show error without alert to prevent auth issues
+      // Don't show alert to prevent auth issues
       console.error('Failed to create timer:', error.message)
     }
   }
@@ -436,7 +435,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
       loadAllTimerLogs()
     } catch (error) {
       console.error('Error deleting timer:', error)
-      // Show error without alert to prevent auth issues
+      // Don't show alert to prevent auth issues
       console.error('Failed to delete timer:', error.message)
     }
   }
@@ -684,7 +683,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
       logTimerAction('message', null, null, `Sent: ${messageText.trim()}`)
     } catch (error) {
       console.error('Error sending message:', error)
-      // Show error without alert to prevent auth issues
+      // Don't show alert to prevent auth issues
       console.error('Failed to send message:', error.message)
     }
   }
@@ -856,8 +855,6 @@ export default function ProTimerApp({ session, bypassAuth }) {
   const handleSignOut = async () => {
     try {
       await supabase.auth.signOut()
-      
-      console.log('Timer reset successfully')
     } catch (error) {
       console.error('Error signing out:', error)
       // Don't re-throw the error to prevent auth issues
