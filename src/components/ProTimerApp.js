@@ -1564,6 +1564,19 @@ export default function ProTimerApp({ session, bypassAuth }) {
               ...timer,
               timeLeft: timerSessions[timer.id]?.time_left ?? timer.duration
             }))}
+            onSelectTimer={(timer) => {
+              setSelectedTimer(timer)
+              setCurrentView('admin')
+            }}
+            selectedTimer={selectedTimer}
+          />
+        </div>
+      )}
+          <TimerOverview 
+            timers={timers.map(timer => ({
+              ...timer,
+              timeLeft: timerSessions[timer.id]?.time_left ?? timer.duration
+            }))}
             onSelectTimer={handleSelectTimer}
             selectedTimer={selectedTimer}
           />
