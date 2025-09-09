@@ -1398,8 +1398,8 @@ export default function ProTimerApp({ session, bypassAuth }) {
              <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2">
                <button
                  onClick={() => setMessagesExpanded(!messagesExpanded)}
-                 className="bg-gray-800/80 backdrop-blur-sm hover:bg-gray-700/80 text-white px-6 py-3 rounded-full border border-gray-600 flex items-center gap-2 shadow-lg"
-               >
+                  className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 disabled:bg-gray-600 disabled:cursor-not-allowed"
+                  disabled={timerSessions[selectedTimer.id]?.time_left === 0}
                  <MessageSquare className="w-5 h-5" />
                  Messages from Control
                  <span className={`transform transition-transform ${messagesExpanded ? 'rotate-180' : ''}`}>
