@@ -3,9 +3,6 @@ import { Clock, Users, Timer as TimerIcon } from 'lucide-react'
 
 export default function TimerOverview({ timers, onSelectTimer, selectedTimer }) {
   const formatTime = (seconds) => {
-    if (typeof seconds !== 'number' || isNaN(seconds)) {
-      return '0:00'
-    }
     const mins = Math.floor(Math.abs(seconds) / 60)
     const secs = Math.abs(seconds) % 60
     const sign = seconds < 0 ? '-' : ''
@@ -13,9 +10,6 @@ export default function TimerOverview({ timers, onSelectTimer, selectedTimer }) 
   }
 
   const getProgressPercentage = (timeLeft, duration) => {
-    if (typeof timeLeft !== 'number' || typeof duration !== 'number' || duration === 0) {
-      return 0
-    }
     if (duration === 0) return 0
     const elapsed = duration - timeLeft
     const percentage = (elapsed / duration) * 100
@@ -23,11 +17,6 @@ export default function TimerOverview({ timers, onSelectTimer, selectedTimer }) 
   }
 
   return (
-    <div className="p-6">
-      {/* Add error handling wrapper */}
-      {!timers ? (
-        <div className="text-white">Loading timers...</div>
-      ) : (
     <div className="p-6">
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-white mb-2">Timer Overview</h2>
@@ -43,9 +32,6 @@ export default function TimerOverview({ timers, onSelectTimer, selectedTimer }) 
       ) : (
         <div className="grid gap-4">
           {timers.map((timer) => (
-            <div key={timer.id}>
-              {/* Add safety check for timer data */}
-              {timer && timer.id ? (
             <div
               key={timer.id}
               className={`bg-gray-800 rounded-lg p-4 border cursor-pointer transition-colors ${
@@ -55,7 +41,7 @@ export default function TimerOverview({ timers, onSelectTimer, selectedTimer }) 
               }`}
               onClick={() => onSelectTimer?.(timer)}
             >
-                <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <Clock className="w-5 h-5 text-blue-400" />
                   <div>
@@ -68,7 +54,7 @@ export default function TimerOverview({ timers, onSelectTimer, selectedTimer }) 
                 </div>
                 <div className="text-right">
                   <div className="text-white font-mono">
-                      {formatTime(timer.timeLeft ?? timer.duration ?? 0)}
+                    {formatTime(timer.timeLeft || timer.duration)}
                   </div>
                   <div className="text-xs text-gray-500">
                     {timer.timeLeft < 0 ? 'Overtime' : 'Remaining'}
@@ -79,7 +65,7 @@ export default function TimerOverview({ timers, onSelectTimer, selectedTimer }) 
               {/* Progress Bar */}
               <div className="w-full bg-gray-700 rounded-full h-2 overflow-hidden">
                 <div 
-                    className={`h-full transition-all duration-1000 ${
+                  className={`h-full transition-all duration-1000 ${
                     timer.timeLeft < 0 
                       ? 'bg-red-500' 
                       : timer.timeLeft <= timer.duration * 0.1 
@@ -87,7 +73,7 @@ export default function TimerOverview({ timers, onSelectTimer, selectedTimer }) 
                         : 'bg-green-500'
                   }`}
                   style={{ 
-                      width: `${getProgressPercentage(timer.timeLeft ?? timer.duration ?? 0, timer.duration ?? 1)}%` 
+                    width: `${getProgressPercentage(timer.timeLeft || timer.duration, timer.duration)}%` 
                   }}
                 />
               </div>
@@ -98,14 +84,8 @@ export default function TimerOverview({ timers, onSelectTimer, selectedTimer }) 
                   ⚠️ OVERTIME
                 </div>
               )}
-              </div>
-              ) : (
-                <div className="text-red-400">Invalid timer data</div>
-              )}
             </div>
           ))}
-        </div>
-      )}
         </div>
       )}
     </div>

@@ -18,23 +18,15 @@ function App() {
     supabase.auth.getSession().then(({ data: { session }, error }) => {
       if (error) {
         console.error('Error getting session:', error)
-        // Don't set session to null on error, keep existing state
-      } else {
-        setSession(session)
       }
+      setSession(session)
       setLoading(false)
     })
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       console.log('Auth state changed:', _event, session)
-      // Only update session on successful auth events
-      if (_event === 'SIGNED_IN' || _event === 'TOKEN_REFRESHED') {
-        setSession(session)
-      } else if (_event === 'SIGNED_OUT') {
-        setSession(null)
-      }
-      // Don't update session on other events to prevent unwanted redirects
+      setSession(session)
     })
 
     return () => subscription.unsubscribe()
