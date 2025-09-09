@@ -541,17 +541,37 @@ export default function ProTimerApp({ session, bypassAuth }) {
 
   const handleFinishTimer = async (timerId) => {
     try {
-      // Stop the timer and set to 0
       const timer = timers.find(t => t.id === timerId)
       if (!timer) return
 
       const remainingTime = timerSessions[timerId]?.time_left || 0
       
       // Update timer session to finished state
-      await updateTimerSession(timerId, 0, false)
+      await updateTimerSession(timerId, {
+        time_left: 0,
+        is_running: false,
+        updated_at: new Date().toISOString()
+      })
       
-      // Log the finish action
-      await logTimerAction(timerId, 'finished', 0, 0, `Timer finished early with ${Math.floor(remainingTime / 60)}:${(remainingTime % 60).toString().padStart(2, '0')} remaining`)
+      // Update timer status in database
+      await supabase
+        .from('timers')
+        .update({ status: 'finished_early' })
+        .eq('id', timerId)
+      
+      // Log the finish action with correct parameters
+      if (selectedTimer && selectedTimer.id === timerId) {
+        await logTimerAction('finished', remainingTime, 0, `Timer finished early with ${Math.floor(remainingTime / 60)}:${(remainingTime % 60).toString().padStart(2, '0')} remaining`)
+      }
+      
+      // Update local state if this is the selected timer
+      if (selectedTimer && selectedTimer.id === timerId) {
+        setTimeLeft(0)
+        setIsRunning(false)
+      }
+      
+      // Refresh timer sessions
+      await updateTimerSessions()
       
       console.log(`Timer ${timerId} finished early`)
     } catch (error) {
@@ -1076,7 +1096,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
                     <div className="w-full bg-gray-700 rounded-full h-1">
                       <div
                         className="bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 h-1 rounded-full transition-all duration-1000"
-                        style={{ width: `${getProgressPercentageFromSession(session, timer.duration)}%` }}
+                        style={{ width: `${Math.min(100, getProgressPercentageFromSession(session, timer.duration))}%` }}
                       ></div>
                     </div>
                   </div>
@@ -1510,7 +1530,7 @@ export default function ProTimerApp({ session, bypassAuth }) {
                   <div className="w-full bg-gray-700 rounded-full h-2">
                     <div 
                       className="bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 h-2 rounded-full transition-all duration-1000" 
-                      style={{ width: `${getProgressPercentageFromSession(session, timer.duration)}%` }}
+                      style={{ width: `${Math.min(100, getProgressPercentageFromSession(session, timer.duration))}%` }}
                     ></div>
                   </div>
                 </div>
@@ -1674,7 +1694,21 @@ export default function ProTimerApp({ session, bypassAuth }) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-700">
-                  {allTimerLogs.slice(0, 100).map((log, index) => (
+                  {(() => {
+                    // Filter logs by date range if specified
+                    let filteredLogs = allTimerLogs
+                    if (reportDateRange.start) {
+                      filteredLogs = filteredLogs.filter(log => 
+                        new Date(log.created_at) >= new Date(reportDateRange.start)
+                      )
+                    }
+                    if (reportDateRange.end) {
+                      filteredLogs = filteredLogs.filter(log => 
+                        new Date(log.created_at) <= new Date(reportDateRange.end + 'T23:59:59')
+                      )
+                    }
+                    return filteredLogs.slice(0, 100)
+                  })().map((log, index) => (
                     <tr key={index} className={`hover:bg-gray-700/30 ${
                       log.action === 'expired' ? 'bg-red-900/20' : ''
                     }`}>
