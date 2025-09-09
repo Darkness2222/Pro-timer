@@ -569,37 +569,6 @@ export default function ProTimerApp({ session, bypassAuth }) {
   }
 
   // NEW: Finish timer function
-  const finishTimer = async () => {
-    if (!selectedTimer) return
-    
-    setIsRunning(false)
-    const remainingTime = Math.max(0, timeLeft)
-    setTimeLeft(0)
-    logTimerAction('finished', remainingTime, null, `Timer completed early with ${formatTime(remainingTime)} remaining`)
-    
-    // Update session in database
-    try {
-      await supabase
-      // Remove timer from local state since it's no longer active
-      setTimers(prev => prev.filter(timer => timer.id !== timerId))
-      
-      // If this was the selected timer, clear selection
-      if (selectedTimer?.id === timerId) {
-        setSelectedTimer(null)
-        setCurrentView('overview')
-      }
-
-        .from('timer_sessions')
-        .upsert({
-          timer_id: selectedTimer.id,
-          time_left: 0,
-          is_running: false,
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'timer_id' })
-    } catch (error) {
-      console.error('Error updating session:', error)
-    }
-  }
 
   const adjustTime = async (seconds) => {
     const newTime = Math.max(0, timeLeft + seconds)
