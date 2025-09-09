@@ -1413,7 +1413,6 @@ export default function ProTimerApp({ session, bypassAuth }) {
                                  <p className="text-gray-400 text-xs mt-1">
                                    {new Date(message.sent_at).toLocaleTimeString()}
                          width: `${Math.max(0, Math.min(100, (remainingTime / selectedTimer.duration) * 100))}%`,
-                             </div>
                            </div>
                          ))
                        ) : (
