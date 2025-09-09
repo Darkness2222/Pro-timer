@@ -706,6 +706,12 @@ export default function ProTimerApp({ session, bypassAuth }) {
   }
 
   const exportTimersCSV = () => {
+    // Don't run if no session and not bypassing auth
+    if (!session?.user && !bypassAuth) {
+      console.log('No session available for exporting CSV')
+      return
+    }
+
     const csvData = []
     
     // Add headers
@@ -880,26 +886,38 @@ export default function ProTimerApp({ session, bypassAuth }) {
 
   // Generate Presenter Performance Report
   const generatePresenterReport = async () => {
+    // Don't run if no session and not bypassing auth
+    if (!session?.user && !bypassAuth) {
+      console.log('No session available for generating reports')
+      return
+    }
+
     try {
       // Fetch all timers
       const { data: timersData, error: timersError } = await supabase
         .from('timers')
         .select('id, name, presenter_name, duration')
 
-      if (timersError) throw timersError
+      if (timersError) {
+        console.error('Error fetching timers for report:', timersError)
+        return
+      }
 
       // Fetch all messages
       const { data: messagesData, error: messagesError } = await supabase
         .from('timer_messages')
         .select('timer_id')
 
-      if (messagesError) throw messagesError
+      if (messagesError) {
+        console.error('Error fetching messages for report:', messagesError)
+        return
+      }
 
       // Process data to create presenter report
       const presenterStats = {}
 
       // Initialize presenter stats from timers
-      timersData.forEach(timer => {
+      timersData?.forEach(timer => {
         const presenter = timer.presenter_name
         if (!presenterStats[presenter]) {
           presenterStats[presenter] = {
@@ -914,8 +932,8 @@ export default function ProTimerApp({ session, bypassAuth }) {
       })
 
       // Count messages per presenter
-      messagesData.forEach(message => {
-        const timer = timersData.find(t => t.id === message.timer_id)
+      messagesData?.forEach(message => {
+        const timer = timersData?.find(t => t.id === message.timer_id)
         if (timer) {
           const presenter = timer.presenter_name
           if (presenterStats[presenter]) {
@@ -930,12 +948,13 @@ export default function ProTimerApp({ session, bypassAuth }) {
 
     } catch (error) {
       console.error('Error generating presenter report:', error)
+      // Don't throw the error - just log it and continue
     }
   }
 
   // Load report data when switching to reports view
   useEffect(() => {
-    if (currentView === 'reports') {
+    if (currentView === 'reports' && (session?.user || bypassAuth)) {
       generatePresenterReport()
     }
   }, [currentView])
@@ -1650,7 +1669,8 @@ export default function ProTimerApp({ session, bypassAuth }) {
               </div>
               <button
                 onClick={exportTimersCSV}
-                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2"
+                className="bg-green-600 hover:bg-green-700 disabled:bg-green-800 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2"
+                disabled={!session?.user && !bypassAuth}
               >
                 <FileText className="w-4 h-4" />
                 Export CSV
@@ -1755,7 +1775,8 @@ export default function ProTimerApp({ session, bypassAuth }) {
             <div className="p-6 border-t border-gray-700">
               <button
                 onClick={generatePresenterReport}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+                className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white px-4 py-2 rounded-lg transition-colors"
+                disabled={!session?.user && !bypassAuth}
               >
                 Refresh Report
               </button>
