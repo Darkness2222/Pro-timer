@@ -55,6 +55,12 @@ export default function Auth() {
   return (
     <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
       <div className="max-w-md w-full bg-gray-800 rounded-xl p-8 border border-gray-700">
+        <div className="flex justify-center mb-6">
+          <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-blue-500 via-cyan-400 to-green-400 flex items-center justify-center shadow-lg">
+            <span className="text-2xl filter drop-shadow-md">⏱</span>
+          </div>
+        </div>
+        
         <h2 className="text-3xl font-bold text-white text-center mb-8">
           {isSignUp ? 'Sign Up for' : 'Sign In to'} SyncCue Pro
         </h2>
