@@ -64,7 +64,7 @@ export default function Auth() {
         </div>
         
         <h2 className="text-3xl font-bold text-white text-center mb-8">
-          {isSignUp ? 'Sign Up for' : 'Sign In'}
+          {isSignUp ? 'Sign Up' : 'Sign In'}
         </h2>
         
         {message && (
