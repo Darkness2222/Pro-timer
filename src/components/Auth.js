@@ -59,7 +59,11 @@ export default function Auth() {
           <img 
             src="/IMG_0549.jpeg" 
             alt="SyncCue Logo" 
-            className="w-24 h-24 object-contain"
+            className="h-16 object-contain"
+            onError={(e) => {
+              console.error('Logo failed to load:', e.target.src);
+              e.target.style.display = 'none';
+            }}
           />
         </div>
         
