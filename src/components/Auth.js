@@ -57,7 +57,7 @@ export default function Auth() {
       <div className="max-w-md w-full bg-gray-800 rounded-xl p-8 border border-gray-700">
         <div className="flex justify-center mb-6">
           <img 
-            src={`${process.env.PUBLIC_URL}/IMG_0550 copy.png`}
+            src={`${process.env.PUBLIC_URL}/IMG_0548.jpeg`}
             alt="SyncCue Logo" 
             className="h-16 object-contain"
             onError={(e) => {
