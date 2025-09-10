@@ -59,7 +59,7 @@ export default function Auth() {
           <img 
             src={`${process.env.PUBLIC_URL}/IMG_0549.jpeg`}
             alt="SyncCue Logo" 
-            className="h-18 object-contain"
+            className="h-20 object-contain"
             onError={(e) => {
               console.error('Logo failed to load:', e.target.src);
               e.target.style.display = 'none';
