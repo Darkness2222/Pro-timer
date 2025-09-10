@@ -946,18 +946,20 @@ export default function ProTimerApp({ session }) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex space-x-8">
-            {loading ? (
-              <div className="text-gray-400 text-sm">Loading...</div>
-            ) : (
-              <div className="text-sm text-gray-300">
-                {getSubscriptionDisplayName()}
-                {isProUser() && (
-                  <span className="ml-2 px-2 py-1 bg-yellow-600 text-yellow-100 rounded-full text-xs">
-                    PRO
-                  </span>
-                )}
-              </div>
-            )}
+            <div className="text-sm text-gray-300">
+              {loading ? (
+                <span className="text-gray-400">Loading...</span>
+              ) : (
+                <>
+                  {getSubscriptionDisplayName()}
+                  {isProUser() && (
+                    <span className="ml-2 px-2 py-1 bg-yellow-600 text-yellow-100 rounded-full text-xs">
+                      PRO
+                    </span>
+                  )}
+                </>
+              )}
+            </div>
               <button
                 onClick={() => setCurrentView('admin')}
                 className={`inline-flex items-center px-4 py-2 border-b-2 text-sm font-medium ${
