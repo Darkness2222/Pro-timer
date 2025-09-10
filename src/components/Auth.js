@@ -57,14 +57,14 @@ export default function Auth() {
       <div className="max-w-md w-full bg-gray-800 rounded-xl p-8 border border-gray-700">
         <div className="flex justify-center mb-6">
           <img 
-            src="/IMG0548.png" 
+            src="/IMG_0548.png" 
             alt="SyncCue Logo" 
             className="w-24 h-24 object-contain"
           />
         </div>
         
         <h2 className="text-3xl font-bold text-white text-center mb-8">
-          {isSignUp ? 'Sign Up for' : 'Sign In to'} SyncCue Pro
+          {isSignUp ? 'Sign Up for' : 'Sign In to'} SyncCue
         </h2>
         
         {message && (
