@@ -2,12 +2,13 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import TimerOverview from './TimerOverview'
 import { getProductByPriceId } from '../stripe-config'
-import { Play, Pause, Square, RotateCcw, Settings, MessageSquare, Plus, Minus, Clock, Users, Timer as TimerIcon, QrCode, ExternalLink, FileText, Crown, User, LogOut, CheckCircle } from 'lucide-react'
+import { Play, Pause, Square, RotateCcw, Settings, MessageSquare, Plus, Minus, Clock, Users, Timer as TimerIcon, QrCode, ExternalLink, FileText, Crown, User, LogOut, CheckCircle, X } from 'lucide-react'
 import SubscriptionModal from './SubscriptionModal'
 import SuccessPage from './SuccessPage'
 
 export default function ProTimerApp({ session }) {
   const [currentView, setCurrentView] = useState('overview')
+  const [showSettings, setShowSettings] = useState(false)
   const [selectedTimer, setSelectedTimer] = useState(null)
   const [timers, setTimers] = useState([])
   const [loading, setLoading] = useState(true)
@@ -1001,11 +1002,17 @@ export default function ProTimerApp({ session }) {
                 <FileText className="w-4 h-4 mr-2" />
                 Reports
               </button>
+              <button
+                onClick={() => setShowSettings(true)}
+                className="px-4 py-2 rounded-lg transition-colors bg-gray-700 text-gray-300 hover:bg-gray-600"
+              >
+                ⚙️ Settings
+              </button>
             </div>
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
                 <User className="w-5 h-5" />
-                <span className="text-sm">
+                <span className="text-sm text-white">
                   {session?.user?.email || 'Guest'}
                   {userProfile?.is_pro && (
                     <Crown className="w-4 h-4 text-yellow-500 inline ml-1" />
@@ -1024,9 +1031,8 @@ export default function ProTimerApp({ session }) {
               {session && (
                 <button
                   onClick={handleSignOut}
-                  className="text-gray-300 hover:text-white transition-colors flex items-center gap-1"
+                  className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors whitespace-nowrap"
                 >
-                  <LogOut className="w-4 h-4" />
                   Sign Out
                 </button>
               )}
@@ -1743,6 +1749,62 @@ export default function ProTimerApp({ session }) {
         onClose={() => setShowSubscriptionModal(false)}
         session={session}
       />
+
+      {/* Settings Modal */}
+      {showSettings && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-xl max-w-md w-full p-6 border border-gray-700">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-white">Settings</h2>
+              <button
+                onClick={() => setShowSettings(false)}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="border-b border-gray-700 pb-4">
+                <h3 className="text-lg font-medium text-white mb-2">Account</h3>
+                <div className="text-sm text-gray-300">
+                  <div>Email: {session?.user?.email}</div>
+                  <div>User ID: {session?.user?.id?.slice(0, 8)}...</div>
+                </div>
+              </div>
+
+              <div className="border-b border-gray-700 pb-4">
+                <h3 className="text-lg font-medium text-white mb-2">Subscription</h3>
+                <button
+                  onClick={() => {
+                    setShowSettings(false)
+                    setShowSubscriptionModal(true)
+                  }}
+                  className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                >
+                  Manage Subscription
+                </button>
+              </div>
+
+              <div className="border-b border-gray-700 pb-4">
+                <h3 className="text-lg font-medium text-white mb-2">Preferences</h3>
+                <div className="text-sm text-gray-400">
+                  Timer preferences and notifications will be available in a future update.
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <button
+                  onClick={handleSignOut}
+                  className="w-full bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                >
+                  Sign Out
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Create Timer Modal */}
       {showCreateModal && (
