@@ -25,6 +25,10 @@ export default function ProTimerApp({ session }) {
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false)
   const [subscription, setSubscription] = useState(null)
   const [showSuccess, setShowSuccess] = useState(false)
+  
+  // Enhanced reporting states
+  const [avgHourlyRate, setAvgHourlyRate] = useState(60)
+  const [estimatedAttendees, setEstimatedAttendees] = useState(20)
 
   // Check for success parameter in URL
   useEffect(() => {
@@ -859,6 +863,141 @@ export default function ProTimerApp({ session }) {
     const bufferTime = (presenters.length - 1) * ((bufferMinutes * 60) + bufferSeconds)
     return Math.ceil((presenterTime + bufferTime) / 60) // Return in minutes
   }
+
+  // Enhanced reporting calculations
+  const calculateEfficiencyMetrics = () => {
+    if (!timerLogs.length) return null
+
+    const completedTimers = timers.filter(timer => 
+      timerLogs.some(log => log.timer_id === timer.id && 
+        ['finished_early', 'expired', 'stopped'].includes(log.action))
+    )
+
+    if (!completedTimers.length) return null
+
+    let totalOverUnder = 0
+    let onTimeCount = 0
+    let overtimeCount = 0
+    let finishedEarlyCount = 0
+    let completedCount = 0
+    let totalOvertimeMinutes = 0
+    let totalSavedMinutes = 0
+
+    completedTimers.forEach(timer => {
+      const timerLogEntries = timerLogs.filter(log => log.timer_id === timer.id)
+      const startLog = timerLogEntries.find(log => log.action === 'started')
+      const endLog = timerLogEntries.find(log => 
+        ['finished_early', 'expired', 'stopped'].includes(log.action)
+      )
+
+      if (startLog && endLog) {
+        const startTime = new Date(startLog.created_at)
+        const endTime = new Date(endLog.created_at)
+        const actualDuration = Math.floor((endTime - startTime) / 1000) // in seconds
+        const plannedDuration = timer.duration
+        const difference = actualDuration - plannedDuration
+
+        totalOverUnder += difference
+
+        // Check if within 5 second tolerance
+        if (Math.abs(difference) <= 5) {
+          onTimeCount++
+        }
+
+        if (endLog.action === 'expired' && difference > 0) {
+          overtimeCount++
+          totalOvertimeMinutes += Math.ceil(difference / 60)
+        } else if (endLog.action === 'finished_early') {
+          finishedEarlyCount++
+          const remainingTime = endLog.time_value || 0
+          totalSavedMinutes += Math.ceil(remainingTime / 60)
+        } else {
+          completedCount++
+        }
+      }
+    })
+
+    const avgOverUnder = totalOverUnder / completedTimers.length
+    const onTimePercentage = (onTimeCount / completedTimers.length) * 100
+    const costPerMinute = (avgHourlyRate / 60) * estimatedAttendees
+    const overtimeCost = totalOvertimeMinutes * costPerMinute
+    const savedCost = totalSavedMinutes * costPerMinute
+
+    return {
+      avgOverUnder: Math.round(avgOverUnder),
+      onTimePercentage: Math.round(onTimePercentage),
+      statusBreakdown: {
+        completed: completedCount,
+        finishedEarly: finishedEarlyCount,
+        overtime: overtimeCount
+      },
+      costAnalysis: {
+        costPerMinute,
+        totalOvertimeMinutes,
+        totalSavedMinutes,
+        overtimeCost,
+        savedCost
+      }
+    }
+  }
+
+  const calculatePresenterPerformance = () => {
+    if (!timerLogs.length) return []
+
+    const presenterStats = {}
+
+    timers.forEach(timer => {
+      const presenter = timer.presenter_name
+      if (!presenterStats[presenter]) {
+        presenterStats[presenter] = {
+          name: presenter,
+          totalTimers: 0,
+          totalOverUnder: 0,
+          onTimeCount: 0,
+          overtimeCount: 0,
+          finishedEarlyCount: 0
+        }
+      }
+
+      const timerLogEntries = timerLogs.filter(log => log.timer_id === timer.id)
+      const startLog = timerLogEntries.find(log => log.action === 'started')
+      const endLog = timerLogEntries.find(log => 
+        ['finished_early', 'expired', 'stopped'].includes(log.action)
+      )
+
+      if (startLog && endLog) {
+        presenterStats[presenter].totalTimers++
+        
+        const startTime = new Date(startLog.created_at)
+        const endTime = new Date(endLog.created_at)
+        const actualDuration = Math.floor((endTime - startTime) / 1000)
+        const plannedDuration = timer.duration
+        const difference = actualDuration - plannedDuration
+
+        presenterStats[presenter].totalOverUnder += difference
+
+        if (Math.abs(difference) <= 5) {
+          presenterStats[presenter].onTimeCount++
+        }
+
+        if (endLog.action === 'expired' && difference > 0) {
+          presenterStats[presenter].overtimeCount++
+        } else if (endLog.action === 'finished_early') {
+          presenterStats[presenter].finishedEarlyCount++
+        }
+      }
+    })
+
+    return Object.values(presenterStats).map(stats => ({
+      ...stats,
+      avgOverUnder: stats.totalTimers > 0 ? Math.round(stats.totalOverUnder / stats.totalTimers) : 0,
+      onTimePercentage: stats.totalTimers > 0 ? Math.round((stats.onTimeCount / stats.totalTimers) * 100) : 0
+    }))
+  }
+
+  const metrics = calculateEfficiencyMetrics()
+  const presenterPerformance = calculatePresenterPerformance()
+
   const handlePauseAll = async () => {
     // Pause all running timers
     const runningTimers = Object.entries(timerSessions).filter(([_, session]) => session?.is_running)
@@ -1641,6 +1780,168 @@ export default function ProTimerApp({ session }) {
             <h1 className="text-3xl font-bold text-white mb-2">Timer Reports</h1>
             <p className="text-gray-300">View all timer activity and export data</p>
           </div>
+
+          {/* Enhanced Metrics Dashboard */}
+          {metrics && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+              {/* Efficiency Metrics */}
+              <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                <h3 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                  Efficiency Metrics
+                </h3>
+                <div className="space-y-4">
+                  <div>
+                    <div className="text-2xl font-bold text-white">
+                      {metrics.avgOverUnder > 0 ? '+' : ''}{Math.floor(Math.abs(metrics.avgOverUnder) / 60)}:
+                      {(Math.abs(metrics.avgOverUnder) % 60).toString().padStart(2, '0')}
+                    </div>
+                    <div className="text-sm text-gray-400">Average Over/Under Time</div>
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-green-400">{metrics.onTimePercentage}%</div>
+                    <div className="text-sm text-gray-400">On-Time Completion Rate</div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-xs">
+                    <div className="text-center">
+                      <div className="text-green-400 font-semibold">{metrics.statusBreakdown.completed}</div>
+                      <div className="text-gray-500">Completed</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-blue-400 font-semibold">{metrics.statusBreakdown.finishedEarly}</div>
+                      <div className="text-gray-500">Early</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-red-400 font-semibold">{metrics.statusBreakdown.overtime}</div>
+                      <div className="text-gray-500">Overtime</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Cost Analysis Configuration */}
+              <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                <h3 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+                  <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                  Cost Configuration
+                </h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Average Hourly Rate per Employee
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">$</span>
+                      <input
+                        type="number"
+                        value={avgHourlyRate}
+                        onChange={(e) => setAvgHourlyRate(Number(e.target.value))}
+                        className="w-full pl-8 pr-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                        min="1"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Estimated Attendees
+                    </label>
+                    <input
+                      type="number"
+                      value={estimatedAttendees}
+                      onChange={(e) => setEstimatedAttendees(Number(e.target.value))}
+                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                      min="1"
+                    />
+                  </div>
+                  <div className="pt-2 border-t border-gray-700">
+                    <div className="text-sm text-gray-400">Cost per minute:</div>
+                    <div className="text-lg font-semibold text-white">
+                      ${metrics.costAnalysis.costPerMinute.toFixed(2)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Financial Impact */}
+              <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                <h3 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  Financial Impact
+                </h3>
+                <div className="space-y-4">
+                  <div>
+                    <div className="text-2xl font-bold text-red-400">
+                      ${metrics.costAnalysis.overtimeCost.toFixed(2)}
+                    </div>
+                    <div className="text-sm text-gray-400">
+                      Cost of Overtime ({metrics.costAnalysis.totalOvertimeMinutes} min)
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-green-400">
+                      ${metrics.costAnalysis.savedCost.toFixed(2)}
+                    </div>
+                    <div className="text-sm text-gray-400">
+                      Savings from Early Finish ({metrics.costAnalysis.totalSavedMinutes} min)
+                    </div>
+                  </div>
+                  <div className="pt-2 border-t border-gray-700">
+                    <div className="text-sm text-gray-400">Net Impact:</div>
+                    <div className={`text-lg font-semibold ${
+                      (metrics.costAnalysis.savedCost - metrics.costAnalysis.overtimeCost) >= 0 
+                        ? 'text-green-400' 
+                        : 'text-red-400'
+                    }`}>
+                      ${(metrics.costAnalysis.savedCost - metrics.costAnalysis.overtimeCost).toFixed(2)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Presenter Performance */}
+          {presenterPerformance.length > 0 && (
+            <div className="bg-gray-800 rounded-xl p-6 border border-gray-700 mb-8">
+              <h3 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+                <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                Presenter Performance
+              </h3>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-gray-700">
+                      <th className="text-left py-3 px-4 text-gray-300 font-medium">Presenter</th>
+                      <th className="text-center py-3 px-4 text-gray-300 font-medium">Timers</th>
+                      <th className="text-center py-3 px-4 text-gray-300 font-medium">Avg Over/Under</th>
+                      <th className="text-center py-3 px-4 text-gray-300 font-medium">On-Time Rate</th>
+                      <th className="text-center py-3 px-4 text-gray-300 font-medium">Overtime</th>
+                      <th className="text-center py-3 px-4 text-gray-300 font-medium">Early Finish</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {presenterPerformance.map((presenter, index) => (
+                      <tr key={index} className="border-b border-gray-700/50">
+                        <td className="py-3 px-4 text-white font-medium">{presenter.name}</td>
+                        <td className="py-3 px-4 text-center text-gray-300">{presenter.totalTimers}</td>
+                        <td className="py-3 px-4 text-center">
+                          <span className={presenter.avgOverUnder > 0 ? 'text-red-400' : 'text-green-400'}>
+                            {presenter.avgOverUnder > 0 ? '+' : ''}{Math.floor(Math.abs(presenter.avgOverUnder) / 60)}:
+                            {(Math.abs(presenter.avgOverUnder) % 60).toString().padStart(2, '0')}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          <span className="text-green-400">{presenter.onTimePercentage}%</span>
+                        </td>
+                        <td className="py-3 px-4 text-center text-red-400">{presenter.overtimeCount}</td>
+                        <td className="py-3 px-4 text-center text-blue-400">{presenter.finishedEarlyCount}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
 
           {/* Export Controls */}
           <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700 mb-8">
