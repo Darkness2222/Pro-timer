@@ -13,6 +13,13 @@ export default function ProTimerApp({ session }) {
   const [timers, setTimers] = useState([])
   const [loading, setLoading] = useState(true)
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [timerType, setTimerType] = useState('single')
+  const [eventName, setEventName] = useState('')
+  const [presenters, setPresenters] = useState([
+    { id: 1, name: '', minutes: 15, seconds: 0 }
+  ])
+  const [bufferMinutes, setBufferMinutes] = useState(2)
+  const [bufferSeconds, setBufferSeconds] = useState(0)
   const [showMessageModal, setShowMessageModal] = useState(false)
   const [messagesExpanded, setMessagesExpanded] = useState(false)
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false)
@@ -335,33 +342,62 @@ export default function ProTimerApp({ session }) {
   }
 
   const createTimer = async () => {
-    if (!newTimerName.trim() || !newTimerPresenter.trim() || !newTimerDuration) return
+    if (timerType === 'single') {
+      if (!newTimerName.trim() || !newTimerPresenter.trim() || !newTimerDuration) return
 
-    try {
-      const { data, error } = await supabase
-        .from('timers')
-        .insert([{
-          name: newTimerName.trim(),
-          presenter_name: newTimerPresenter.trim(),
-          duration: parseInt(newTimerDuration) * 60, // Convert minutes to seconds
+      try {
+        const { data, error } = await supabase
+          .from('timers')
+          .insert([{
+            name: newTimerName.trim(),
+            presenter_name: newTimerPresenter.trim(),
+            duration: parseInt(newTimerDuration) * 60, // Convert minutes to seconds
+            user_id: session?.user?.id || null
+          }])
+          .select()
+          .single()
+
+        if (error) throw error
+
+        setTimers(prev => [data, ...prev])
+        resetCreateForm()
+        setShowCreateModal(false)
+        
+        // Reload logs to include new timer
+        loadAllTimerLogs()
+      } catch (error) {
+        console.error('Error creating timer:', error)
+        alert('Error creating timer: ' + error.message)
+      }
+    } else {
+      // Event Timer - create multiple timers
+      if (!eventName.trim() || presenters.length === 0) return
+
+      try {
+        const timersToCreate = presenters.map((presenter, index) => ({
+          name: `${eventName.trim()} - ${presenter.name.trim() || `Presenter ${index + 1}`}`,
+          presenter_name: presenter.name.trim() || `Presenter ${index + 1}`,
+          duration: (presenter.minutes * 60) + presenter.seconds,
           user_id: session?.user?.id || null
-        }])
-        .select()
-        .single()
+        }))
 
-      if (error) throw error
+        const { data, error } = await supabase
+          .from('timers')
+          .insert(timersToCreate)
+          .select()
 
-      setTimers(prev => [data, ...prev])
-      setNewTimerName('')
-      setNewTimerPresenter('')
-      setNewTimerDuration('')
-      setShowCreateModal(false)
-      
-      // Reload logs to include new timer
-      loadAllTimerLogs()
-    } catch (error) {
-      console.error('Error creating timer:', error)
-      alert('Error creating timer: ' + error.message)
+        if (error) throw error
+
+        setTimers(prev => [...data, ...prev])
+        resetCreateForm()
+        setShowCreateModal(false)
+        
+        // Reload logs to include new timers
+        loadAllTimerLogs()
+      } catch (error) {
+        console.error('Error creating event timers:', error)
+        alert('Error creating event timers: ' + error.message)
+      }
     }
   }
 
@@ -782,6 +818,47 @@ export default function ProTimerApp({ session }) {
     ])
   }
 
+  const resetCreateForm = () => {
+    setNewTimerName('')
+    setNewTimerPresenter('')
+    setNewTimerDuration('')
+    setTimerType('single')
+    setEventName('')
+    setPresenters([{ id: 1, name: '', minutes: 15, seconds: 0 }])
+    setBufferMinutes(2)
+    setBufferSeconds(0)
+  }
+
+  const addPresenter = () => {
+    if (presenters.length < 8) {
+      setPresenters(prev => [...prev, {
+        id: Date.now(),
+        name: '',
+        minutes: 10,
+        seconds: 0
+      }])
+    }
+  }
+
+  const removePresenter = (id) => {
+    if (presenters.length > 1) {
+      setPresenters(prev => prev.filter(p => p.id !== id))
+    }
+  }
+
+  const updatePresenter = (id, field, value) => {
+    setPresenters(prev => prev.map(p => 
+      p.id === id ? { ...p, [field]: value } : p
+    ))
+  }
+
+  const calculateEventTotalTime = () => {
+    const presenterTime = presenters.reduce((total, presenter) => 
+      total + (presenter.minutes * 60) + presenter.seconds, 0
+    )
+    const bufferTime = (presenters.length - 1) * ((bufferMinutes * 60) + bufferSeconds)
+    return Math.ceil((presenterTime + bufferTime) / 60) // Return in minutes
+  }
   const handlePauseAll = async () => {
     // Pause all running timers
     const runningTimers = Object.entries(timerSessions).filter(([_, session]) => session?.is_running)
@@ -1820,55 +1897,246 @@ export default function ProTimerApp({ session }) {
       {/* Create Timer Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-gray-800 rounded-xl p-6 w-full max-w-md border border-gray-700">
-            <h2 className="text-2xl font-bold text-white mb-6">Create New Timer</h2>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Timer Name
-                </label>
-                <input
-                  type="text"
-                  value={newTimerName}
-                  onChange={(e) => setNewTimerName(e.target.value)}
-                  className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400"
-                  placeholder="e.g., Keynote Presentation"
-                />
+          <div className="bg-gray-800 rounded-xl p-6 w-full max-w-2xl border border-gray-700 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-white">Add Timer</h2>
+              <button
+                onClick={() => setShowCreateModal(false)}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <p className="text-gray-300 mb-6">Create a single timer or multi-presenter event</p>
+
+            {/* Timer Type Selection */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+              <div
+                onClick={() => setTimerType('single')}
+                className={`p-6 rounded-xl border-2 cursor-pointer transition-all text-center ${
+                  timerType === 'single'
+                    ? 'border-blue-500 bg-blue-500/10'
+                    : 'border-gray-600 hover:border-gray-500'
+                }`}
+              >
+                <div className="text-4xl mb-4">⏱️</div>
+                <h3 className="text-lg font-semibold text-white mb-2">Single Timer</h3>
+                <p className="text-gray-400 text-sm">Perfect for focused work sessions or simple timing needs</p>
               </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Presenter Name
-                </label>
-                <input
-                  type="text"
-                  value={newTimerPresenter}
-                  onChange={(e) => setNewTimerPresenter(e.target.value)}
-                  className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400"
-                  placeholder="e.g., John Doe"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Duration (minutes)
-                </label>
-                <input
-                  type="number"
-                  value={newTimerDuration}
-                  onChange={(e) => setNewTimerDuration(e.target.value)}
-                  className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white"
-                  placeholder="5"
-                  min="1"
-                  max="180"
-                />
+              <div
+                onClick={() => setTimerType('event')}
+                className={`p-6 rounded-xl border-2 cursor-pointer transition-all text-center ${
+                  timerType === 'event'
+                    ? 'border-blue-500 bg-blue-500/10'
+                    : 'border-gray-600 hover:border-gray-500'
+                }`}
+              >
+                <div className="text-4xl mb-4">🎪</div>
+                <h3 className="text-lg font-semibold text-white mb-2">Event Timer</h3>
+                <p className="text-gray-400 text-sm">Multiple timers for presentations, keynotes, or town halls</p>
               </div>
             </div>
+
+            {/* Single Timer Configuration */}
+            {timerType === 'single' && (
+              <div className="bg-gray-700/30 rounded-xl p-6 mb-6">
+                <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                  ⏱️ Timer Configuration
+                </h3>
+                
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Timer Name
+                    </label>
+                    <input
+                      type="text"
+                      value={newTimerName}
+                      onChange={(e) => setNewTimerName(e.target.value)}
+                      className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400"
+                      placeholder="e.g., Keynote Presentation"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Presenter Name
+                    </label>
+                    <input
+                      type="text"
+                      value={newTimerPresenter}
+                      onChange={(e) => setNewTimerPresenter(e.target.value)}
+                      className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400"
+                      placeholder="e.g., John Doe"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Duration (minutes)
+                    </label>
+                    <input
+                      type="number"
+                      value={newTimerDuration}
+                      onChange={(e) => setNewTimerDuration(e.target.value)}
+                      className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                      placeholder="5"
+                      min="1"
+                      max="180"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Event Timer Configuration */}
+            {timerType === 'event' && (
+              <div className="bg-gray-700/30 rounded-xl p-6 mb-6">
+                <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                  🎪 Event Configuration
+                </h3>
+                
+                <div className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Event Name
+                    </label>
+                    <input
+                      type="text"
+                      value={eventName}
+                      onChange={(e) => setEventName(e.target.value)}
+                      className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400"
+                      placeholder="e.g., Q4 Town Hall"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-4">
+                      Presenters
+                    </label>
+                    <div className="space-y-4">
+                      {presenters.map((presenter, index) => (
+                        <div key={presenter.id} className="bg-gray-800 rounded-lg p-4 border border-gray-600">
+                          <div className="flex justify-between items-center mb-4">
+                            <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                              {index + 1}
+                            </div>
+                            {presenters.length > 1 && (
+                              <button
+                                onClick={() => removePresenter(presenter.id)}
+                                className="w-8 h-8 bg-red-600 hover:bg-red-700 rounded-full flex items-center justify-center text-white"
+                              >
+                                ×
+                              </button>
+                            )}
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="md:col-span-2">
+                              <input
+                                type="text"
+                                value={presenter.name}
+                                onChange={(e) => updatePresenter(presenter.id, 'name', e.target.value)}
+                                className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400"
+                                placeholder="Presenter name..."
+                              />
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <input
+                                  type="number"
+                                  value={presenter.minutes}
+                                  onChange={(e) => updatePresenter(presenter.id, 'minutes', parseInt(e.target.value) || 0)}
+                                  className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white text-center"
+                                  min="1"
+                                  max="60"
+                                />
+                                <div className="text-xs text-gray-400 text-center mt-1">Min</div>
+                              </div>
+                              <div>
+                                <input
+                                  type="number"
+                                  value={presenter.seconds}
+                                  onChange={(e) => updatePresenter(presenter.id, 'seconds', parseInt(e.target.value) || 0)}
+                                  className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white text-center"
+                                  min="0"
+                                  max="59"
+                                />
+                                <div className="text-xs text-gray-400 text-center mt-1">Sec</div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    <button
+                      onClick={addPresenter}
+                      disabled={presenters.length >= 8}
+                      className="w-full mt-4 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-4 py-3 rounded-lg font-medium transition-colors"
+                    >
+                      + Add Another Presenter
+                    </button>
+                  </div>
+
+                  {/* Buffer Time */}
+                  <div className="bg-red-900/20 border border-red-700/50 rounded-lg p-4">
+                    <h4 className="text-red-400 font-semibold mb-3 flex items-center gap-2">
+                      ⏳ Buffer Time Between Presenters
+                    </h4>
+                    <div className="grid grid-cols-2 gap-4 max-w-xs">
+                      <div>
+                        <input
+                          type="number"
+                          value={bufferMinutes}
+                          onChange={(e) => setBufferMinutes(parseInt(e.target.value) || 0)}
+                          className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white text-center"
+                          min="0"
+                          max="10"
+                        />
+                        <div className="text-xs text-gray-400 text-center mt-1">Minutes</div>
+                      </div>
+                      <div>
+                        <input
+                          type="number"
+                          value={bufferSeconds}
+                          onChange={(e) => setBufferSeconds(parseInt(e.target.value) || 0)}
+                          className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white text-center"
+                          min="0"
+                          max="59"
+                        />
+                        <div className="text-xs text-gray-400 text-center mt-1">Seconds</div>
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-400 mt-2">
+                      Time to transition between each presenter
+                    </p>
+                  </div>
+
+                  {/* Event Preview */}
+                  <div className="bg-green-900/20 border border-green-700/50 rounded-lg p-4">
+                    <h4 className="text-green-400 font-semibold mb-3">Event Timeline Preview</h4>
+                    <div className="text-green-300 text-sm space-y-1">
+                      {presenters.map((presenter, index) => (
+                        <div key={presenter.id}>
+                          {index + 1}. {presenter.name || `Presenter ${index + 1}`} ({presenter.minutes}:{presenter.seconds.toString().padStart(2, '0')})
+                          {index < presenters.length - 1 && ` + Buffer (${bufferMinutes}:${bufferSeconds.toString().padStart(2, '0')})`}
+                        </div>
+                      ))}
+                      <div className="font-semibold text-green-200 mt-2">
+                        Total Event Time: {calculateEventTotalTime()} minutes
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
             
             <div className="flex gap-3 mt-6">
               <button
-                onClick={() => setShowCreateModal(false)}
+                onClick={() => {
+                  setShowCreateModal(false)
+                  resetCreateForm()
+                }}
                 className="flex-1 bg-gray-600 hover:bg-gray-700 text-white px-4 py-3 rounded-lg font-medium"
               >
                 Cancel
@@ -1877,7 +2145,7 @@ export default function ProTimerApp({ session }) {
                 onClick={createTimer}
                 className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg font-medium"
               >
-                Create Timer
+                {timerType === 'single' ? 'Create Timer' : 'Create Event Timers'}
               </button>
             </div>
           </div>
