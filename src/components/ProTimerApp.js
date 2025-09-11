@@ -1617,6 +1617,5 @@ export default function ProTimerApp({ session }) {
           )}
         </div>
       )}
-    </div>
   )
 }
