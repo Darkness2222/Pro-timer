@@ -327,6 +327,68 @@ export default function ProTimerApp({ session }) {
     if (!selectedTimer) return
     
     try {
+      // Stop the timer immediately
+      setIsRunning(false)
+      if (timerInterval) {
+        clearInterval(timerInterval)
+        setTimerInterval(null)
+      }
+      
+      // Calculate remaining time
+      const remainingTime = Math.max(0, timeLeft)
+      
+      // Mark timer as finished
+      setTimeLeft(0)
+      
+      // Log the finish action
+      await logTimerAction('finished', remainingTime, null, `Timer completed early with ${formatTime(remainingTime)} remaining`)
+      
+      // Update timer status in database
+      const { error: timerError } = await supabase
+        .from('timers')
+        .update({ status: 'finished_early' })
+        .eq('id', selectedTimer.id)
+      
+      if (timerError) {
+        console.error('Error updating timer status:', timerError)
+      }
+      
+      // Update timer session
+      await updateTimerSession(selectedTimer.id, 0, false)
+      
+      // Check if this is an event timer and start buffer time
+      const isEventTimer = selectedTimer.name.includes(' - ')
+      if (isEventTimer && bufferMinutes > 0) {
+        const totalBufferSeconds = (bufferMinutes * 60) + (bufferSeconds || 0)
+        setBufferTimeLeft(totalBufferSeconds)
+        setShowBufferTime(true)
+        setIsBufferRunning(true)
+        
+        // Start buffer countdown
+        const bufferInterval = setInterval(() => {
+          setBufferTimeLeft(prev => {
+            if (prev <= 1) {
+              clearInterval(bufferInterval)
+              setIsBufferRunning(false)
+              return 0
+            }
+            return prev - 1
+          })
+        }, 1000)
+        
+        // Store buffer interval reference for cleanup
+        setTimerInterval(bufferInterval)
+      }
+      
+      // Update local timers state
+      setTimers(prevTimers => 
+        prevTimers.map(timer => 
+          timer.id === selectedTimer.id 
+            ? { ...timer, status: 'finished_early' }
+            : timer
+        )
+      )
+      
       await supabase
         .from('timer_logs')
         .insert([{
@@ -1282,11 +1344,11 @@ export default function ProTimerApp({ session }) {
                 </button>
                 <button
                   onClick={finishTimer}
-                  disabled={timeLeft <= 0}
+                  disabled={!isRunning || timeLeft <= 0}
                   className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-6 py-3 rounded-lg font-medium flex items-center gap-2"
                 >
                   <CheckCircle className="w-5 h-5" />
-                  Finish
+                  {timeLeft <= 0 ? 'Finished' : 'Finish'}
                 </button>
                 <button
                   onClick={resetTimer}
