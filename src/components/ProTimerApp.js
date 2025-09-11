@@ -789,25 +789,34 @@ export default function ProTimerApp({ session }) {
     for (const [timerId, session] of runningTimers) {
       console.log('Pausing timer:', timerId)
       
+      // Calculate current time left for running timers
+      let currentTimeLeft = session.time_left
+      if (session.is_running) {
+        const now = new Date(currentTime)
+        const lastUpdate = new Date(session.updated_at)
+        const elapsedSinceUpdate = Math.floor((now - lastUpdate) / 1000)
+        currentTimeLeft = session.time_left - elapsedSinceUpdate
+      }
+      
       try {
         await supabase
           .from('timer_sessions')
-        .upsert(
-          {
-            timer_id: timerId,
-            time_left: session.time_left,
-            is_running: false,
-            updated_at: new Date().toISOString()
-          },
-          { onConflict: 'timer_id' }
-        )
+          .upsert(
+            {
+              timer_id: timerId,
+              time_left: currentTimeLeft,
+              is_running: false,
+              updated_at: new Date().toISOString()
+            },
+            { onConflict: 'timer_id' }
+          )
       } catch (error) {
         console.error('Error pausing timer:', error)
       }
     }
     
     // Update timer sessions
-    updateTimerSessions()
+    await updateTimerSessions()
   }
 
   const handlePlayAll = async () => {
