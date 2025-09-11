@@ -1557,4 +1557,27 @@ export default function ProTimerApp({ session }) {
                 )}
                 
                 {showOverride && (
-                  <div className="flex items
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      value={overrideDuration}
+                      onChange={(e) => setOverrideDuration(parseInt(e.target.value) || 0)}
+                      className="bg-gray-700 text-white px-3 py-2 rounded border border-gray-600 w-20"
+                      placeholder="Min"
+                    />
+                    <span className="text-white">minutes</span>
+                    <button
+                      onClick={handleOverrideDuration}
+                      className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg"
+                    >
+                      Apply
+                    </button>
+                    <button
+                      onClick={() => setShowOverride(false)}
+                      className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
+              </div>
