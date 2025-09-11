@@ -87,6 +87,7 @@ export default function ProTimerApp({ session }) {
   ])
   const [overrideTime, setOverrideTime] = useState('')
   const [showOverride, setShowOverride] = useState(false)
+  const [overrideDuration, setOverrideDuration] = useState(0)
   
   // Form states
   const [newTimerName, setNewTimerName] = useState('')
@@ -905,6 +906,37 @@ export default function ProTimerApp({ session }) {
     setShowOverride(false)
   }
 
+  const handleOverrideDuration = async () => {
+    if (!selectedTimer || !overrideDuration) return
+    
+    const newDurationMinutes = parseInt(overrideDuration)
+    if (isNaN(newDurationMinutes) || newDurationMinutes <= 0) {
+      alert('Please enter a valid number of minutes')
+      return
+    }
+    
+    const newDurationSeconds = newDurationMinutes * 60
+    setTimeLeft(newDurationSeconds)
+    logTimerAction('override', newDurationSeconds, newDurationSeconds - selectedTimer.duration, `Duration changed to ${newDurationMinutes} minutes`)
+    
+    // Update session in database
+    try {
+      await supabase
+        .from('timer_sessions')
+        .upsert({
+          timer_id: selectedTimer.id,
+          time_left: newDurationSeconds,
+          is_running: false,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'timer_id' })
+    } catch (error) {
+      console.error('Error updating session:', error)
+    }
+    
+    setOverrideDuration(0)
+    setShowOverride(false)
+  }
+
   const sendMessage = async (messageText) => {
     if (!selectedTimer || !messageText.trim()) return
 
@@ -1581,3 +1613,10 @@ export default function ProTimerApp({ session }) {
                   </div>
                 )}
               </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
