@@ -81,6 +81,9 @@ export default function ProTimerApp({ session }) {
   ])
   const [overrideTime, setOverrideTime] = useState('')
   const [showOverride, setShowOverride] = useState(false)
+  const [showBufferTime, setShowBufferTime] = useState(false)
+  const [bufferTimeLeft, setBufferTimeLeft] = useState(0)
+  const [isBufferRunning, setIsBufferRunning] = useState(false)
   
   // Form states
   const [newTimerName, setNewTimerName] = useState('')
@@ -624,6 +627,27 @@ export default function ProTimerApp({ session }) {
     const remainingTime = Math.max(0, timeLeft)
     setTimeLeft(0)
     logTimerAction('finished', remainingTime, null, `Timer completed early with ${formatTime(remainingTime)} remaining`)
+    
+    // Check if this is part of an event (has buffer time configured)
+    const isEventTimer = selectedTimer.name.includes(' - ')
+    if (isEventTimer && bufferMinutes > 0) {
+      const bufferSeconds = (bufferMinutes * 60) + (bufferSeconds || 0)
+      setBufferTimeLeft(bufferSeconds)
+      setShowBufferTime(true)
+      setIsBufferRunning(true)
+      
+      // Start buffer countdown
+      const bufferInterval = setInterval(() => {
+        setBufferTimeLeft(prev => {
+          if (prev <= 1) {
+            clearInterval(bufferInterval)
+            setIsBufferRunning(false)
+            return 0
+          }
+          return prev - 1
+        })
+      }, 1000)
+    }
     
     // Update session in database
     try {
@@ -1482,6 +1506,22 @@ export default function ProTimerApp({ session }) {
                    ⚠️ OVERTIME ⚠️
                  </div>
                )}
+              {showBufferTime && (
+                <div className="text-center mb-4 p-4 bg-blue-900/50 rounded-lg border border-blue-500">
+                  <div className="text-2xl font-bold text-blue-400 mb-2">
+                    Buffer Time: {formatTime(bufferTimeLeft)}
+                  </div>
+                  <div className="text-sm text-blue-300">
+                    {isBufferRunning ? 'Time between presentations' : 'Buffer time complete'}
+                  </div>
+                  <button
+                    onClick={() => setShowBufferTime(false)}
+                    className="mt-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              )}
                <div className="w-full max-w-4xl bg-gray-700 rounded-full h-6 mb-4">
                  <div
                    className="bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 h-6 rounded-full transition-all duration-1000"
