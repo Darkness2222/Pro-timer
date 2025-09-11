@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import TimerOverview from './TimerOverview'
 import { getProductByPriceId } from '../stripe-config'
-import { Play, Pause, Square, RotateCcw, Settings, MessageSquare, Plus, Minus, Clock, Users, Timer as TimerIcon, QrCode, ExternalLink, FileText, Crown, User, LogOut, CheckCircle, X } from 'lucide-react'
+import { Play, Pause, Square, RotateCcw, Settings, MessageSquare, Plus, Minus, Clock, Users, Timer as TimerIcon, QrCode, ExternalLink, FileText, Crown, User, LogOut, CheckCircle, X, DollarSign, TrendingUp, TrendingDown, BarChart3, Calendar, Download } from 'lucide-react'
 import SubscriptionModal from './SubscriptionModal'
 import SuccessPage from './SuccessPage'
 
@@ -29,6 +29,8 @@ export default function ProTimerApp({ session }) {
   // Enhanced reporting states
   const [avgHourlyRate, setAvgHourlyRate] = useState(60)
   const [estimatedAttendees, setEstimatedAttendees] = useState(20)
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
 
   // Check for success parameter in URL
   useEffect(() => {
@@ -93,6 +95,212 @@ export default function ProTimerApp({ session }) {
   const [newMessage, setNewMessage] = useState('')
   
   const intervalRef = useRef(null)
+
+  // Calculate financial metrics
+  const calculateFinancialMetrics = () => {
+    const costPerMinute = (avgHourlyRate / 60) * estimatedAttendees
+    let totalOvertimeMinutes = 0
+    let totalEarlyMinutes = 0
+    
+    timerLogs.forEach(log => {
+      if (log.actual_duration && log.duration) {
+        const difference = log.actual_duration - log.duration
+        if (difference > 5) { // More than 5 seconds over
+          totalOvertimeMinutes += difference / 60
+        } else if (difference < -5) { // More than 5 seconds under
+          totalEarlyMinutes += Math.abs(difference) / 60
+        }
+      }
+    })
+    
+    const costOfOvertime = totalOvertimeMinutes * costPerMinute
+    const savingsFromEarly = totalEarlyMinutes * costPerMinute
+    const netImpact = savingsFromEarly - costOfOvertime
+    
+    return {
+      costOfOvertime,
+      savingsFromEarly,
+      netImpact,
+      totalOvertimeMinutes,
+      totalEarlyMinutes,
+      costPerMinute
+    }
+  }
+
+  // Calculate efficiency metrics
+  const calculateEfficiencyMetrics = () => {
+    const completedTimers = timerLogs.filter(log => log.actual_duration && log.duration)
+    
+    if (completedTimers.length === 0) {
+      return {
+        avgOverUnder: 0,
+        onTimePercentage: 0,
+        totalTimers: 0,
+        completedTimers: 0,
+        statusBreakdown: {
+          completed: 0,
+          finishedEarly: 0,
+          overtime: 0,
+          completedPercentage: 0,
+          finishedEarlyPercentage: 0,
+          overtimePercentage: 0
+        }
+      }
+    }
+    
+    let totalDifference = 0
+    let onTimeCount = 0
+    let completedNaturally = 0
+    let finishedEarly = 0
+    let overtime = 0
+    
+    completedTimers.forEach(log => {
+      const difference = log.actual_duration - log.duration
+      totalDifference += difference
+      
+      if (Math.abs(difference) <= 5) {
+        onTimeCount++
+      }
+      
+      if (difference > 5) {
+        overtime++
+      } else if (difference < -5) {
+        finishedEarly++
+      } else {
+        completedNaturally++
+      }
+    })
+    
+    return {
+      avgOverUnder: totalDifference / completedTimers.length,
+      onTimePercentage: (onTimeCount / completedTimers.length) * 100,
+      totalTimers: timerLogs.length,
+      completedTimers: completedTimers.length,
+      statusBreakdown: {
+        completed: completedNaturally,
+        finishedEarly,
+        overtime,
+        completedPercentage: (completedNaturally / completedTimers.length) * 100,
+        finishedEarlyPercentage: (finishedEarly / completedTimers.length) * 100,
+        overtimePercentage: (overtime / completedTimers.length) * 100
+      }
+    }
+  }
+
+  // Calculate presenter-specific metrics
+  const calculatePresenterMetrics = () => {
+    const presenterData = {}
+    
+    timerLogs.forEach(log => {
+      if (!log.presenter_name || !log.actual_duration || !log.duration) return
+      
+      if (!presenterData[log.presenter_name]) {
+        presenterData[log.presenter_name] = {
+          totalTimers: 0,
+          totalDifference: 0,
+          onTimeCount: 0,
+          earlyFinish: 0,
+          overtime: 0
+        }
+      }
+      
+      const presenter = presenterData[log.presenter_name]
+      const difference = log.actual_duration - log.duration
+      
+      presenter.totalTimers++
+      presenter.totalDifference += difference
+      
+      if (Math.abs(difference) <= 5) {
+        presenter.onTimeCount++
+      } else if (difference > 5) {
+        presenter.overtime++
+      } else {
+        presenter.earlyFinish++
+      }
+    })
+    
+    // Calculate percentages and averages
+    Object.keys(presenterData).forEach(presenter => {
+      const data = presenterData[presenter]
+      data.avgOverUnder = data.totalDifference / data.totalTimers
+      data.onTimePercentage = (data.onTimeCount / data.totalTimers) * 100
+    })
+    
+    return presenterData
+  }
+
+  const formatDuration = (seconds) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins}:${secs.toString().padStart(2, '0')}`
+  }
+
+  const getFilteredLogs = () => {
+    let filtered = allTimerLogs
+    
+    if (startDate) {
+      filtered = filtered.filter(log => 
+        new Date(log.created_at) >= new Date(startDate)
+      )
+    }
+    
+    if (endDate) {
+      filtered = filtered.filter(log => 
+        new Date(log.created_at) <= new Date(endDate + 'T23:59:59')
+      )
+    }
+    
+    return filtered
+  }
+
+  const exportFilteredCSV = () => {
+    const csvData = []
+    
+    // Add headers
+    csvData.push([
+      'Date',
+      'Timer Name',
+      'Presenter',
+      'Action',
+      'Planned Duration',
+      'Actual Duration',
+      'Difference',
+      'Status'
+    ])
+    
+    // Add filtered log entries
+    getFilteredLogs().forEach(log => {
+      csvData.push([
+        new Date(log.created_at).toLocaleDateString(),
+        log.timer_name || 'Unknown Timer',
+        log.presenter_name || 'Unknown Presenter',
+        log.action,
+        log.duration ? formatDuration(log.duration) : '-',
+        log.actual_duration ? formatDuration(log.actual_duration) : '-',
+        log.actual_duration && log.duration ? 
+          `${(log.actual_duration - log.duration) > 0 ? '+' : ''}${log.actual_duration - log.duration}s` : '-',
+        !log.actual_duration ? '-' :
+        Math.abs(log.actual_duration - (log.duration || 0)) <= 5 ? 'On Time' :
+        (log.actual_duration - (log.duration || 0)) > 5 ? 'Overtime' : 'Early'
+      ])
+    })
+    
+    // Convert to CSV string
+    const csvString = csvData.map(row => 
+      row.map(field => `"${field}"`).join(',')
+    ).join('\n')
+    
+    // Download file
+    const blob = new Blob([csvString], { type: 'text/csv' })
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `timer-reports-${new Date().toISOString().split('T')[0]}.csv`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    window.URL.revokeObjectURL(url)
+  }
 
   // Load user profile
   const loadUserProfile = useCallback(async () => {
@@ -1775,359 +1983,343 @@ export default function ProTimerApp({ session }) {
 
       {/* Reports View */}
       {currentView === 'reports' && (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-white mb-2">Timer Reports</h1>
-            <p className="text-gray-300">View all timer activity and export data</p>
-          </div>
+        <div className="min-h-screen w-full bg-gray-900 text-white p-6">
+          <div className="max-w-7xl mx-auto">
+            <div className="mb-8">
+              <h2 className="text-3xl font-bold mb-2">Reports & Analytics</h2>
+              <p className="text-gray-400">Comprehensive insights into your presentation performance</p>
+            </div>
 
-          {/* Enhanced Metrics Dashboard */}
-          {metrics && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-              {/* Efficiency Metrics */}
-              <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-                <h3 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                  Efficiency Metrics
-                </h3>
-                <div className="space-y-4">
-                  <div>
-                    <div className="text-2xl font-bold text-white">
-                      {metrics.avgOverUnder > 0 ? '+' : ''}{Math.floor(Math.abs(metrics.avgOverUnder) / 60)}:
-                      {(Math.abs(metrics.avgOverUnder) % 60).toString().padStart(2, '0')}
-                    </div>
-                    <div className="text-sm text-gray-400">Average Over/Under Time</div>
-                  </div>
-                  <div>
-                    <div className="text-2xl font-bold text-green-400">{metrics.onTimePercentage}%</div>
-                    <div className="text-sm text-gray-400">On-Time Completion Rate</div>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2 text-xs">
-                    <div className="text-center">
-                      <div className="text-green-400 font-semibold">{metrics.statusBreakdown.completed}</div>
-                      <div className="text-gray-500">Completed</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-blue-400 font-semibold">{metrics.statusBreakdown.finishedEarly}</div>
-                      <div className="text-gray-500">Early</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-red-400 font-semibold">{metrics.statusBreakdown.overtime}</div>
-                      <div className="text-gray-500">Overtime</div>
-                    </div>
+            {/* Cost Analysis Configuration */}
+            <div className="bg-gray-800 rounded-lg p-6 mb-8 border border-gray-700">
+              <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                <DollarSign className="w-5 h-5 text-green-400" />
+                Cost Analysis Configuration
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Average Hourly Rate per Employee
+                  </label>
+                  <div className="relative">
+                    <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                      type="number"
+                      value={avgHourlyRate}
+                      onChange={(e) => setAvgHourlyRate(Number(e.target.value))}
+                      className="w-full pl-10 pr-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                      placeholder="60"
+                      min="1"
+                    />
                   </div>
                 </div>
-              </div>
-
-              {/* Cost Analysis Configuration */}
-              <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-                <h3 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
-                  <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                  Cost Configuration
-                </h3>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Average Hourly Rate per Employee
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">$</span>
-                      <input
-                        type="number"
-                        value={avgHourlyRate}
-                        onChange={(e) => setAvgHourlyRate(Number(e.target.value))}
-                        className="w-full pl-8 pr-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
-                        min="1"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Estimated Attendees
-                    </label>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Estimated Attendees
+                  </label>
+                  <div className="relative">
+                    <Users className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                     <input
                       type="number"
                       value={estimatedAttendees}
                       onChange={(e) => setEstimatedAttendees(Number(e.target.value))}
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                      className="w-full pl-10 pr-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                      placeholder="20"
                       min="1"
                     />
                   </div>
-                  <div className="pt-2 border-t border-gray-700">
-                    <div className="text-sm text-gray-400">Cost per minute:</div>
-                    <div className="text-lg font-semibold text-white">
-                      ${metrics.costAnalysis.costPerMinute.toFixed(2)}
-                    </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Cost per Minute
+                  </label>
+                  <div className="bg-gray-700 px-4 py-2 rounded-lg border border-gray-600">
+                    <span className="text-green-400 font-semibold">
+                      ${((avgHourlyRate / 60) * estimatedAttendees).toFixed(2)}
+                    </span>
+                    <span className="text-gray-400 text-sm ml-2">per minute</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Financial Impact Dashboard */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+              <div className="bg-red-900 bg-opacity-20 border border-red-700 rounded-lg p-6">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-lg font-semibold text-red-400">Cost of Overtime</h3>
+                  <TrendingUp className="w-5 h-5 text-red-400" />
+                </div>
+                <div className="text-2xl font-bold text-white mb-1">
+                  ${calculateFinancialMetrics().costOfOvertime.toFixed(2)}
+                </div>
+                <p className="text-sm text-gray-400">
+                  {calculateFinancialMetrics().totalOvertimeMinutes.toFixed(1)} minutes over
+                </p>
+              </div>
+
+              <div className="bg-green-900 bg-opacity-20 border border-green-700 rounded-lg p-6">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-lg font-semibold text-green-400">Savings from Early Finish</h3>
+                  <TrendingDown className="w-5 h-5 text-green-400" />
+                </div>
+                <div className="text-2xl font-bold text-white mb-1">
+                  ${calculateFinancialMetrics().savingsFromEarly.toFixed(2)}
+                </div>
+                <p className="text-sm text-gray-400">
+                  {calculateFinancialMetrics().totalEarlyMinutes.toFixed(1)} minutes saved
+                </p>
+              </div>
+
+              <div className={`${calculateFinancialMetrics().netImpact >= 0 ? 'bg-green-900 bg-opacity-20 border-green-700' : 'bg-red-900 bg-opacity-20 border-red-700'} border rounded-lg p-6`}>
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className={`text-lg font-semibold ${calculateFinancialMetrics().netImpact >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    Net Impact
+                  </h3>
+                  {calculateFinancialMetrics().netImpact >= 0 ? 
+                    <TrendingDown className="w-5 h-5 text-green-400" /> : 
+                    <TrendingUp className="w-5 h-5 text-red-400" />
+                  }
+                </div>
+                <div className="text-2xl font-bold text-white mb-1">
+                  {calculateFinancialMetrics().netImpact >= 0 ? '+' : ''}${calculateFinancialMetrics().netImpact.toFixed(2)}
+                </div>
+                <p className="text-sm text-gray-400">
+                  {calculateFinancialMetrics().netImpact >= 0 ? 'Total savings' : 'Total cost'}
+                </p>
+              </div>
+            </div>
+
+            {/* Efficiency Metrics */}
+            <div className="bg-gray-800 rounded-lg p-6 mb-8 border border-gray-700">
+              <h3 className="text-xl font-semibold mb-6 flex items-center gap-2">
+                <BarChart3 className="w-5 h-5 text-blue-400" />
+                Efficiency Metrics
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-white mb-2">
+                    {calculateEfficiencyMetrics().avgOverUnder > 0 ? '+' : ''}{calculateEfficiencyMetrics().avgOverUnder.toFixed(1)}s
+                  </div>
+                  <div className="text-sm text-gray-400">Average Over/Under Time</div>
+                  <div className={`text-xs mt-1 ${calculateEfficiencyMetrics().avgOverUnder > 0 ? 'text-red-400' : 'text-green-400'}`}>
+                    {calculateEfficiencyMetrics().avgOverUnder > 0 ? 'Running over' : 'Finishing early'}
+                  </div>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-white mb-2">
+                    {calculateEfficiencyMetrics().onTimePercentage.toFixed(1)}%
+                  </div>
+                  <div className="text-sm text-gray-400">On-Time Completion Rate</div>
+                  <div className="text-xs text-gray-500 mt-1">Within 5 seconds of target</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-white mb-2">
+                    {calculateEfficiencyMetrics().totalTimers}
+                  </div>
+                  <div className="text-sm text-gray-400">Total Timers Analyzed</div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    {calculateEfficiencyMetrics().completedTimers} completed
                   </div>
                 </div>
               </div>
 
-              {/* Financial Impact */}
-              <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-                <h3 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  Financial Impact
-                </h3>
-                <div className="space-y-4">
-                  <div>
-                    <div className="text-2xl font-bold text-red-400">
-                      ${metrics.costAnalysis.overtimeCost.toFixed(2)}
-                    </div>
-                    <div className="text-sm text-gray-400">
-                      Cost of Overtime ({metrics.costAnalysis.totalOvertimeMinutes} min)
+              {/* Status Breakdown */}
+              <div className="mt-6 pt-6 border-t border-gray-700">
+                <h4 className="text-lg font-medium mb-4">Timer Status Breakdown</h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-gray-700 rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-300">Completed Naturally</span>
+                      <span className="text-white font-semibold">
+                        {calculateEfficiencyMetrics().statusBreakdown.completed} 
+                        ({calculateEfficiencyMetrics().statusBreakdown.completedPercentage.toFixed(1)}%)
+                      </span>
                     </div>
                   </div>
-                  <div>
-                    <div className="text-2xl font-bold text-green-400">
-                      ${metrics.costAnalysis.savedCost.toFixed(2)}
-                    </div>
-                    <div className="text-sm text-gray-400">
-                      Savings from Early Finish ({metrics.costAnalysis.totalSavedMinutes} min)
+                  <div className="bg-green-900 bg-opacity-30 rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-green-300">Finished Early</span>
+                      <span className="text-white font-semibold">
+                        {calculateEfficiencyMetrics().statusBreakdown.finishedEarly} 
+                        ({calculateEfficiencyMetrics().statusBreakdown.finishedEarlyPercentage.toFixed(1)}%)
+                      </span>
                     </div>
                   </div>
-                  <div className="pt-2 border-t border-gray-700">
-                    <div className="text-sm text-gray-400">Net Impact:</div>
-                    <div className={`text-lg font-semibold ${
-                      (metrics.costAnalysis.savedCost - metrics.costAnalysis.overtimeCost) >= 0 
-                        ? 'text-green-400' 
-                        : 'text-red-400'
-                    }`}>
-                      ${(metrics.costAnalysis.savedCost - metrics.costAnalysis.overtimeCost).toFixed(2)}
+                  <div className="bg-red-900 bg-opacity-30 rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-red-300">Went Overtime</span>
+                      <span className="text-white font-semibold">
+                        {calculateEfficiencyMetrics().statusBreakdown.overtime} 
+                        ({calculateEfficiencyMetrics().statusBreakdown.overtimePercentage.toFixed(1)}%)
+                      </span>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
-          )}
 
-          {/* Presenter Performance */}
-          {presenterPerformance.length > 0 && (
-            <div className="bg-gray-800 rounded-xl p-6 border border-gray-700 mb-8">
-              <h3 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
-                <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                Presenter Performance
+            {/* Presenter Performance */}
+            {Object.keys(calculatePresenterMetrics()).length > 0 && (
+              <div className="bg-gray-800 rounded-lg p-6 mb-8 border border-gray-700">
+                <h3 className="text-xl font-semibold mb-6 flex items-center gap-2">
+                  <Users className="w-5 h-5 text-purple-400" />
+                  Presenter Performance
+                </h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-gray-700">
+                        <th className="text-left py-3 px-4 text-gray-300">Presenter</th>
+                        <th className="text-center py-3 px-4 text-gray-300">Total Timers</th>
+                        <th className="text-center py-3 px-4 text-gray-300">Avg Over/Under</th>
+                        <th className="text-center py-3 px-4 text-gray-300">On-Time Rate</th>
+                        <th className="text-center py-3 px-4 text-gray-300">Early Finish</th>
+                        <th className="text-center py-3 px-4 text-gray-300">Overtime</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Object.entries(calculatePresenterMetrics()).map(([presenter, metrics]) => (
+                        <tr key={presenter} className="border-b border-gray-700 hover:bg-gray-700 hover:bg-opacity-50">
+                          <td className="py-3 px-4 text-white font-medium">{presenter}</td>
+                          <td className="py-3 px-4 text-center text-gray-300">{metrics.totalTimers}</td>
+                          <td className={`py-3 px-4 text-center font-medium ${metrics.avgOverUnder > 0 ? 'text-red-400' : 'text-green-400'}`}>
+                            {metrics.avgOverUnder > 0 ? '+' : ''}{metrics.avgOverUnder.toFixed(1)}s
+                          </td>
+                          <td className="py-3 px-4 text-center text-gray-300">{metrics.onTimePercentage.toFixed(1)}%</td>
+                          <td className="py-3 px-4 text-center text-green-400">{metrics.earlyFinish}</td>
+                          <td className="py-3 px-4 text-center text-red-400">{metrics.overtime}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Date Range Filter */}
+            <div className="bg-gray-800 rounded-lg p-6 mb-6 border border-gray-700">
+              <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-blue-400" />
+                Activity Log
               </h3>
+              <div className="flex flex-col sm:flex-row gap-4 mb-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Start Date</label>
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">End Date</label>
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                  />
+                </div>
+                <div className="flex items-end">
+                  <button
+                    onClick={exportFilteredCSV}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center gap-2"
+                  >
+                    <Download className="w-4 h-4" />
+                    Export CSV
+                  </button>
+                </div>
+              </div>
+
+              {/* Enhanced Activity Log Table */}
               <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="w-full bg-gray-700 rounded-lg">
                   <thead>
-                    <tr className="border-b border-gray-700">
-                      <th className="text-left py-3 px-4 text-gray-300 font-medium">Presenter</th>
-                      <th className="text-center py-3 px-4 text-gray-300 font-medium">Timers</th>
-                      <th className="text-center py-3 px-4 text-gray-300 font-medium">Avg Over/Under</th>
-                      <th className="text-center py-3 px-4 text-gray-300 font-medium">On-Time Rate</th>
-                      <th className="text-center py-3 px-4 text-gray-300 font-medium">Overtime</th>
-                      <th className="text-center py-3 px-4 text-gray-300 font-medium">Early Finish</th>
+                    <tr className="bg-gray-600">
+                      <th className="px-4 py-3 text-left text-gray-200">Date</th>
+                      <th className="px-4 py-3 text-left text-gray-200">Timer</th>
+                      <th className="px-4 py-3 text-left text-gray-200">Presenter</th>
+                      <th className="px-4 py-3 text-left text-gray-200">Action</th>
+                      <th className="px-4 py-3 text-center text-gray-200">Planned</th>
+                      <th className="px-4 py-3 text-center text-gray-200">Actual</th>
+                      <th className="px-4 py-3 text-center text-gray-200">Difference</th>
+                      <th className="px-4 py-3 text-center text-gray-200">Status</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {presenterPerformance.map((presenter, index) => (
-                      <tr key={index} className="border-b border-gray-700/50">
-                        <td className="py-3 px-4 text-white font-medium">{presenter.name}</td>
-                        <td className="py-3 px-4 text-center text-gray-300">{presenter.totalTimers}</td>
-                        <td className="py-3 px-4 text-center">
-                          <span className={presenter.avgOverUnder > 0 ? 'text-red-400' : 'text-green-400'}>
-                            {presenter.avgOverUnder > 0 ? '+' : ''}{Math.floor(Math.abs(presenter.avgOverUnder) / 60)}:
-                            {(Math.abs(presenter.avgOverUnder) % 60).toString().padStart(2, '0')}
+                    {getFilteredLogs().map((log, index) => (
+                      <tr key={index} className="border-b border-gray-600">
+                        <td className="px-4 py-3 text-gray-300">
+                          {new Date(log.created_at).toLocaleDateString()}
+                        </td>
+                        <td className="px-4 py-3 text-white">{log.timer_name}</td>
+                        <td className="px-4 py-3 text-gray-300">{log.presenter_name}</td>
+                        <td className="px-4 py-3">
+                          <span className={`px-2 py-1 rounded-full text-xs ${
+                            log.action === 'started' ? 'bg-green-900 text-green-300' :
+                            log.action === 'paused' ? 'bg-yellow-900 text-yellow-300' :
+                            log.action === 'stopped' ? 'bg-red-900 text-red-300' :
+                            log.action === 'reset' ? 'bg-blue-900 text-blue-300' :
+                            log.action === 'finished_early' ? 'bg-purple-900 text-purple-300' :
+                            log.action === 'expired' ? 'bg-orange-900 text-orange-300' :
+                            'bg-gray-900 text-gray-300'
+                          }`}>
+                            {log.action === 'finished_early' ? '✅ Finished Early' :
+                             log.action === 'expired' ? '⚠️ Expired' :
+                             log.action}
                           </span>
                         </td>
-                        <td className="py-3 px-4 text-center">
-                          <span className="text-green-400">{presenter.onTimePercentage}%</span>
+                        <td className="px-4 py-3 text-center text-gray-300">
+                          {formatDuration(log.duration || 0)}
                         </td>
-                        <td className="py-3 px-4 text-center text-red-400">{presenter.overtimeCount}</td>
-                        <td className="py-3 px-4 text-center text-blue-400">{presenter.finishedEarlyCount}</td>
+                        <td className="px-4 py-3 text-center text-gray-300">
+                          {log.actual_duration ? formatDuration(log.actual_duration) : '-'}
+                        </td>
+                        <td className={`px-4 py-3 text-center font-medium ${
+                          !log.actual_duration ? 'text-gray-500' :
+                          (log.actual_duration - (log.duration || 0)) > 5 ? 'text-red-400' :
+                          (log.actual_duration - (log.duration || 0)) < -5 ? 'text-green-400' :
+                          'text-gray-300'
+                        }`}>
+                          {!log.actual_duration ? '-' : 
+                           `${(log.actual_duration - (log.duration || 0)) > 0 ? '+' : ''}${log.actual_duration - (log.duration || 0)}s`}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          {!log.actual_duration ? '-' :
+                           Math.abs(log.actual_duration - (log.duration || 0)) <= 5 ? 
+                             <span className="text-green-400">✅ On Time</span> :
+                           (log.actual_duration - (log.duration || 0)) > 5 ? 
+                             <span className="text-red-400">⚠️ Overtime</span> :
+                             <span className="text-blue-400">🎯 Early</span>
+                          }
+                        </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
             </div>
-          )}
 
-          {/* Export Controls */}
-          <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700 mb-8">
-            <div className="flex flex-wrap items-center gap-4 mb-4">
-              <h2 className="text-xl font-semibold text-white">Export Data</h2>
-              <div className="flex items-center gap-2">
-                <label className="text-gray-300 text-sm">From:</label>
-                <input
-                  type="date"
-                  value={reportDateRange.start}
-                  onChange={(e) => setReportDateRange(prev => ({ ...prev, start: e.target.value }))}
-                  className="p-2 bg-gray-700 border border-gray-600 rounded text-white text-sm"
-                />
+            {/* Summary Statistics */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+                <div className="text-2xl font-bold text-white">{timers.length}</div>
+                <div className="text-sm text-gray-400">Total Timers</div>
               </div>
-              <div className="flex items-center gap-2">
-                <label className="text-gray-300 text-sm">To:</label>
-                <input
-                  type="date"
-                  value={reportDateRange.end}
-                  onChange={(e) => setReportDateRange(prev => ({ ...prev, end: e.target.value }))}
-                  className="p-2 bg-gray-700 border border-gray-600 rounded text-white text-sm"
-                />
+              <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+                <div className="text-2xl font-bold text-white">{getFilteredLogs().length}</div>
+                <div className="text-sm text-gray-400">Total Actions</div>
               </div>
-              <button
-                onClick={exportTimersCSV}
-                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2"
-              >
-                <FileText className="w-4 h-4" />
-                Export CSV
-              </button>
-            </div>
-            <p className="text-gray-400 text-sm">
-              Export includes all timer creations and activity logs. Leave dates empty to export all data.
-            </p>
-          </div>
-
-          {/* Summary Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-            <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 border border-gray-700">
-              <h3 className="text-lg font-semibold text-white mb-2">Total Timers</h3>
-              <p className="text-3xl font-bold text-blue-400">{timers.length}</p>
-            </div>
-            <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 border border-gray-700">
-              <h3 className="text-lg font-semibold text-white mb-2">Total Actions</h3>
-              <p className="text-3xl font-bold text-green-400">{allTimerLogs.length}</p>
-            </div>
-            <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 border border-gray-700">
-              <h3 className="text-lg font-semibold text-white mb-2">Active Sessions</h3>
-              <p className="text-3xl font-bold text-orange-400">
-                {Object.values(timerSessions).filter(session => session?.is_running).length}
-              </p>
-            </div>
-            <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 border border-gray-700">
-              <h3 className="text-lg font-semibold text-white mb-2">Total Presenters</h3>
-              <p className="text-3xl font-bold text-purple-400">
-                {new Set(timers.map(timer => timer.presenter_name)).size}
-              </p>
-            </div>
-          </div>
-
-          {/* Timers Table */}
-          <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700 mb-8">
-            <div className="p-6 border-b border-gray-700">
-              <h2 className="text-xl font-semibold text-white">All Timers</h2>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-700/50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                      Timer Name
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                      Presenter
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                      Duration
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                      Created
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-700">
-                  {timers.map((timer) => {
-                    const session = timerSessions[timer.id];
-                    return (
-                      <tr key={timer.id} className="hover:bg-gray-700/30">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">
-                          {timer.name}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                          {timer.presenter_name}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                          {Math.round(timer.duration / 60)} minutes
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            session?.is_running 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-red-100 text-red-800'
-                          }`}>
-                            {session?.is_running ? 'Running' : 'Stopped'}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                          {new Date(timer.created_at).toLocaleDateString()}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Activity Log */}
-          <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700">
-            <div className="p-6 border-b border-gray-700">
-              <h2 className="text-xl font-semibold text-white">Recent Activity</h2>
-            </div>
-            <div className="overflow-x-auto max-h-96 overflow-y-auto">
-              <table className="w-full">
-                <thead className="bg-gray-700/50 sticky top-0">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                      Timer
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                      Action
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                      Time Value
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                      Notes
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                      Date
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-700">
-                  {(() => {
-                    // Filter logs by date range if specified
-                    let filteredLogs = allTimerLogs
-                    if (reportDateRange.start) {
-                      filteredLogs = filteredLogs.filter(log => 
-                        new Date(log.created_at) >= new Date(reportDateRange.start)
-                      )
-                    }
-                    if (reportDateRange.end) {
-                      filteredLogs = filteredLogs.filter(log => 
-                        new Date(log.created_at) <= new Date(reportDateRange.end + 'T23:59:59')
-                      )
-                    }
-                    return filteredLogs.slice(0, 100)
-                  })().map((log, index) => (
-                    <tr key={index} className={`hover:bg-gray-700/30 ${
-                      log.action === 'expired' ? 'bg-red-900/20' : ''
-                    }`}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">
-                        {log.timers?.name || 'Unknown Timer'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300 capitalize">
-                        {log.action === 'expired' && '⚠️ '}
-                        {log.action === 'finished' && '✅ '}
-                        {log.action}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-400">
-                        {log.time_value ? formatTime(log.time_value) : '-'}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-300 max-w-xs truncate">
-                        {log.notes || '-'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                        {new Date(log.created_at).toLocaleString()}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+                <div className="text-2xl font-bold text-white">{timerSessions.filter(s => s.is_running).length}</div>
+                <div className="text-sm text-gray-400">Active Sessions</div>
+              </div>
+              <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+                <div className="text-2xl font-bold text-white">{new Set(timers.map(t => t.presenter_name)).size}</div>
+                <div className="text-sm text-gray-400">Unique Presenters</div>
+              </div>
             </div>
           </div>
         </div>
