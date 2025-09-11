@@ -72,7 +72,7 @@ export default function ProTimerApp({ session }) {
   const [timeLeft, setTimeLeft] = useState(0)
   const [isRunning, setIsRunning] = useState(false)
   const [messages, setMessages] = useState([])
-  const [timerSessions, setTimerSessions] = useState({})
+  const [timerSessions, setTimerSessions] = useState([])
   const [timerLogs, setTimerLogs] = useState([])
   const [showQRModal, setShowQRModal] = useState(false)
   const [showLogsModal, setShowLogsModal] = useState(false)
