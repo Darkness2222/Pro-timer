@@ -81,9 +81,6 @@ export default function ProTimerApp({ session }) {
   ])
   const [overrideTime, setOverrideTime] = useState('')
   const [showOverride, setShowOverride] = useState(false)
-  const [showBufferTime, setShowBufferTime] = useState(false)
-  const [bufferTimeLeft, setBufferTimeLeft] = useState(0)
-  const [isBufferRunning, setIsBufferRunning] = useState(false)
   
   // Form states
   const [newTimerName, setNewTimerName] = useState('')
@@ -327,68 +324,6 @@ export default function ProTimerApp({ session }) {
     if (!selectedTimer) return
     
     try {
-      // Stop the timer immediately
-      setIsRunning(false)
-      if (timerInterval) {
-        clearInterval(timerInterval)
-        setTimerInterval(null)
-      }
-      
-      // Calculate remaining time
-      const remainingTime = Math.max(0, timeLeft)
-      
-      // Mark timer as finished
-      setTimeLeft(0)
-      
-      // Log the finish action
-      await logTimerAction('finished', remainingTime, null, `Timer completed early with ${formatTime(remainingTime)} remaining`)
-      
-      // Update timer status in database
-      const { error: timerError } = await supabase
-        .from('timers')
-        .update({ status: 'finished_early' })
-        .eq('id', selectedTimer.id)
-      
-      if (timerError) {
-        console.error('Error updating timer status:', timerError)
-      }
-      
-      // Update timer session
-      await updateTimerSession(selectedTimer.id, 0, false)
-      
-      // Check if this is an event timer and start buffer time
-      const isEventTimer = selectedTimer.name.includes(' - ')
-      if (isEventTimer && bufferMinutes > 0) {
-        const totalBufferSeconds = (bufferMinutes * 60) + (bufferSeconds || 0)
-        setBufferTimeLeft(totalBufferSeconds)
-        setShowBufferTime(true)
-        setIsBufferRunning(true)
-        
-        // Start buffer countdown
-        const bufferInterval = setInterval(() => {
-          setBufferTimeLeft(prev => {
-            if (prev <= 1) {
-              clearInterval(bufferInterval)
-              setIsBufferRunning(false)
-              return 0
-            }
-            return prev - 1
-          })
-        }, 1000)
-        
-        // Store buffer interval reference for cleanup
-        setTimerInterval(bufferInterval)
-      }
-      
-      // Update local timers state
-      setTimers(prevTimers => 
-        prevTimers.map(timer => 
-          timer.id === selectedTimer.id 
-            ? { ...timer, status: 'finished_early' }
-            : timer
-        )
-      )
-      
       await supabase
         .from('timer_logs')
         .insert([{
@@ -689,27 +624,6 @@ export default function ProTimerApp({ session }) {
     const remainingTime = Math.max(0, timeLeft)
     setTimeLeft(0)
     logTimerAction('finished', remainingTime, null, `Timer completed early with ${formatTime(remainingTime)} remaining`)
-    
-    // Check if this is part of an event (has buffer time configured)
-    const isEventTimer = selectedTimer.name.includes(' - ')
-    if (isEventTimer && bufferMinutes > 0) {
-      const bufferSeconds = (bufferMinutes * 60) + (bufferSeconds || 0)
-      setBufferTimeLeft(bufferSeconds)
-      setShowBufferTime(true)
-      setIsBufferRunning(true)
-      
-      // Start buffer countdown
-      const bufferInterval = setInterval(() => {
-        setBufferTimeLeft(prev => {
-          if (prev <= 1) {
-            clearInterval(bufferInterval)
-            setIsBufferRunning(false)
-            return 0
-          }
-          return prev - 1
-        })
-      }, 1000)
-    }
     
     // Update session in database
     try {
@@ -1344,11 +1258,11 @@ export default function ProTimerApp({ session }) {
                 </button>
                 <button
                   onClick={finishTimer}
-                  disabled={!isRunning || timeLeft <= 0}
+                  disabled={timeLeft <= 0}
                   className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-6 py-3 rounded-lg font-medium flex items-center gap-2"
                 >
                   <CheckCircle className="w-5 h-5" />
-                  {timeLeft <= 0 ? 'Finished' : 'Finish'}
+                  Finish
                 </button>
                 <button
                   onClick={resetTimer}
@@ -1568,22 +1482,6 @@ export default function ProTimerApp({ session }) {
                    ⚠️ OVERTIME ⚠️
                  </div>
                )}
-              {showBufferTime && (
-                <div className="text-center mb-4 p-4 bg-blue-900/50 rounded-lg border border-blue-500">
-                  <div className="text-2xl font-bold text-blue-400 mb-2">
-                    Buffer Time: {formatTime(bufferTimeLeft)}
-                  </div>
-                  <div className="text-sm text-blue-300">
-                    {isBufferRunning ? 'Time between presentations' : 'Buffer time complete'}
-                  </div>
-                  <button
-                    onClick={() => setShowBufferTime(false)}
-                    className="mt-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm"
-                  >
-                    Dismiss
-                  </button>
-                </div>
-              )}
                <div className="w-full max-w-4xl bg-gray-700 rounded-full h-6 mb-4">
                  <div
                    className="bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 h-6 rounded-full transition-all duration-1000"
