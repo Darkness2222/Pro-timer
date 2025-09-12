@@ -2,9 +2,35 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import TimerOverview from './TimerOverview'
 import { getProductByPriceId } from '../stripe-config'
-import { Play, Pause, Square, RotateCcw, Settings, MessageSquare, Plus, Minus, Clock, Users, Timer as TimerIcon, QrCode, ExternalLink, FileText, Crown, User, LogOut, CheckCircle, X } from 'lucide-react'
+import { Play, Pause, Square, RotateCcw, Settings, MessageSquare, Plus, Minus, Clock, Users, Timer as TimerIcon, QrCode, ExternalLink, FileText, Crown, User, LogOut, CheckCircle, X, Calendar, Download, Filter, Activity, TrendingUp, PieChart, BarChart, Target, Zap } from 'lucide-react'
 import SubscriptionModal from './SubscriptionModal'
 import SuccessPage from './SuccessPage'
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  LineElement,
+  PointElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend,
+} from 'chart.js'
+import { Bar, Line, Pie } from 'react-chartjs-2'
+
+// Register Chart.js components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  LineElement,
+  PointElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend
+)
 
 export default function ProTimerApp({ session }) {
   const [currentView, setCurrentView] = useState('overview')
@@ -90,6 +116,31 @@ export default function ProTimerApp({ session }) {
   
   const intervalRef = useRef(null)
 
+  // Reports state
+  const [reportStartDate, setReportStartDate] = useState('')
+  const [reportEndDate, setReportEndDate] = useState('')
+  const [filteredLogs, setFilteredLogs] = useState([])
+  const [reportMetrics, setReportMetrics] = useState({
+    totalTimers: 0,
+    completedTimers: 0,
+    averageDuration: 0,
+    totalTimeUsed: 0,
+    efficiencyRate: 0,
+    onTimeRate: 0,
+    earlyFinishRate: 0,
+    overtimeRate: 0
+  })
+  const [chartData, setChartData] = useState({
+    dailyActivity: null,
+    statusDistribution: null,
+    durationTrends: null
+  })
+  const [reportFilters, setReportFilters] = useState({
+    status: 'all',
+    presenter: 'all',
+    timerType: 'all'
+  })
+
   // Load user profile
   const loadUserProfile = useCallback(async () => {
     if (!session?.user) return
@@ -158,6 +209,195 @@ export default function ProTimerApp({ session }) {
 
     return () => clearInterval(intervalRef.current)
   }, [isRunning, timeLeft, selectedTimer])
+
+  // Filter logs by date range
+  useEffect(() => {
+    if (reportStartDate && reportEndDate) {
+      filterLogsByDateRange()
+      calculateReportMetrics()
+      generateChartData()
+    } else {
+      setFilteredLogs(timerLogs)
+      calculateReportMetrics()
+      generateChartData()
+    }
+  }, [reportStartDate, reportEndDate, timerLogs, reportFilters])
+
+  const calculateReportMetrics = () => {
+    const logs = reportStartDate && reportEndDate ? filteredLogs : timerLogs
+    const relevantTimers = timers.filter(timer => {
+      if (reportFilters.status !== 'all' && timer.status !== reportFilters.status) return false
+      if (reportFilters.presenter !== 'all' && timer.presenter_name !== reportFilters.presenter) return false
+      return true
+    })
+
+    const totalTimers = relevantTimers.length
+    const completedTimers = relevantTimers.filter(t => 
+      t.status === 'finished_early' || t.status === 'completed'
+    ).length
+
+    const timerDurations = relevantTimers.map(t => t.duration)
+    const averageDuration = timerDurations.length > 0 
+      ? timerDurations.reduce((sum, d) => sum + d, 0) / timerDurations.length 
+      : 0
+
+    const totalTimeUsed = timerDurations.reduce((sum, d) => sum + d, 0)
+
+    const finishedEarly = relevantTimers.filter(t => t.status === 'finished_early').length
+    const completedOnTime = relevantTimers.filter(t => t.status === 'completed').length
+    const overtime = logs.filter(log => log.action === 'expire').length
+
+    const efficiencyRate = totalTimers > 0 ? (completedTimers / totalTimers) * 100 : 0
+    const onTimeRate = totalTimers > 0 ? (completedOnTime / totalTimers) * 100 : 0
+    const earlyFinishRate = totalTimers > 0 ? (finishedEarly / totalTimers) * 100 : 0
+    const overtimeRate = totalTimers > 0 ? (overtime / totalTimers) * 100 : 0
+
+    setReportMetrics({
+      totalTimers,
+      completedTimers,
+      averageDuration: Math.round(averageDuration),
+      totalTimeUsed,
+      efficiencyRate: Math.round(efficiencyRate),
+      onTimeRate: Math.round(onTimeRate),
+      earlyFinishRate: Math.round(earlyFinishRate),
+      overtimeRate: Math.round(overtimeRate)
+    })
+  }
+
+  const generateChartData = () => {
+    const logs = reportStartDate && reportEndDate ? filteredLogs : timerLogs
+    
+    // Daily Activity Chart
+    const dailyActivity = {}
+    logs.forEach(log => {
+      const date = new Date(log.created_at).toLocaleDateString()
+      dailyActivity[date] = (dailyActivity[date] || 0) + 1
+    })
+
+    const dailyActivityData = {
+      labels: Object.keys(dailyActivity).slice(-7), // Last 7 days
+      datasets: [{
+        label: 'Timer Actions',
+        data: Object.values(dailyActivity).slice(-7),
+        backgroundColor: 'rgba(59, 130, 246, 0.5)',
+        borderColor: 'rgba(59, 130, 246, 1)',
+        borderWidth: 1
+      }]
+    }
+
+    // Status Distribution Chart
+    const statusCounts = {
+      'Active': timers.filter(t => t.status === 'active').length,
+      'Finished Early': timers.filter(t => t.status === 'finished_early').length,
+      'Completed': timers.filter(t => t.status === 'completed').length,
+      'Archived': timers.filter(t => t.status === 'archived').length
+    }
+
+    const statusDistributionData = {
+      labels: Object.keys(statusCounts),
+      datasets: [{
+        data: Object.values(statusCounts),
+        backgroundColor: [
+          'rgba(34, 197, 94, 0.8)',
+          'rgba(59, 130, 246, 0.8)',
+          'rgba(16, 185, 129, 0.8)',
+          'rgba(107, 114, 128, 0.8)'
+        ],
+        borderColor: [
+          'rgba(34, 197, 94, 1)',
+          'rgba(59, 130, 246, 1)',
+          'rgba(16, 185, 129, 1)',
+          'rgba(107, 114, 128, 1)'
+        ],
+        borderWidth: 1
+      }]
+    }
+
+    // Duration Trends Chart
+    const durationTrends = {}
+    timers.forEach(timer => {
+      const date = new Date(timer.created_at).toLocaleDateString()
+      if (!durationTrends[date]) {
+        durationTrends[date] = { total: 0, count: 0 }
+      }
+      durationTrends[date].total += timer.duration
+      durationTrends[date].count += 1
+    })
+
+    const durationTrendsData = {
+      labels: Object.keys(durationTrends).slice(-7),
+      datasets: [{
+        label: 'Average Duration (minutes)',
+        data: Object.values(durationTrends).slice(-7).map(d => 
+          d.count > 0 ? Math.round((d.total / d.count) / 60) : 0
+        ),
+        fill: false,
+        borderColor: 'rgba(245, 158, 11, 1)',
+        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+        tension: 0.1
+      }]
+    }
+
+    setChartData({
+      dailyActivity: dailyActivityData,
+      statusDistribution: statusDistributionData,
+      durationTrends: durationTrendsData
+    })
+  }
+
+  const getUniqueValues = (array, key) => {
+    return [...new Set(array.map(item => item[key]))].filter(Boolean)
+  }
+
+  const filterLogsByDateRange = () => {
+    if (!reportStartDate || !reportEndDate) {
+      setFilteredLogs(timerLogs)
+      return
+    }
+
+    const startDate = new Date(reportStartDate)
+    const endDate = new Date(reportEndDate)
+    endDate.setHours(23, 59, 59, 999) // Include the entire end date
+
+    const filtered = timerLogs.filter(log => {
+      const logDate = new Date(log.created_at)
+      return logDate >= startDate && logDate <= endDate
+    })
+
+    setFilteredLogs(filtered)
+  }
+
+  const exportToCSV = () => {
+    const csvData = [
+      ['Date', 'Timer Name', 'Presenter', 'Action', 'Duration Change', 'Notes']
+    ]
+
+    filteredLogs.forEach(log => {
+      const timer = timers.find(t => t.id === log.timer_id)
+      csvData.push([
+        new Date(log.created_at).toLocaleString(),
+        timer?.name || 'Unknown Timer',
+        timer?.presenter_name || 'Unknown Presenter',
+        log.action,
+        log.duration_change || '',
+        log.notes || ''
+      ])
+    })
+
+    const csvContent = csvData.map(row => 
+      row.map(field => `"${field}"`).join(',')
+    ).join('\n')
+
+    const blob = new Blob([csvContent], { type: 'text/csv' })
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `timer-reports-${new Date().toISOString().split('T')[0]}.csv`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    window.URL.revokeObjectURL(url)
+  }
 
   // Update timer sessions for all timers
   const updateTimerSessions = async () => {
@@ -1017,6 +1257,18 @@ export default function ProTimerApp({ session }) {
     window.open(url, '_blank')
   }
 
+  const getActionColor = (action) => {
+    switch (action) {
+      case 'start': return 'bg-green-500 text-white'
+      case 'pause': return 'bg-yellow-500 text-black'
+      case 'stop': return 'bg-red-500 text-white'
+      case 'reset': return 'bg-blue-500 text-white'
+      case 'finish': return 'bg-purple-500 text-white'
+      case 'expire': return 'bg-orange-500 text-white'
+      default: return 'bg-gray-500 text-white'
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
@@ -1636,197 +1888,324 @@ export default function ProTimerApp({ session }) {
 
       {/* Reports View */}
       {currentView === 'reports' && (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-white mb-2">Timer Reports</h1>
-            <p className="text-gray-300">View all timer activity and export data</p>
-          </div>
+        <div className="min-h-screen w-full bg-gray-900 p-6">
+          <div className="max-w-6xl mx-auto">
+            <div className="mb-6">
+              <h2 className="text-2xl font-bold text-white mb-2 flex items-center gap-2">
+                <BarChart3 className="w-6 h-6" />
+                Reports & Analytics
+              </h2>
+              <p className="text-gray-400">Track timer usage and performance metrics</p>
+            </div>
 
-          {/* Export Controls */}
-          <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700 mb-8">
-            <div className="flex flex-wrap items-center gap-4 mb-4">
-              <h2 className="text-xl font-semibold text-white">Export Data</h2>
-              <div className="flex items-center gap-2">
-                <label className="text-gray-300 text-sm">From:</label>
-                <input
-                  type="date"
-                  value={reportDateRange.start}
-                  onChange={(e) => setReportDateRange(prev => ({ ...prev, start: e.target.value }))}
-                  className="p-2 bg-gray-700 border border-gray-600 rounded text-white text-sm"
-                />
+            {/* Summary Metrics */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+              <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-gray-400 text-sm">Total Timers</p>
+                    <p className="text-2xl font-bold text-white">{reportMetrics.totalTimers}</p>
+                  </div>
+                  <TimerIcon className="w-8 h-8 text-blue-500" />
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <label className="text-gray-300 text-sm">To:</label>
-                <input
-                  type="date"
-                  value={reportDateRange.end}
-                  onChange={(e) => setReportDateRange(prev => ({ ...prev, end: e.target.value }))}
-                  className="p-2 bg-gray-700 border border-gray-600 rounded text-white text-sm"
-                />
+              
+              <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-gray-400 text-sm">Efficiency Rate</p>
+                    <p className="text-2xl font-bold text-green-400">{reportMetrics.efficiencyRate}%</p>
+                  </div>
+                  <Target className="w-8 h-8 text-green-500" />
+                </div>
               </div>
-              <button
-                onClick={exportTimersCSV}
-                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2"
-              >
-                <FileText className="w-4 h-4" />
-                Export CSV
-              </button>
-            </div>
-            <p className="text-gray-400 text-sm">
-              Export includes all timer creations and activity logs. Leave dates empty to export all data.
-            </p>
-          </div>
 
-          {/* Summary Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-            <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 border border-gray-700">
-              <h3 className="text-lg font-semibold text-white mb-2">Total Timers</h3>
-              <p className="text-3xl font-bold text-blue-400">{timers.length}</p>
-            </div>
-            <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 border border-gray-700">
-              <h3 className="text-lg font-semibold text-white mb-2">Total Actions</h3>
-              <p className="text-3xl font-bold text-green-400">{allTimerLogs.length}</p>
-            </div>
-            <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 border border-gray-700">
-              <h3 className="text-lg font-semibold text-white mb-2">Active Sessions</h3>
-              <p className="text-3xl font-bold text-orange-400">
-                {Object.values(timerSessions).filter(session => session?.is_running).length}
-              </p>
-            </div>
-            <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 border border-gray-700">
-              <h3 className="text-lg font-semibold text-white mb-2">Total Presenters</h3>
-              <p className="text-3xl font-bold text-purple-400">
-                {new Set(timers.map(timer => timer.presenter_name)).size}
-              </p>
-            </div>
-          </div>
+              <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-gray-400 text-sm">Avg Duration</p>
+                    <p className="text-2xl font-bold text-yellow-400">
+                      {Math.floor(reportMetrics.averageDuration / 60)}:{(reportMetrics.averageDuration % 60).toString().padStart(2, '0')}
+                    </p>
+                  </div>
+                  <Clock className="w-8 h-8 text-yellow-500" />
+                </div>
+              </div>
 
-          {/* Timers Table */}
-          <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700 mb-8">
-            <div className="p-6 border-b border-gray-700">
-              <h2 className="text-xl font-semibold text-white">All Timers</h2>
+              <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-gray-400 text-sm">Early Finish Rate</p>
+                    <p className="text-2xl font-bold text-purple-400">{reportMetrics.earlyFinishRate}%</p>
+                  </div>
+                  <Zap className="w-8 h-8 text-purple-500" />
+                </div>
+              </div>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-700/50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                      Timer Name
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                      Presenter
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                      Duration
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                      Created
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-700">
-                  {timers.map((timer) => {
-                    const session = timerSessions[timer.id];
-                    return (
-                      <tr key={timer.id} className="hover:bg-gray-700/30">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">
-                          {timer.name}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                          {timer.presenter_name}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                          {Math.round(timer.duration / 60)} minutes
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            session?.is_running 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-red-100 text-red-800'
-                          }`}>
-                            {session?.is_running ? 'Running' : 'Stopped'}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                          {new Date(timer.created_at).toLocaleDateString()}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
 
-          {/* Activity Log */}
-          <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700">
-            <div className="p-6 border-b border-gray-700">
-              <h2 className="text-xl font-semibold text-white">Recent Activity</h2>
+            {/* Filters */}
+            <div className="bg-gray-800 rounded-lg p-4 mb-6 border border-gray-700">
+              <h3 className="text-white font-medium mb-3 flex items-center gap-2">
+                <Filter className="w-4 h-4" />
+                Filters & Date Range
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                <div>
+                  <label className="block text-sm text-gray-300 mb-1">Start Date</label>
+                  <input
+                    type="date"
+                    value={reportStartDate}
+                    onChange={(e) => setReportStartDate(e.target.value)}
+                    className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-300 mb-1">End Date</label>
+                  <input
+                    type="date"
+                    value={reportEndDate}
+                    onChange={(e) => setReportEndDate(e.target.value)}
+                    className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-300 mb-1">Status</label>
+                  <select
+                    value={reportFilters.status}
+                    onChange={(e) => setReportFilters({...reportFilters, status: e.target.value})}
+                    className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white"
+                  >
+                    <option value="all">All Statuses</option>
+                    <option value="active">Active</option>
+                    <option value="finished_early">Finished Early</option>
+                    <option value="completed">Completed</option>
+                    <option value="archived">Archived</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-300 mb-1">Presenter</label>
+                  <select
+                    value={reportFilters.presenter}
+                    onChange={(e) => setReportFilters({...reportFilters, presenter: e.target.value})}
+                    className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white"
+                  >
+                    <option value="all">All Presenters</option>
+                    {getUniqueValues(timers, 'presenter_name').map(presenter => (
+                      <option key={presenter} value={presenter}>{presenter}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex items-end">
+                  <button
+                    onClick={() => {
+                      setReportStartDate('')
+                      setReportEndDate('')
+                      setReportFilters({ status: 'all', presenter: 'all', timerType: 'all' })
+                    }}
+                    className="w-full bg-gray-600 hover:bg-gray-500 text-white px-4 py-2 rounded transition-colors"
+                  >
+                    Clear All
+                  </button>
+                </div>
+              </div>
             </div>
-            <div className="overflow-x-auto max-h-96 overflow-y-auto">
-              <table className="w-full">
-                <thead className="bg-gray-700/50 sticky top-0">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                      Timer
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                      Action
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                      Time Value
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                      Notes
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                      Date
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-700">
-                  {(() => {
-                    // Filter logs by date range if specified
-                    let filteredLogs = allTimerLogs
-                    if (reportDateRange.start) {
-                      filteredLogs = filteredLogs.filter(log => 
-                        new Date(log.created_at) >= new Date(reportDateRange.start)
-                      )
+
+            {/* Charts */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+              {/* Daily Activity Chart */}
+              <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+                <h3 className="text-white font-medium mb-4 flex items-center gap-2">
+                  <BarChart className="w-4 h-4" />
+                  Daily Activity (Last 7 Days)
+                </h3>
+                {chartData.dailyActivity && (
+                  <Bar 
+                    data={chartData.dailyActivity} 
+                    options={{
+                      responsive: true,
+                      plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                          backgroundColor: 'rgba(31, 41, 55, 0.9)',
+                          titleColor: 'white',
+                          bodyColor: 'white'
+                        }
+                      },
+                      scales: {
+                        x: { 
+                          ticks: { color: '#9CA3AF' },
+                          grid: { color: 'rgba(75, 85, 99, 0.3)' }
+                        },
+                        y: { 
+                          ticks: { color: '#9CA3AF' },
+                          grid: { color: 'rgba(75, 85, 99, 0.3)' }
+                        }
+                      }
+                    }} 
+                  />
+                )}
+              </div>
+
+              {/* Status Distribution Chart */}
+              <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+                <h3 className="text-white font-medium mb-4 flex items-center gap-2">
+                  <PieChart className="w-4 h-4" />
+                  Timer Status Distribution
+                </h3>
+                {chartData.statusDistribution && (
+                  <Pie 
+                    data={chartData.statusDistribution} 
+                    options={{
+                      responsive: true,
+                      plugins: {
+                        legend: { 
+                          labels: { color: '#9CA3AF' },
+                          position: 'bottom'
+                        },
+                        tooltip: {
+                          backgroundColor: 'rgba(31, 41, 55, 0.9)',
+                          titleColor: 'white',
+                          bodyColor: 'white'
+                        }
+                      }
+                    }} 
+                  />
+                )}
+              </div>
+            </div>
+
+            {/* Duration Trends Chart */}
+            <div className="bg-gray-800 rounded-lg p-4 mb-6 border border-gray-700">
+              <h3 className="text-white font-medium mb-4 flex items-center gap-2">
+                <TrendingUp className="w-4 h-4" />
+                Average Duration Trends (Last 7 Days)
+              </h3>
+              {chartData.durationTrends && (
+                <Line 
+                  data={chartData.durationTrends} 
+                  options={{
+                    responsive: true,
+                    plugins: {
+                      legend: { 
+                        labels: { color: '#9CA3AF' }
+                      },
+                      tooltip: {
+                        backgroundColor: 'rgba(31, 41, 55, 0.9)',
+                        titleColor: 'white',
+                        bodyColor: 'white'
+                      }
+                    },
+                    scales: {
+                      x: { 
+                        ticks: { color: '#9CA3AF' },
+                        grid: { color: 'rgba(75, 85, 99, 0.3)' }
+                      },
+                      y: { 
+                        ticks: { color: '#9CA3AF' },
+                        grid: { color: 'rgba(75, 85, 99, 0.3)' }
+                      }
                     }
-                    if (reportDateRange.end) {
-                      filteredLogs = filteredLogs.filter(log => 
-                        new Date(log.created_at) <= new Date(reportDateRange.end + 'T23:59:59')
-                      )
-                    }
-                    return filteredLogs.slice(0, 100)
-                  })().map((log, index) => (
-                    <tr key={index} className={`hover:bg-gray-700/30 ${
-                      log.action === 'expired' ? 'bg-red-900/20' : ''
-                    }`}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">
-                        {log.timers?.name || 'Unknown Timer'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300 capitalize">
-                        {log.action === 'expired' && '⚠️ '}
-                        {log.action === 'finished' && '✅ '}
-                        {log.action}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-400">
-                        {log.time_value ? formatTime(log.time_value) : '-'}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-300 max-w-xs truncate">
-                        {log.notes || '-'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                        {new Date(log.created_at).toLocaleString()}
-                      </td>
+                  }} 
+                />
+              )}
+            </div>
+
+            {/* Performance Insights */}
+            <div className="bg-gray-800 rounded-lg p-4 mb-6 border border-gray-700">
+              <h3 className="text-white font-medium mb-4 flex items-center gap-2">
+                <Activity className="w-4 h-4" />
+                Performance Insights
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-blue-400">{reportMetrics.onTimeRate}%</p>
+                  <p className="text-sm text-gray-400">On-Time Completion</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-red-400">{reportMetrics.overtimeRate}%</p>
+                  <p className="text-sm text-gray-400">Overtime Rate</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-green-400">
+                    {Math.floor(reportMetrics.totalTimeUsed / 3600)}h {Math.floor((reportMetrics.totalTimeUsed % 3600) / 60)}m
+                  </p>
+                  <p className="text-sm text-gray-400">Total Time Used</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-purple-400">{reportMetrics.completedTimers}</p>
+                  <p className="text-sm text-gray-400">Completed Timers</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Activity Log */}
+            <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-white font-medium flex items-center gap-2">
+                  <Activity className="w-4 h-4" />
+                  Activity Log
+                  {(reportStartDate || reportEndDate) && (
+                    <span className="text-sm text-gray-400">
+                      ({filteredLogs.length} of {timerLogs.length} entries)
+                    </span>
+                  )}
+                </h3>
+                <button
+                  onClick={exportToCSV}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded flex items-center gap-2 transition-colors"
+                >
+                  <Download className="w-4 h-4" />
+                  Export CSV
+                </button>
+              </div>
+              
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-700">
+                      <th className="text-left text-gray-300 pb-2">Time</th>
+                      <th className="text-left text-gray-300 pb-2">Timer</th>
+                      <th className="text-left text-gray-300 pb-2">Action</th>
+                      <th className="text-left text-gray-300 pb-2">Duration</th>
+                      <th className="text-left text-gray-300 pb-2">Notes</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {filteredLogs.slice(0, 50).map((log, index) => {
+                      const timer = timers.find(t => t.id === log.timer_id)
+                      return (
+                        <tr key={index} className="border-b border-gray-700">
+                          <td className="py-2 text-gray-300">
+                            {new Date(log.created_at).toLocaleString()}
+                          </td>
+                          <td className="py-2 text-white">
+                            {timer?.name || 'Unknown Timer'}
+                            <div className="text-xs text-gray-400">
+                              {timer?.presenter_name}
+                            </div>
+                          </td>
+                          <td className="py-2">
+                            <span className={`px-2 py-1 rounded text-xs ${getActionColor(log.action)}`}>
+                              {log.action}
+                            </span>
+                          </td>
+                          <td className="py-2 text-gray-300">
+                            {log.duration_change ? `${log.duration_change > 0 ? '+' : ''}${log.duration_change}s` : '-'}
+                          </td>
+                          <td className="py-2 text-gray-400 text-xs">
+                            {log.notes || '-'}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+                {filteredLogs.length > 50 && (
+                  <div className="text-center text-gray-400 text-sm mt-4">
+                    Showing first 50 of {filteredLogs.length} entries
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
