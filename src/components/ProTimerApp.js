@@ -385,7 +385,7 @@ export default function ProTimerApp({ session }) {
             .single()
 
           if (error) throw error
-          notes: notes
+          return data
         })
       )
 
