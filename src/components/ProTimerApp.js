@@ -2149,9 +2149,6 @@ export default function ProTimerApp({ session }) {
             <div className="flex gap-3 mt-6">
               <button
                 onClick={() => {
-                  setShowCreateModal(false)
-                  resetCreateForm()
-                onClick={() => {
                   try {
                     setShowEventModal(false)
                     setEventModalError('')
