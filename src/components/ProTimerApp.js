@@ -212,14 +212,6 @@ export default function ProTimerApp({ session }) {
   }
 
   const handleStartTimer = async (timerId) => {
-    if (!timerId || !selectedTimer) {
-      console.error('No timer selected')
-      return
-    }
-    
-    try {
-      setError(null)
-      
     try {
       const timer = timers.find(t => t.id === timerId)
       if (!timer) return
@@ -241,6 +233,14 @@ export default function ProTimerApp({ session }) {
   }
 
   const handlePauseTimer = async (timerId) => {
+    if (!timerId || !selectedTimer) {
+      console.error('No timer selected')
+      return
+    }
+    
+    try {
+      setError(null)
+      
     try {
       const { error } = await supabase
         .from('timer_sessions')
