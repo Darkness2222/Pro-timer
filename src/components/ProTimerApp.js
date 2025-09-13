@@ -9,6 +9,7 @@ import SuccessPage from './SuccessPage'
 export default function ProTimerApp({ session }) {
   const [currentView, setCurrentView] = useState('overview')
   const [showSettings, setShowSettings] = useState(false)
+  const [error, setError] = useState(null)
   const [selectedTimer, setSelectedTimer] = useState(null)
   const [timers, setTimers] = useState([])
   const [loading, setLoading] = useState(true)
