@@ -320,6 +320,26 @@ export default function ProTimerApp({ session }) {
     }
   }
 
+  // Helper function to log actions for any timer
+  const logAction = async (timerId, action, timeValue = null, durationChange = null, notes = null) => {
+    try {
+      await supabase
+        .from('timer_logs')
+        .insert([{
+          timer_id: timerId,
+          action,
+          time_value: timeValue,
+          duration_change: durationChange,
+          notes
+        }])
+    } catch (error) {
+      console.error('Error logging action:', error)
+    }
+    
+    // Reload all logs for reports
+    loadAllTimerLogs()
+  }
+
   const logTimerAction = async (action, timeValue = null, durationChange = null, notes = null) => {
     if (!selectedTimer) return
     
@@ -611,16 +631,14 @@ export default function ProTimerApp({ session }) {
         updated_at: new Date().toISOString()
       })
       
-      // Update timer status in database
+      // Update timer status in database to completed
       await supabase
         .from('timers')
-        .update({ status: 'finished_early' })
+        .update({ status: 'completed' })
         .eq('id', timerId)
       
       // Log the finish action
-      await supabase
-        .from('timer_logs')
-        .insert([{
+      await logAction(timerId, 'completed', remainingTime, 0, `Timer completed with ${Math.floor(remainingTime / 60)}:${(remainingTime % 60).toString().padStart(2, '0')} remaining`)
           timer_id: timerId,
           action: 'completed',
           time_value: remainingTime,
@@ -628,14 +646,18 @@ export default function ProTimerApp({ session }) {
           notes: `Timer completed early with ${Math.floor(remainingTime / 60)}:${(remainingTime % 60).toString().padStart(2, '0')} remaining`
         }])
       
-      // Update local state if this is the selected timer
+      // Clear selected timer if this is the one being finished
       if (selectedTimer && selectedTimer.id === timerId) {
+        setSelectedTimer(null)
         setTimeLeft(0)
         setIsRunning(false)
+        setMessages([])
       }
       
-      // Refresh timer sessions and logs
+      // Refresh all data
       await updateTimerSessions()
+      await loadTimers()
+      await loadAllTimerLogs()
       await loadAllTimerLogs()
       
       console.log(`Timer ${timerId} finished early`)
@@ -1821,8 +1843,8 @@ export default function ProTimerApp({ session }) {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300 capitalize">
                         {log.action === 'expired' && '⚠️ '}
-                        {log.action === 'completed' && '✅ '}
-                        {log.action === 'finished' && '✅ '}
+                        {log.action === 'expired' && '⚠️ '}
+                        {(log.action === 'finished' || log.action === 'completed') && '✅ '}
                         {log.action}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-400">
@@ -2243,8 +2265,8 @@ export default function ProTimerApp({ session }) {
                         <div>
                           <span className="text-white font-medium capitalize">
                             {log.action === 'expired' && '⚠️ '}
-                            {log.action === 'completed' && '✅ '}
-                            {log.action === 'finished' && '✅ '}
+                            {log.action === 'expired' && '⚠️ '}
+                            {(log.action === 'finished' || log.action === 'completed') && '✅ '}
                             {log.action}
                           </span>
                           {log.time_value && (
