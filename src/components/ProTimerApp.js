@@ -1208,6 +1208,44 @@ export default function ProTimerApp({ session }) {
                   </div>
                 </div>
               </div>
+                  {/* Presenter Controls */}
+                  <div className="flex gap-4 justify-center mb-8">
+                    {selectedTimer?.timer_type === 'event' && selectedTimer?.status !== 'finished_early' && (
+                      <button
+                        onClick={() => handleFinishTimer(selectedTimer.id)}
+                        className="bg-red-600 hover:bg-red-700 text-white px-8 py-4 rounded-lg text-lg font-medium transition-colors"
+                      >
+                        Finish Presenter
+                      </button>
+                    )}
+                    
+                    <button
+                      onClick={() => {
+                        const session = timerSessions[selectedTimer?.id]
+                        if (session?.is_running) {
+                          handlePauseTimer(selectedTimer.id)
+                        } else {
+                          handleStartTimer(selectedTimer.id)
+                        }
+                      }}
+                      disabled={selectedTimer?.status === 'finished_early'}
+                      className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white px-8 py-4 rounded-lg text-lg font-medium transition-colors"
+                    >
+                      {timerSessions[selectedTimer?.id]?.is_running ? 'Pause' : 'Start'}
+                    </button>
+                    
+                    <button
+                      onClick={() => {
+                        const newTime = currentTime + 300 // Add 5 minutes
+                        handleAdjustTime(selectedTimer.id, newTime)
+                      }}
+                      disabled={selectedTimer?.status === 'finished_early'}
+                      className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-8 py-4 rounded-lg text-lg font-medium transition-colors"
+                    >
+                      +5 Min
+                    </button>
+                  </div>
+                  
               );
             })}
           </div>
