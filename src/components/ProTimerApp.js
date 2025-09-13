@@ -581,7 +581,28 @@ export default function ProTimerApp({ session }) {
       const timer = timers.find(t => t.id === timerId)
       if (!timer) return
 
-      const remainingTime = timerSessions[timerId]?.time_left || 0
+      // Get current time left from session or local state
+      let remainingTime = 0
+      if (selectedTimer && selectedTimer.id === timerId) {
+        remainingTime = Math.max(0, timeLeft)
+      } else {
+        const session = timerSessions[timerId]
+        if (session) {
+          remainingTime = session.time_left
+          if (session.is_running) {
+            const now = new Date()
+            const lastUpdate = new Date(session.updated_at)
+            const elapsedSinceUpdate = Math.floor((now - lastUpdate) / 1000)
+            remainingTime = Math.max(0, session.time_left - elapsedSinceUpdate)
+          }
+        }
+      }
+      
+      // Stop the timer if it's running
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+        intervalRef.current = null
+      }
       
       // Update timer session to finished state
       await updateTimerSession(timerId, {
@@ -596,10 +617,16 @@ export default function ProTimerApp({ session }) {
         .update({ status: 'finished_early' })
         .eq('id', timerId)
       
-      // Log the finish action with correct parameters
-      if (selectedTimer && selectedTimer.id === timerId) {
-        await logTimerAction('finished', remainingTime, 0, `Timer finished early with ${Math.floor(remainingTime / 60)}:${(remainingTime % 60).toString().padStart(2, '0')} remaining`)
-      }
+      // Log the finish action
+      await supabase
+        .from('timer_logs')
+        .insert([{
+          timer_id: timerId,
+          action: 'completed',
+          time_value: remainingTime,
+          duration_change: 0,
+          notes: `Timer completed early with ${Math.floor(remainingTime / 60)}:${(remainingTime % 60).toString().padStart(2, '0')} remaining`
+        }])
       
       // Update local state if this is the selected timer
       if (selectedTimer && selectedTimer.id === timerId) {
@@ -607,8 +634,9 @@ export default function ProTimerApp({ session }) {
         setIsRunning(false)
       }
       
-      // Refresh timer sessions
+      // Refresh timer sessions and logs
       await updateTimerSessions()
+      await loadAllTimerLogs()
       
       console.log(`Timer ${timerId} finished early`)
     } catch (error) {
@@ -616,28 +644,10 @@ export default function ProTimerApp({ session }) {
     }
   }
 
-  // NEW: Finish timer function
+  // Finish timer function - calls handleFinishTimer
   const finishTimer = async () => {
     if (!selectedTimer) return
-    
-    setIsRunning(false)
-    const remainingTime = Math.max(0, timeLeft)
-    setTimeLeft(0)
-    logTimerAction('finished', remainingTime, null, `Timer completed early with ${formatTime(remainingTime)} remaining`)
-    
-    // Update session in database
-    try {
-      await supabase
-        .from('timer_sessions')
-        .upsert({
-          timer_id: selectedTimer.id,
-          time_left: 0,
-          is_running: false,
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'timer_id' })
-    } catch (error) {
-      console.error('Error updating session:', error)
-    }
+    await handleFinishTimer(selectedTimer.id)
   }
 
   const adjustTime = async (seconds) => {
@@ -1334,11 +1344,11 @@ export default function ProTimerApp({ session }) {
               <div className="flex justify-center mb-6">
                 {!isRunning && !showOverride && (
                   <button
-                    onClick={() => setShowOverride(true)}
+                    disabled={timeLeft <= 0 || selectedTimer?.status === 'finished_early'}
                     className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2"
                   >
                     <Clock className="w-4 h-4" />
-                    Override Duration
+                    {selectedTimer?.status === 'finished_early' ? 'Completed' : 'Finish'}
                   </button>
                 )}
                 
@@ -1811,6 +1821,7 @@ export default function ProTimerApp({ session }) {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300 capitalize">
                         {log.action === 'expired' && '⚠️ '}
+                        {log.action === 'completed' && '✅ '}
                         {log.action === 'finished' && '✅ '}
                         {log.action}
                       </td>
@@ -2232,6 +2243,7 @@ export default function ProTimerApp({ session }) {
                         <div>
                           <span className="text-white font-medium capitalize">
                             {log.action === 'expired' && '⚠️ '}
+                            {log.action === 'completed' && '✅ '}
                             {log.action === 'finished' && '✅ '}
                             {log.action}
                           </span>
