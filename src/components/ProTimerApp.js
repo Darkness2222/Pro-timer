@@ -30,7 +30,6 @@ export default function ProTimerApp({ session }) {
   const [eventPresenters, setEventPresenters] = useState([])
   const [isEventMode, setIsEventMode] = useState(false)
   const [eventProgress, setEventProgress] = useState([])
-  const [eventModalError, setEventModalError] = useState('')
 
   // Check for success parameter in URL
   useEffect(() => {
@@ -843,38 +842,26 @@ export default function ProTimerApp({ session }) {
   }
 
   const addPresenter = () => {
-    try {
-      if (presenters.length < 8) {
-        setPresenters(prev => [...prev, {
-          id: Date.now(),
-          name: '',
-          minutes: 10,
-          seconds: 0
-        }])
-      }
-    } catch (error) {
-      console.error('Error adding presenter:', error)
+    if (presenters.length < 8) {
+      setPresenters(prev => [...prev, {
+        id: Date.now(),
+        name: '',
+        minutes: 10,
+        seconds: 0
+      }])
     }
   }
 
   const removePresenter = (id) => {
-    try {
-      if (presenters.length > 1) {
-        setPresenters(prev => prev.filter(p => p.id !== id))
-      }
-    } catch (error) {
-      console.error('Error removing presenter:', error)
+    if (presenters.length > 1) {
+      setPresenters(prev => prev.filter(p => p.id !== id))
     }
   }
 
   const updatePresenter = (id, field, value) => {
-    try {
-      setPresenters(prev => prev.map(p => 
-        p.id === id ? { ...p, [field]: value } : p
-      ))
-    } catch (error) {
-      console.error('Error updating presenter:', error)
-    }
+    setPresenters(prev => prev.map(p => 
+      p.id === id ? { ...p, [field]: value } : p
+    ))
   }
 
   const calculateEventTotalTime = () => {
@@ -2164,6 +2151,15 @@ export default function ProTimerApp({ session }) {
                 onClick={() => {
                   setShowCreateModal(false)
                   resetCreateForm()
+                onClick={() => {
+                  try {
+                    setShowEventModal(false)
+                    setEventModalError('')
+                    setEventName('')
+                    setEventPresenters([{ name: '', duration: 5 }])
+                  } catch (error) {
+                    console.error('Error closing modal:', error)
+                  }
                 }}
                 className="flex-1 bg-gray-600 hover:bg-gray-700 text-white px-4 py-3 rounded-lg font-medium"
               >
