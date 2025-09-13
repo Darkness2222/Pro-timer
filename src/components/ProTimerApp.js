@@ -793,6 +793,8 @@ export default function ProTimerApp({ session }) {
         new Date(log.created_at) <= new Date(reportDateRange.end + 'T23:59:59')
       )
     }
+      )
+    }
     
     // Add timer creation rows
     timers.forEach(timer => {
