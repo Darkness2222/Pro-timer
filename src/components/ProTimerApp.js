@@ -241,7 +241,6 @@ export default function ProTimerApp({ session }) {
     try {
       setError(null)
       
-    try {
       const { error } = await supabase
         .from('timer_sessions')
         .update({
