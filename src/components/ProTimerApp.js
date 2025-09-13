@@ -1026,35 +1026,11 @@ export default function ProTimerApp({ session }) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="text-white text-xl">Loading timers...</div>
-  const ErrorBoundary = ({ children }) => {
-    if (error) {
-      return (
-        <div className="min-h-screen w-full bg-gray-900 flex items-center justify-center p-4">
-          <div className="bg-red-900 border border-red-700 text-red-100 p-6 rounded-lg max-w-md w-full text-center">
-            <h2 className="text-xl font-bold mb-4">Something went wrong</h2>
-            <p className="mb-4">{error}</p>
-            <button
-              onClick={() => {
-                setError(null)
-                window.location.reload()
-              }}
-              className="bg-red-700 hover:bg-red-600 px-4 py-2 rounded text-white"
-            >
-              Reload Page
-            </button>
-          </div>
-        </div>
-      )
-    }
-    return children
-  }
-
       </div>
     )
   }
 
   return (
-    <ErrorBoundary>
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900">
       {/* Navigation */}
       <nav className="bg-gray-800/50 backdrop-blur-sm border-b border-gray-700">
@@ -2358,5 +2334,6 @@ export default function ProTimerApp({ session }) {
         </div>
       )}
     </div>
+    </ErrorBoundary>
   )
 }
