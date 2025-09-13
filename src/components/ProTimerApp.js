@@ -380,7 +380,7 @@ export default function ProTimerApp({ session }) {
         loadAllTimerLogs()
       } catch (error) {
         console.error('Error creating timer:', error)
-        alert('Error creating timer: ' + error.message)
+        setError('Failed to create timer: ' + error.message)
       }
     } else {
       // Event Timer - create multiple timers
@@ -409,7 +409,7 @@ export default function ProTimerApp({ session }) {
         loadAllTimerLogs()
       } catch (error) {
         console.error('Error creating event timers:', error)
-        alert('Error creating event timers: ' + error.message)
+        setError('Failed to create event timers: ' + error.message)
       }
     }
   }
