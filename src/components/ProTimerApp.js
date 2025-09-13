@@ -385,7 +385,7 @@ export default function ProTimerApp({ session }) {
             .single()
 
           if (error) throw error
-          return { ...data, eventIndex: index, eventId: eventTimer.id }
+          notes: notes
         })
       )
 
