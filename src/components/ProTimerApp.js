@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import TimerOverview from './TimerOverview'
 import { getProductByPriceId } from '../stripe-config'
-import { Play, Pause, Square, RotateCcw, Settings, MessageSquare, Plus, Minus, Clock, Users, Timer as TimerIcon, QrCode, ExternalLink, FileText, Crown, User, LogOut, CheckCircle, X } from 'lucide-react'
+import { Play, Pause, Square, RotateCcw, Settings, MessageSquare, Plus, Minus, Clock, Users, Timer as TimerIcon, QrCode, ExternalLink, FileText, Crown, User, LogOut, CheckCircle, X, Calendar, ChevronRight, Zap } from 'lucide-react'
 import SubscriptionModal from './SubscriptionModal'
 import SuccessPage from './SuccessPage'
 
@@ -25,6 +25,12 @@ export default function ProTimerApp({ session }) {
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false)
   const [subscription, setSubscription] = useState(null)
   const [showSuccess, setShowSuccess] = useState(false)
+  const [eventTimers, setEventTimers] = useState([])
+  const [currentEventTimer, setCurrentEventTimer] = useState(null)
+  const [eventBufferTime, setEventBufferTime] = useState(0)
+  const [showEventBuffer, setShowEventBuffer] = useState(false)
+  const [autoStartNext, setAutoStartNext] = useState(true)
+  const [nextPresenter, setNextPresenter] = useState(null)
 
   // Check for success parameter in URL
   useEffect(() => {
@@ -89,6 +95,7 @@ export default function ProTimerApp({ session }) {
   const [newMessage, setNewMessage] = useState('')
   
   const intervalRef = useRef(null)
+  const eventBufferInterval = useRef(null)
 
   // Load user profile
   const loadUserProfile = useCallback(async () => {
@@ -340,6 +347,153 @@ export default function ProTimerApp({ session }) {
     // Reload all logs for reports
     loadAllTimerLogs()
   }
+
+  // Event Timer Functions
+  const createEventTimer = async (eventName, presenters) => {
+    try {
+      const eventTimerData = {
+        name: eventName,
+        presenter_name: 'Event Timer',
+        duration: presenters.reduce((total, p) => total + p.duration, 0),
+        user_id: session?.user?.id || null,
+        status: 'active'
+      }
+
+      const { data: eventTimer, error } = await supabase
+        .from('timers')
+        .insert([eventTimerData])
+        .select()
+        .single()
+
+      if (error) throw error
+
+      // Create individual presenter timers
+      const presenterTimers = await Promise.all(
+        presenters.map(async (presenter, index) => {
+          const presenterData = {
+            name: `${eventName} - ${presenter.name}`,
+            presenter_name: presenter.name,
+            duration: presenter.duration,
+            user_id: session?.user?.id || null,
+            status: index === 0 ? 'active' : 'archived'
+          }
+
+          const { data, error } = await supabase
+            .from('timers')
+            .insert([presenterData])
+            .select()
+            .single()
+
+          if (error) throw error
+          return { ...data, eventIndex: index, eventId: eventTimer.id }
+        })
+      )
+
+      setEventTimers(presenterTimers)
+      setCurrentEventTimer(presenterTimers[0])
+      await logTimerAction(eventTimer.id, 'event_created', `Event "${eventName}" created with ${presenters.length} presenters`)
+      
+      return eventTimer
+    } catch (error) {
+      console.error('Error creating event timer:', error)
+    }
+  }
+
+  const finishCurrentPresenter = async () => {
+    if (!currentEventTimer) return
+
+    try {
+      // Mark current presenter as finished
+      await handleFinishTimer(currentEventTimer.id)
+      
+      // Find next presenter
+      const currentIndex = currentEventTimer.eventIndex
+      const nextPresenterTimer = eventTimers.find(t => t.eventIndex === currentIndex + 1)
+      
+      if (nextPresenterTimer) {
+        setNextPresenter(nextPresenterTimer)
+        setEventBufferTime(120) // 2 minutes buffer
+        setShowEventBuffer(true)
+        
+        // Start buffer countdown
+        if (eventBufferInterval.current) {
+          clearInterval(eventBufferInterval.current)
+        }
+        
+        eventBufferInterval.current = setInterval(() => {
+          setEventBufferTime(prev => {
+            if (prev <= 1) {
+              if (autoStartNext) {
+                startNextPresenter()
+              }
+              return 0
+            }
+            return prev - 1
+          })
+        }, 1000)
+        
+        await logTimerAction(currentEventTimer.eventId, 'presenter_finished', `${currentEventTimer.presenter_name} finished, buffer started`)
+      } else {
+        // Event completed
+        setShowEventBuffer(false)
+        await logTimerAction(currentEventTimer.eventId, 'event_completed', 'All presenters completed')
+      }
+    } catch (error) {
+      console.error('Error finishing presenter:', error)
+    }
+  }
+
+  const startNextPresenter = async () => {
+    if (!nextPresenter) return
+
+    try {
+      // Clear buffer
+      if (eventBufferInterval.current) {
+        clearInterval(eventBufferInterval.current)
+      }
+      setShowEventBuffer(false)
+      setEventBufferTime(0)
+      
+      // Activate next presenter timer
+      const { error } = await supabase
+        .from('timers')
+        .update({ status: 'active' })
+        .eq('id', nextPresenter.id)
+
+      if (error) throw error
+
+      // Update current timer
+      setCurrentEventTimer(nextPresenter)
+      setNextPresenter(null)
+      
+      // Start the timer
+      await handleStartTimer(nextPresenter.id)
+      
+      await logTimerAction(nextPresenter.eventId, 'presenter_started', `${nextPresenter.presenter_name} started`)
+    } catch (error) {
+      console.error('Error starting next presenter:', error)
+    }
+  }
+
+  const extendBufferTime = () => {
+    setEventBufferTime(prev => prev + 60) // Add 1 minute
+  }
+
+  const formatEventTime = (seconds) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins}:${secs.toString().padStart(2, '0')}`
+  }
+
+  // Cleanup intervals on unmount
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current)
+      if (eventBufferInterval.current) {
+        clearInterval(eventBufferInterval.current)
+      }
+    }
+  }, [])
 
   const createTimer = async () => {
     if (timerType === 'single') {
@@ -1025,6 +1179,133 @@ export default function ProTimerApp({ session }) {
     )
   }
 
+  // Event Buffer View
+  if (showEventBuffer && nextPresenter) {
+    return (
+      <div className="bg-gray-900 min-h-screen w-full p-6">
+        <div className="max-w-4xl mx-auto">
+          {/* Header */}
+          <div className="text-center mb-8">
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text text-transparent mb-2">
+              Transition Buffer
+            </h1>
+            <p className="text-gray-300 text-lg">
+              Time between {currentEventTimer?.presenter_name} and {nextPresenter.presenter_name}
+            </p>
+          </div>
+
+          {/* Buffer Timer Section */}
+          <div className="bg-gradient-to-br from-yellow-500 to-orange-600 rounded-3xl p-8 mb-8 text-center text-white">
+            <div className="text-6xl font-bold font-mono mb-6 text-shadow">
+              {formatEventTime(eventBufferTime)}
+            </div>
+            
+            <div className="flex justify-center items-center gap-6 mb-6">
+              {/* Auto-start Toggle */}
+              <div 
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer transition-all ${
+                  autoStartNext 
+                    ? 'bg-green-500 bg-opacity-30 border-2 border-green-400' 
+                    : 'bg-white bg-opacity-20 border-2 border-white border-opacity-30'
+                }`}
+                onClick={() => setAutoStartNext(!autoStartNext)}
+              >
+                <div className={`w-10 h-5 rounded-full relative transition-all ${
+                  autoStartNext ? 'bg-green-400' : 'bg-white bg-opacity-30'
+                }`}>
+                  <div className={`w-4 h-4 bg-white rounded-full absolute top-0.5 transition-all ${
+                    autoStartNext ? 'left-5' : 'left-0.5'
+                  }`}></div>
+                </div>
+                <span className="font-medium">Auto-start next presenter</span>
+              </div>
+              
+              <button
+                onClick={startNextPresenter}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-medium transition-all transform hover:scale-105 flex items-center gap-2"
+              >
+                <Play className="w-5 h-5" />
+                Start Now
+              </button>
+              
+              <button
+                onClick={extendBufferTime}
+                className="bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-3 rounded-xl font-medium transition-all border-2 border-white border-opacity-30"
+              >
+                +1 Min
+              </button>
+            </div>
+
+            {/* Next Presenter Preview */}
+            <div className="bg-blue-600 bg-opacity-30 border border-blue-400 border-opacity-50 rounded-xl p-4">
+              <div className="text-sm opacity-80 mb-2">Next Up:</div>
+              <div className="text-xl font-semibold text-blue-100">
+                {nextPresenter.presenter_name} ({Math.floor(nextPresenter.duration / 60)}:{(nextPresenter.duration % 60).toString().padStart(2, '0')})
+              </div>
+            </div>
+          </div>
+
+          {/* Event Progress */}
+          <div className="bg-gray-800 rounded-2xl p-6">
+            <h3 className="text-xl font-semibold text-white mb-6 text-center">Event Progress</h3>
+            <div className="space-y-3">
+              {eventTimers.map((timer, index) => {
+                const isCompleted = timer.eventIndex < currentEventTimer?.eventIndex
+                const isCurrent = timer.id === currentEventTimer?.id
+                const isNext = timer.id === nextPresenter?.id
+                const isUpcoming = timer.eventIndex > (nextPresenter?.eventIndex || currentEventTimer?.eventIndex || 0)
+                
+                return (
+                  <div
+                    key={timer.id}
+                    className={`flex items-center p-4 rounded-xl transition-all ${
+                      isCompleted
+                        ? 'bg-green-500 bg-opacity-20 border border-green-400 border-opacity-30'
+                        : isNext
+                        ? 'bg-blue-500 bg-opacity-20 border border-blue-400 border-opacity-40 scale-105'
+                        : isUpcoming
+                        ? 'bg-gray-700 opacity-70'
+                        : 'bg-gray-700'
+                    }`}
+                  >
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-semibold text-sm mr-4 ${
+                      isCompleted
+                        ? 'bg-green-500 text-white'
+                        : isNext
+                        ? 'bg-blue-500 text-white'
+                        : 'bg-gray-600 text-gray-300'
+                    }`}>
+                      {isCompleted ? '✓' : index + 1}
+                    </div>
+                    
+                    <div className="flex-1">
+                      <div className="text-white font-medium">{timer.presenter_name}</div>
+                      <div className="text-gray-400 text-sm">
+                        {Math.floor(timer.duration / 60)}:{(timer.duration % 60).toString().padStart(2, '0')} allocated
+                      </div>
+                    </div>
+                    
+                    <div className={`px-3 py-1 rounded-lg text-xs font-semibold ${
+                      isCompleted
+                        ? 'bg-green-500 bg-opacity-30 text-green-300'
+                        : isNext
+                        ? 'bg-blue-500 bg-opacity-30 text-blue-300'
+                        : isUpcoming
+                        ? 'bg-gray-600 text-gray-400'
+                        : 'bg-gray-600 text-gray-400'
+                    }`}>
+                      {isCompleted ? 'Completed' : isNext ? 'Buffer' : 'Upcoming'}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900">
       {/* Navigation */}
@@ -1078,6 +1359,21 @@ export default function ProTimerApp({ session }) {
               >
                 <TimerIcon className="w-4 h-4 mr-2" />
                 Timer Overview
+              </button>
+              <button
+                onClick={() => {
+                  // Demo event creation
+                  const demoEvent = [
+                    { name: 'Sarah Chen - Opening Remarks', duration: 900 }, // 15 min
+                    { name: 'Mike Rodriguez - Q4 Results', duration: 1200 }, // 20 min
+                    { name: 'Jessica Park - Q&A Session', duration: 600 } // 10 min
+                  ]
+                  createEventTimer('Q4 Town Hall', demoEvent)
+                }}
+                className="inline-flex items-center px-4 py-2 border-b-2 text-sm font-medium border-transparent text-gray-300 hover:text-white hover:border-gray-300"
+              >
+                <Calendar className="w-4 h-4 mr-2" />
+                Create Event
               </button>
               <button
                 onClick={() => setCurrentView('reports')}
@@ -1256,14 +1552,24 @@ export default function ProTimerApp({ session }) {
                   <Square className="w-5 h-5" />
                   Stop
                 </button>
-                <button
-                  onClick={finishTimer}
-                  disabled={timeLeft <= 0}
-                  className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-6 py-3 rounded-lg font-medium flex items-center gap-2"
-                >
-                  <CheckCircle className="w-5 h-5" />
-                  Finish
-                </button>
+                {currentEventTimer && selectedTimer.id === currentEventTimer.id ? (
+                  <button
+                    onClick={finishCurrentPresenter}
+                    className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2"
+                  >
+                    <ChevronRight className="w-5 h-5" />
+                    Finish Presenter
+                  </button>
+                ) : (
+                  <button
+                    onClick={finishTimer}
+                    disabled={timeLeft <= 0}
+                    className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-6 py-3 rounded-lg font-medium flex items-center gap-2"
+                  >
+                    <CheckCircle className="w-5 h-5" />
+                    Finish
+                  </button>
+                )}
                 <button
                   onClick={resetTimer}
                   className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-medium flex items-center gap-2"
@@ -1603,6 +1909,11 @@ export default function ProTimerApp({ session }) {
                   {/* Status Indicator */}
                   <div className="flex justify-between items-start mb-3">
                     <div className={`w-3 h-3 rounded-full ${session?.is_running ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                    {eventTimers.some(et => et.id === timer.id) && (
+                      <span className="bg-purple-500 text-white px-2 py-1 rounded text-xs font-medium">
+                        Event
+                      </span>
+                    )}
                   </div>
                   <h3 className="text-xl font-semibold text-white mb-2">{timer.name}</h3>
                   <p className="text-gray-300 mb-4">Presenter: {timer.presenter_name}</p>
