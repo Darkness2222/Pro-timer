@@ -1228,6 +1228,14 @@ export default function ProTimerApp({ session }) {
                           handleStartTimer(selectedTimer.id)
                         }
                       }}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-lg text-lg font-medium transition-colors"
+                    >
+                      {timerSessions[selectedTimer?.id]?.is_running ? 'Pause' : 'Start'}
+                    </button>
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-lg text-lg font-medium transition-colors"
+                    >
+                      {timerSessions[selectedTimer?.id]?.is_running ? 'Pause' : 'Start'}
+                    </button>
                       disabled={selectedTimer?.status === 'finished_early'}
                       className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white px-8 py-4 rounded-lg text-lg font-medium transition-colors"
                     >
