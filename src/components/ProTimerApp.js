@@ -30,6 +30,7 @@ export default function ProTimerApp({ session }) {
   const [eventPresenters, setEventPresenters] = useState([])
   const [isEventMode, setIsEventMode] = useState(false)
   const [eventProgress, setEventProgress] = useState([])
+  const [eventModalError, setEventModalError] = useState('')
 
   // Check for success parameter in URL
   useEffect(() => {
@@ -842,26 +843,38 @@ export default function ProTimerApp({ session }) {
   }
 
   const addPresenter = () => {
-    if (presenters.length < 8) {
-      setPresenters(prev => [...prev, {
-        id: Date.now(),
-        name: '',
-        minutes: 10,
-        seconds: 0
-      }])
+    try {
+      if (presenters.length < 8) {
+        setPresenters(prev => [...prev, {
+          id: Date.now(),
+          name: '',
+          minutes: 10,
+          seconds: 0
+        }])
+      }
+    } catch (error) {
+      console.error('Error adding presenter:', error)
     }
   }
 
   const removePresenter = (id) => {
-    if (presenters.length > 1) {
-      setPresenters(prev => prev.filter(p => p.id !== id))
+    try {
+      if (presenters.length > 1) {
+        setPresenters(prev => prev.filter(p => p.id !== id))
+      }
+    } catch (error) {
+      console.error('Error removing presenter:', error)
     }
   }
 
   const updatePresenter = (id, field, value) => {
-    setPresenters(prev => prev.map(p => 
-      p.id === id ? { ...p, [field]: value } : p
-    ))
+    try {
+      setPresenters(prev => prev.map(p => 
+        p.id === id ? { ...p, [field]: value } : p
+      ))
+    } catch (error) {
+      console.error('Error updating presenter:', error)
+    }
   }
 
   const calculateEventTotalTime = () => {
