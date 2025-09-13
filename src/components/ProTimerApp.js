@@ -1277,6 +1277,69 @@ export default function ProTimerApp({ session }) {
                 </button>
               </div>
 
+              {/* Event Progress in Admin Dashboard */}
+              {isEventMode && eventPresenters.length > 0 && (
+                <div className="bg-gray-700/30 rounded-lg p-6 mb-6">
+                  <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                    <Calendar className="w-5 h-5" />
+                    Event Progress
+                  </h3>
+                  <div className="space-y-3">
+                    {eventPresenters.map((presenter, index) => {
+                      const isCompleted = presenter.status === 'completed'
+                      const isCurrent = index === currentPresenterIndex
+                      const isNext = index === currentPresenterIndex + 1
+                      
+                      return (
+                        <div
+                          key={presenter.id}
+                          className={`flex items-center p-3 rounded-lg transition-all ${
+                            isCompleted
+                              ? 'bg-green-500 bg-opacity-20 border border-green-400 border-opacity-30'
+                              : isCurrent
+                              ? 'bg-blue-500 bg-opacity-20 border border-blue-400 border-opacity-40'
+                              : isNext
+                              ? 'bg-yellow-500 bg-opacity-20 border border-yellow-400 border-opacity-30'
+                              : 'bg-gray-600 opacity-70'
+                          }`}
+                        >
+                          <div className={`w-6 h-6 rounded-full flex items-center justify-center font-semibold text-xs mr-3 ${
+                            isCompleted
+                              ? 'bg-green-500 text-white'
+                              : isCurrent
+                              ? 'bg-blue-500 text-white'
+                              : isNext
+                              ? 'bg-yellow-500 text-white'
+                              : 'bg-gray-500 text-gray-300'
+                          }`}>
+                            {isCompleted ? '✓' : index + 1}
+                          </div>
+                          
+                          <div className="flex-1">
+                            <div className="text-white font-medium text-sm">{presenter.name}</div>
+                            <div className="text-gray-400 text-xs">
+                              {Math.floor(presenter.duration / 60)}:{(presenter.duration % 60).toString().padStart(2, '0')} allocated
+                            </div>
+                          </div>
+                          
+                          <div className={`px-2 py-1 rounded text-xs font-semibold ${
+                            isCompleted
+                              ? 'bg-green-500 bg-opacity-30 text-green-300'
+                              : isCurrent
+                              ? 'bg-blue-500 bg-opacity-30 text-blue-300'
+                              : isNext
+                              ? 'bg-yellow-500 bg-opacity-30 text-yellow-300'
+                              : 'bg-gray-500 text-gray-400'
+                          }`}>
+                            {isCompleted ? 'Done' : isCurrent ? 'Active' : isNext ? 'Next' : 'Waiting'}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
               {/* Share and Logs */}
               <div className="flex justify-center gap-4 mb-6">
                 <button
