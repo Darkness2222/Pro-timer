@@ -25,6 +25,10 @@ export default function ProTimerApp({ session }) {
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false)
   const [subscription, setSubscription] = useState(null)
   const [showSuccess, setShowSuccess] = useState(false)
+  const [currentPresenterIndex, setCurrentPresenterIndex] = useState(0)
+  const [eventPresenters, setEventPresenters] = useState([])
+  const [isEventMode, setIsEventMode] = useState(false)
+  const [eventProgress, setEventProgress] = useState([])
 
   // Check for success parameter in URL
   useEffect(() => {
