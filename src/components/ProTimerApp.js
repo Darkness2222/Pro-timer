@@ -1252,8 +1252,7 @@ export default function ProTimerApp({ session }) {
                     >
                       +5 Min
                     </button>
-                  </div>
-                  
+                  </div>              
               );
             })}
           </div>
