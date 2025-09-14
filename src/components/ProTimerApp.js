@@ -9,6 +9,7 @@ import SuccessPage from './SuccessPage'
 export default function ProTimerApp({ session }) {
   const [currentView, setCurrentView] = useState('overview')
   const [showSettings, setShowSettings] = useState(false)
+  const [error, setError] = useState(null)
   const [selectedTimer, setSelectedTimer] = useState(null)
   const [timers, setTimers] = useState([])
   const [loading, setLoading] = useState(true)
@@ -25,6 +26,10 @@ export default function ProTimerApp({ session }) {
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false)
   const [subscription, setSubscription] = useState(null)
   const [showSuccess, setShowSuccess] = useState(false)
+  const [currentPresenterIndex, setCurrentPresenterIndex] = useState(0)
+  const [eventPresenters, setEventPresenters] = useState([])
+  const [isEventMode, setIsEventMode] = useState(false)
+  const [eventProgress, setEventProgress] = useState([])
 
   // Check for success parameter in URL
   useEffect(() => {
@@ -228,7 +233,14 @@ export default function ProTimerApp({ session }) {
   }
 
   const handlePauseTimer = async (timerId) => {
+    if (!timerId || !selectedTimer) {
+      console.error('No timer selected')
+      return
+    }
+    
     try {
+      setError(null)
+      
       const { error } = await supabase
         .from('timer_sessions')
         .update({
@@ -367,7 +379,7 @@ export default function ProTimerApp({ session }) {
         loadAllTimerLogs()
       } catch (error) {
         console.error('Error creating timer:', error)
-        alert('Error creating timer: ' + error.message)
+        setError('Failed to create timer: ' + error.message)
       }
     } else {
       // Event Timer - create multiple timers
@@ -396,7 +408,7 @@ export default function ProTimerApp({ session }) {
         loadAllTimerLogs()
       } catch (error) {
         console.error('Error creating event timers:', error)
-        alert('Error creating event timers: ' + error.message)
+        setError('Failed to create event timers: ' + error.message)
       }
     }
   }
@@ -1196,6 +1208,43 @@ export default function ProTimerApp({ session }) {
                   </div>
                 </div>
               </div>
+                  {/* Presenter Controls */}
+                  <div className="flex gap-4 justify-center mb-8">
+                    {selectedTimer?.timer_type === 'event' && selectedTimer?.status !== 'finished_early' && (
+                      <button
+                        onClick={() => handleFinishTimer(selectedTimer.id)}
+                        className="bg-red-600 hover:bg-red-700 text-white px-8 py-4 rounded-lg text-lg font-medium transition-colors"
+                      >
+                        Finish Presenter
+                      </button>
+                    )}
+                    
+                    <button
+                      onClick={() => {
+                        const session = timerSessions[selectedTimer?.id]
+                        if (session?.is_running) {
+                          handlePauseTimer(selectedTimer.id)
+                        } else {
+                          handleStartTimer(selectedTimer.id)
+                        }
+                      }}
+                      disabled={selectedTimer?.status === 'finished_early'}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-lg text-lg font-medium transition-colors"
+                    >
+                      {timerSessions[selectedTimer?.id]?.is_running ? 'Pause' : 'Start'}
+                    </button>
+                    
+                    <button
+                      onClick={() => {
+                        const newTime = currentTime + 300 // Add 5 minutes
+                        handleAdjustTime(selectedTimer.id, newTime)
+                      }}
+                      disabled={selectedTimer?.status === 'finished_early'}
+                      className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-8 py-4 rounded-lg text-lg font-medium transition-colors"
+                    >
+                      +5 Min
+                    </button>
+                  </div>              
               );
             })}
           </div>
@@ -1805,6 +1854,8 @@ export default function ProTimerApp({ session }) {
                   })().map((log, index) => (
                     <tr key={index} className={`hover:bg-gray-700/30 ${
                       log.action === 'expired' ? 'bg-red-900/20' : ''
+                    } ${
+                      log.action === 'completed' ? 'bg-green-900/20' : ''
                     }`}>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">
                         {log.timers?.name || 'Unknown Timer'}
@@ -1812,6 +1863,7 @@ export default function ProTimerApp({ session }) {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300 capitalize">
                         {log.action === 'expired' && '⚠️ '}
                         {log.action === 'finished' && '✅ '}
+                        {log.action === 'completed' && '✅ '}
                         {log.action}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-400">
@@ -2134,8 +2186,14 @@ export default function ProTimerApp({ session }) {
             <div className="flex gap-3 mt-6">
               <button
                 onClick={() => {
-                  setShowCreateModal(false)
-                  resetCreateForm()
+                  try {
+                    setShowEventModal(false)
+                    setEventModalError('')
+                    setEventName('')
+                    setEventPresenters([{ name: '', duration: 5 }])
+                  } catch (error) {
+                    console.error('Error closing modal:', error)
+                  }
                 }}
                 className="flex-1 bg-gray-600 hover:bg-gray-700 text-white px-4 py-3 rounded-lg font-medium"
               >
