@@ -1249,9 +1249,12 @@ export default function ProTimerApp({ session }) {
                       }}
                       disabled={selectedTimer?.status === 'finished_early'}
                       className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-8 py-4 rounded-lg text-lg font-medium transition-colors"
-                    >
-                      +5 Min
-                    </button>
+<button
+  disabled={selectedTimer?.status === 'finished_early'}
+  className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-8 py-4 rounded-lg text-lg font-medium transition-colors"
+>
+  +5 Min
+</button>                    >
                   </div>              
               );
             })}
