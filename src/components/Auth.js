@@ -11,6 +11,7 @@ export default function Auth() {
   const [messageType, setMessageType] = useState('') // 'success' or 'error'
   const [rememberMe, setRememberMe] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  const [showForgotPassword, setShowForgotPassword] = useState(false)
 
   const handleAuth = async (e) => {
     e.preventDefault()
@@ -48,11 +49,36 @@ export default function Auth() {
     } catch (error) {
       setMessage(error.message)
       setMessageType('error')
+      // Show forgot password link for invalid credentials
+      setShowForgotPassword(error.message === 'Invalid login credentials')
     } finally {
       setLoading(false)
     }
   }
 
+  const handleForgotPassword = async () => {
+    if (!email) {
+      setMessage('Please enter your email address first')
+      setMessageType('error')
+      return
+    }
+
+    setLoading(true)
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/app`
+      })
+      if (error) throw error
+      setMessage('Password reset email sent! Check your inbox.')
+      setMessageType('success')
+      setShowForgotPassword(false)
+    } catch (error) {
+      setMessage(error.message)
+      setMessageType('error')
+    } finally {
+      setLoading(false)
+    }
+  }
   return (
     <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
       <div className="max-w-md w-full bg-gray-800 rounded-xl p-8 border border-gray-700">
@@ -84,6 +110,15 @@ export default function Auth() {
               <AlertCircle className="w-5 h-5 text-red-400" />
             )}
             <span className="text-sm">{message}</span>
+            {showForgotPassword && messageType === 'error' && (
+              <button
+                onClick={handleForgotPassword}
+                className="ml-2 text-blue-400 hover:text-blue-300 underline text-sm"
+                disabled={loading}
+              >
+                Forgot password?
+              </button>
+            )}
           </div>
         )}
         
