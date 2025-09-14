@@ -1240,7 +1240,7 @@ export default function ProTimerApp({ session }) {
                       className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white px-8 py-4 rounded-lg text-lg font-medium transition-colors"
                     >
                       {timerSessions[selectedTimer?.id]?.is_running ? 'Pause' : 'Start'}
-                    </button>
+                    </button>,
                     
                     <button
                       onClick={() => {
