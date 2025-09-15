@@ -187,6 +187,7 @@ export default function ProTimerApp({ session }) {
       if (error) throw error
       setTimers(data || [])
     } catch (error) {
+            timer_type: timerType || 'single'
       console.error('Error loading timers:', error)
     } finally {
       setLoading(false)
@@ -930,6 +931,7 @@ export default function ProTimerApp({ session }) {
     
     // Update timer sessions
     updateTimerSessions()
+        setTimerType('single')
   }
   const handleSignOut = async () => {
     try {
