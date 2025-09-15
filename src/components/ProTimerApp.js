@@ -1426,6 +1426,7 @@ export default function ProTimerApp({ session }) {
             timers={timers}
             timerSessions={timerSessions}
             onStartTimer={handleStartTimer}
+            timerSessions={timerSessions}
             onPauseTimer={handlePauseTimer}
             onStopTimer={handleStopTimer}
             onResetTimer={handleResetTimer}
