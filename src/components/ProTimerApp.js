@@ -186,7 +186,6 @@ export default function ProTimerApp({ session }) {
       if (error) throw error
       setTimers(data || [])
     } catch (error) {
-            timer_type: timerType || 'single'
       console.error('Error loading timers:', error)
     } finally {
       setLoading(false)
@@ -930,7 +929,6 @@ export default function ProTimerApp({ session }) {
     
     // Update timer sessions
     updateTimerSessions()
-        setTimerType('single')
   }
   const handleSignOut = async () => {
     try {
@@ -2319,6 +2317,7 @@ export default function ProTimerApp({ session }) {
             {/* Reset Button */}
             <button
               onClick={resetToDefaults}
+              className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2"
             >
               <RotateCcw className="w-5 h-5" />
               Reset to Defaults
