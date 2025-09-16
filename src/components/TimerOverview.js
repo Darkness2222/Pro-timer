@@ -1,5 +1,5 @@
 import React from 'react'
-import { Clock, Users, Timer as TimerIcon, CheckCircle } from 'lucide-react'
+import { Clock, Timer as TimerIcon, CheckCircle } from 'lucide-react'
 
 export default function TimerOverview({ timers, onSelectTimer, selectedTimer, timerSessions }) {
   // Filter to only show event timers that are active or recently completed

@@ -597,6 +597,9 @@ export default function ProTimerApp({ session }) {
       // Update timer session to finished state
       await updateTimerSession(timerId, {
         time_left: 0,
+        is_running: false
+      })
+      
       // Update timer status in database
      // Remove timer from local state (no longer active)
      // Log the archive action
