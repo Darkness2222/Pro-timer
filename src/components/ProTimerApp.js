@@ -182,7 +182,6 @@ export default function ProTimerApp({ session }) {
       const { data, error } = await supabase
         .from('timers')
         .select('*')
-        .order('created_at', { ascending: false })
       
       if (error) throw error
       setTimers(data || [])
