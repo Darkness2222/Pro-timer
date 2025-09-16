@@ -182,6 +182,7 @@ export default function ProTimerApp({ session }) {
       const { data, error } = await supabase
         .from('timers')
         .select('*')
+       .eq('status', 'active')
       
       if (error) throw error
       setTimers(data || [])
@@ -438,6 +439,17 @@ export default function ProTimerApp({ session }) {
     }
 
     try {
+     // Update timer status to 'archived' in database instead of deleting
+     const { error: updateError } = await supabase
+       .from('timers')
+       .update({ status: 'archived' })
+       .eq('id', timerId)
+     
+     if (updateError) {
+       console.error('Error archiving timer:', updateError)
+       return
+     }
+     
       const { error } = await supabase
         .from('timers')
         .delete()
@@ -567,16 +579,16 @@ export default function ProTimerApp({ session }) {
         .update(updates)
         .eq('timer_id', timerId)
       
-      if (error) {
-        console.error('Error updating timer session:', error)
-      }
-    } catch (error) {
-      console.error('Error updating timer session:', error)
-    }
-  }
-
-  const handleFinishTimer = async (timerId) => {
-    try {
+     const { error: updateError } = await supabase
+       .from('timers')
+       .update({ status: 'finished_early' })
+       .eq('id', timerId)
+     
+     if (updateError) {
+       console.error('Error updating timer status:', updateError)
+       return
+     }
+     
       const timer = timers.find(t => t.id === timerId)
       if (!timer) return
 
@@ -585,21 +597,24 @@ export default function ProTimerApp({ session }) {
       // Update timer session to finished state
       await updateTimerSession(timerId, {
         time_left: 0,
-        is_running: false,
-        updated_at: new Date().toISOString()
-      })
-      
       // Update timer status in database
-      await supabase
-        .from('timers')
-        .update({ status: 'finished_early' })
-        .eq('id', timerId)
-      
-      // Log the finish action with correct parameters
-      if (selectedTimer && selectedTimer.id === timerId) {
-        await logTimerAction('finished', remainingTime, 0, `Timer finished early with ${Math.floor(remainingTime / 60)}:${(remainingTime % 60).toString().padStart(2, '0')} remaining`)
-      }
-      
+     // Remove timer from local state (no longer active)
+     // Log the archive action
+     const { error: logError } = await supabase
+       .from('timer_logs')
+       .insert({
+         timer_id: timerId,
+         action: 'archive',
+         time_value: 0,
+         notes: 'Timer archived by user'
+       })
+
+     if (logError) {
+       console.error('Error logging archive action:', logError)
+     }
+
+     // Remove timer from local state (no longer active)
+     setTimers(prev => prev.filter(timer => timer.id !== timerId))
       // Update local state if this is the selected timer
       if (selectedTimer && selectedTimer.id === timerId) {
         setTimeLeft(0)
