@@ -4,6 +4,7 @@ import { X, Clock, CheckCircle, Play, Users } from 'lucide-react'
 export default function EventRunningInterfaceModal({ 
   timers, 
   timerSessions, 
+  bufferTimerState,
   onClose, 
   onStartNextTimer 
 }) {
@@ -92,8 +93,43 @@ export default function EventRunningInterfaceModal({
         </div>
 
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+          {/* Buffer Timer Section */}
+          {bufferTimerState.isRunning && (
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-white mb-3">Buffer Time:</h3>
+              <div className="bg-yellow-500 bg-opacity-20 border border-yellow-500 rounded-lg p-4">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h4 className="text-2xl font-bold text-yellow-300 mb-1">
+                      {formatDuration(bufferTimerState.timeLeft)}
+                    </h4>
+                    <p className="text-yellow-200">
+                      Transition time between presentations
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <div className="w-16 h-16 rounded-full border-4 border-yellow-500 flex items-center justify-center">
+                      <Clock className="w-8 h-8 text-yellow-400" />
+                    </div>
+                  </div>
+                </div>
+                {/* Progress bar for buffer */}
+                <div className="mt-4">
+                  <div className="w-full bg-yellow-900 rounded-full h-2">
+                    <div 
+                      className="bg-yellow-400 h-2 rounded-full transition-all duration-1000"
+                      style={{ 
+                        width: `${((bufferTimerState.duration - bufferTimerState.timeLeft) / bufferTimerState.duration) * 100}%` 
+                      }}
+                    ></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Next Up Section */}
-          {nextUpTimer && (
+          {nextUpTimer && !bufferTimerState.isRunning && (
             <div className="mb-6">
               <h3 className="text-lg font-semibold text-white mb-3">Next Up:</h3>
               <div className="bg-orange-500 bg-opacity-20 border border-orange-500 rounded-lg p-4">
@@ -109,6 +145,32 @@ export default function EventRunningInterfaceModal({
                   <button
                     onClick={() => onStartNextTimer(nextUpTimer.id)}
                     className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2"
+                  >
+                    <Play className="w-4 h-4" />
+                    Start Now
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Next Up During Buffer */}
+          {nextUpTimer && bufferTimerState.isRunning && (
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-white mb-3">Starting After Buffer:</h3>
+              <div className="bg-blue-500 bg-opacity-20 border border-blue-500 rounded-lg p-4">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h4 className="text-xl font-bold text-blue-300 mb-1">
+                      {nextUpTimer.presenter_name} - {nextUpTimer.name}
+                    </h4>
+                    <p className="text-blue-200">
+                      ({formatDuration(nextUpTimer.duration)}) - Will start automatically
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => onStartNextTimer(nextUpTimer.id)}
+                    className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2"
                   >
                     <Play className="w-4 h-4" />
                     Start Now

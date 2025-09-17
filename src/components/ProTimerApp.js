@@ -25,6 +25,11 @@ export default function ProTimerApp({ session }) {
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false)
   const [subscription, setSubscription] = useState(null)
   const [showSuccess, setShowSuccess] = useState(false)
+  const [bufferTimerState, setBufferTimerState] = useState({
+    isRunning: false,
+    timeLeft: 0,
+    duration: 0
+  })
 
   // Check for success parameter in URL
   useEffect(() => {
@@ -81,6 +86,9 @@ export default function ProTimerApp({ session }) {
   ])
   const [overrideTime, setOverrideTime] = useState('')
   const [showOverride, setShowOverride] = useState(false)
+
+  // Buffer timer constants
+  const DEFAULT_BUFFER_DURATION = 30 // 30 seconds
   
   // Form states
   const [newTimerName, setNewTimerName] = useState('')
@@ -121,7 +129,52 @@ export default function ProTimerApp({ session }) {
       console.log('No session found, user should be redirected to auth')
       return
     }
-  }, [session])
+  }, [])
+
+  // Buffer timer countdown effect
+  useEffect(() => {
+    let interval = null
+    
+    if (bufferTimerState.isRunning && bufferTimerState.timeLeft > 0) {
+      interval = setInterval(() => {
+        setBufferTimerState(prev => {
+          const newTimeLeft = prev.timeLeft - 1
+          
+          if (newTimeLeft <= 0) {
+            // Buffer finished, auto-start next timer
+            const eventTimers = timers
+              .filter(timer => timer.timer_type === 'event')
+              .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+            
+            const nextUpTimer = eventTimers.find(timer => 
+              timer.status === 'active' && 
+              !timerSessions[timer.id]?.is_running &&
+              timer.status !== 'finished_early'
+            )
+            
+            if (nextUpTimer) {
+              handleStartTimer(nextUpTimer.id)
+            }
+            
+            return {
+              isRunning: false,
+              timeLeft: 0,
+              duration: 0
+            }
+          }
+          
+          return {
+            ...prev,
+            timeLeft: newTimeLeft
+          }
+        })
+      }, 1000)
+    }
+    
+    return () => {
+      if (interval) clearInterval(interval)
+    }
+  }, [bufferTimerState.isRunning, bufferTimerState.timeLeft, timers, timerSessions])
 
   // Load timers on component mount
   useEffect(() => {
@@ -657,6 +710,42 @@ export default function ProTimerApp({ session }) {
     }
   }
 
+  const handleFinishTimer = async (timerId) => {
+    try {
+      const session = timerSessions[timerId]
+      
+      // Log the finish action
+      await logTimerAction(timerId, 'finish', session?.time_left || 0, 0, 'Timer finished early')
+      
+      // Remove from local state
+      setTimers(prev => prev.filter(t => t.id !== timerId))
+      
+      // Check if this is an event timer and start buffer if there's a next timer
+      const finishedTimer = timers.find(t => t.id === timerId)
+      if (finishedTimer?.timer_type === 'event') {
+        const eventTimers = timers
+          .filter(timer => timer.timer_type === 'event' && timer.id !== timerId)
+          .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+        
+        const nextUpTimer = eventTimers.find(timer => 
+          timer.status === 'active' && 
+          !timerSessions[timer.id]?.is_running
+        )
+        
+        if (nextUpTimer) {
+          // Start buffer countdown
+          setBufferTimerState({
+            isRunning: true,
+            timeLeft: DEFAULT_BUFFER_DURATION,
+            duration: DEFAULT_BUFFER_DURATION
+          })
+        }
+      }
+    } catch (error) {
+      console.error('Error finishing timer:', error)
+    }
+  }
+
   const adjustTime = async (seconds) => {
     const newTime = Math.max(0, timeLeft + seconds)
     setTimeLeft(newTime)
@@ -948,6 +1037,35 @@ export default function ProTimerApp({ session }) {
     // Update timer sessions
     updateTimerSessions()
   }
+
+  const handleStartNextEventTimer = async (timerId) => {
+    try {
+      // Stop buffer timer if running
+      if (bufferTimerState.isRunning) {
+        setBufferTimerState({
+          isRunning: false,
+          timeLeft: 0,
+          duration: 0
+        })
+      }
+      
+      // Find currently running event timer and finish it
+      const eventTimers = timers.filter(timer => timer.timer_type === 'event')
+      const currentRunningTimer = eventTimers.find(timer => 
+        timerSessions[timer.id]?.is_running
+      )
+      
+      if (currentRunningTimer) {
+        await handleFinishTimer(currentRunningTimer.id)
+      }
+      
+      // Start the next timer
+      await handleStartTimer(timerId)
+    } catch (error) {
+      console.error('Error starting next event timer:', error)
+    }
+  }
+
   const handleSignOut = async () => {
     try {
       await supabase.auth.signOut()
@@ -1716,633 +1834,4 @@ export default function ProTimerApp({ session }) {
               <p className="text-3xl font-bold text-purple-400">
                 {new Set(timers.map(timer => timer.presenter_name)).size}
               </p>
-            </div>
-          </div>
-
-          {/* Timers Table */}
-          <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700 mb-8">
-            <div className="p-6 border-b border-gray-700">
-              <h2 className="text-xl font-semibold text-white">All Timers</h2>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-700/50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                      Timer Name
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                      Presenter
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                      Duration
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                      Created
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-700">
-                  {timers.map((timer) => {
-                    const session = timerSessions[timer.id];
-                    return (
-                      <tr key={timer.id} className="hover:bg-gray-700/30">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">
-                          {timer.name}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                          {timer.presenter_name}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                          {Math.round(timer.duration / 60)} minutes
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            session?.is_running 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-red-100 text-red-800'
-                          }`}>
-                            {session?.is_running ? 'Running' : 'Stopped'}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                          {new Date(timer.created_at).toLocaleDateString()}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Activity Log */}
-          <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700">
-            <div className="p-6 border-b border-gray-700">
-              <h2 className="text-xl font-semibold text-white">Recent Activity</h2>
-            </div>
-            <div className="overflow-x-auto max-h-96 overflow-y-auto">
-              <table className="w-full">
-                <thead className="bg-gray-700/50 sticky top-0">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                      Timer
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                      Action
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                      Time Value
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                      Notes
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                      Date
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-700">
-                  {(() => {
-                    // Filter logs by date range if specified
-                    let filteredLogs = allTimerLogs
-                    if (reportDateRange.start) {
-                      filteredLogs = filteredLogs.filter(log => 
-                        new Date(log.created_at) >= new Date(reportDateRange.start)
-                      )
-                    }
-                    if (reportDateRange.end) {
-                      filteredLogs = filteredLogs.filter(log => 
-                        new Date(log.created_at) <= new Date(reportDateRange.end + 'T23:59:59')
-                      )
-                    }
-                    return filteredLogs.slice(0, 100)
-                  })().map((log, index) => (
-                    <tr key={index} className={`hover:bg-gray-700/30 ${
-                      log.action === 'expired' ? 'bg-red-900/20' : ''
-                    }`}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">
-                        {log.timers?.name || 'Unknown Timer'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300 capitalize">
-                        {log.action === 'expired' && '⚠️ '}
-                        {log.action === 'finished' && '✅ '}
-                        {log.action}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-400">
-                        {log.time_value ? formatTime(log.time_value) : '-'}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-300 max-w-xs truncate">
-                        {log.notes || '-'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                        {new Date(log.created_at).toLocaleString()}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <SubscriptionModal
-        isOpen={showSubscriptionModal}
-        onClose={() => setShowSubscriptionModal(false)}
-        session={session}
-      />
-
-      {/* Settings Modal */}
-      {showSettings && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-800 rounded-xl max-w-md w-full p-6 border border-gray-700">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-white">Settings</h2>
-              <button
-                onClick={() => setShowSettings(false)}
-                className="text-gray-400 hover:text-white transition-colors"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div className="border-b border-gray-700 pb-4">
-                <h3 className="text-lg font-medium text-white mb-2">Account</h3>
-                <div className="text-sm text-gray-300">
-                  <div>Email: {session?.user?.email}</div>
-                  <div>User ID: {session?.user?.id?.slice(0, 8)}...</div>
-                </div>
-              </div>
-
-              <div className="border-b border-gray-700 pb-4">
-                <h3 className="text-lg font-medium text-white mb-2">Subscription</h3>
-                <button
-                  onClick={() => {
-                    setShowSettings(false)
-                    setShowSubscriptionModal(true)
-                  }}
-                  className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-                >
-                  Manage Subscription
-                </button>
-              </div>
-
-              <div className="border-b border-gray-700 pb-4">
-                <h3 className="text-lg font-medium text-white mb-2">Preferences</h3>
-                <div className="text-sm text-gray-400">
-                  Timer preferences and notifications will be available in a future update.
-                </div>
-              </div>
-
-              <div className="pt-2">
-                <button
-                  onClick={handleSignOut}
-                  className="w-full bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-                >
-                  Sign Out
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Create Timer Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-gray-800 rounded-xl p-6 w-full max-w-2xl border border-gray-700 max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-white">Add Timer</h2>
-              <button
-                onClick={() => setShowCreateModal(false)}
-                className="text-gray-400 hover:text-white transition-colors"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-            <p className="text-gray-300 mb-6">Create a single timer or multi-presenter event</p>
-
-            {/* Timer Type Selection */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-              <div
-                onClick={() => setTimerType('single')}
-                className={`p-6 rounded-xl border-2 cursor-pointer transition-all text-center ${
-                  timerType === 'single'
-                    ? 'border-blue-500 bg-blue-500/10'
-                    : 'border-gray-600 hover:border-gray-500'
-                }`}
-              >
-                <div className="text-4xl mb-4">⏱️</div>
-                <h3 className="text-lg font-semibold text-white mb-2">Single Timer</h3>
-                <p className="text-gray-400 text-sm">Perfect for focused work sessions or simple timing needs</p>
-              </div>
-              <div
-                onClick={() => setTimerType('event')}
-                className={`p-6 rounded-xl border-2 cursor-pointer transition-all text-center ${
-                  timerType === 'event'
-                    ? 'border-blue-500 bg-blue-500/10'
-                    : 'border-gray-600 hover:border-gray-500'
-                }`}
-              >
-                <div className="text-4xl mb-4">🎪</div>
-                <h3 className="text-lg font-semibold text-white mb-2">Event Timer</h3>
-                <p className="text-gray-400 text-sm">Multiple timers for presentations, keynotes, or town halls</p>
-              </div>
-            </div>
-
-            {/* Single Timer Configuration */}
-            {timerType === 'single' && (
-              <div className="bg-gray-700/30 rounded-xl p-6 mb-6">
-                <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                  ⏱️ Timer Configuration
-                </h3>
-                
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Timer Name
-                    </label>
-                    <input
-                      type="text"
-                      value={newTimerName}
-                      onChange={(e) => setNewTimerName(e.target.value)}
-                      className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400"
-                      placeholder="e.g., Keynote Presentation"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Presenter Name
-                    </label>
-                    <input
-                      type="text"
-                      value={newTimerPresenter}
-                      onChange={(e) => setNewTimerPresenter(e.target.value)}
-                      className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400"
-                      placeholder="e.g., John Doe"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Duration (minutes)
-                    </label>
-                    <input
-                      type="number"
-                      value={newTimerDuration}
-                      onChange={(e) => setNewTimerDuration(e.target.value)}
-                      className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white"
-                      placeholder="5"
-                      min="1"
-                      max="180"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Event Timer Configuration */}
-            {timerType === 'event' && (
-              <div className="bg-gray-700/30 rounded-xl p-6 mb-6">
-                <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                  🎪 Event Configuration
-                </h3>
-                
-                <div className="space-y-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Event Name
-                    </label>
-                    <input
-                      type="text"
-                      value={eventName}
-                      onChange={(e) => setEventName(e.target.value)}
-                      className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400"
-                      placeholder="e.g., Q4 Town Hall"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-4">
-                      Presenters
-                    </label>
-                    <div className="space-y-4">
-                      {presenters.map((presenter, index) => (
-                        <div key={presenter.id} className="bg-gray-800 rounded-lg p-4 border border-gray-600">
-                          <div className="flex justify-between items-center mb-4">
-                            <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
-                              {index + 1}
-                            </div>
-                            {presenters.length > 1 && (
-                              <button
-                                onClick={() => removePresenter(presenter.id)}
-                                className="w-8 h-8 bg-red-600 hover:bg-red-700 rounded-full flex items-center justify-center text-white"
-                              >
-                                ×
-                              </button>
-                            )}
-                          </div>
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div className="md:col-span-2">
-                              <input
-                                type="text"
-                                value={presenter.name}
-                                onChange={(e) => updatePresenter(presenter.id, 'name', e.target.value)}
-                                className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400"
-                                placeholder="Presenter name..."
-                              />
-                            </div>
-                            <div className="grid grid-cols-2 gap-2">
-                              <div>
-                                <input
-                                  type="number"
-                                  value={presenter.minutes}
-                                  onChange={(e) => updatePresenter(presenter.id, 'minutes', parseInt(e.target.value) || 0)}
-                                  className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white text-center"
-                                  min="1"
-                                  max="60"
-                                />
-                                <div className="text-xs text-gray-400 text-center mt-1">Min</div>
-                              </div>
-                              <div>
-                                <input
-                                  type="number"
-                                  value={presenter.seconds}
-                                  onChange={(e) => updatePresenter(presenter.id, 'seconds', parseInt(e.target.value) || 0)}
-                                  className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white text-center"
-                                  min="0"
-                                  max="59"
-                                />
-                                <div className="text-xs text-gray-400 text-center mt-1">Sec</div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    
-                    <button
-                      onClick={addPresenter}
-                      disabled={presenters.length >= 8}
-                      className="w-full mt-4 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-4 py-3 rounded-lg font-medium transition-colors"
-                    >
-                      + Add Another Presenter
-                    </button>
-                  </div>
-
-                  {/* Buffer Time */}
-                  <div className="bg-red-900/20 border border-red-700/50 rounded-lg p-4">
-                    <h4 className="text-red-400 font-semibold mb-3 flex items-center gap-2">
-                      ⏳ Buffer Time Between Presenters
-                    </h4>
-                    <div className="grid grid-cols-2 gap-4 max-w-xs">
-                      <div>
-                        <input
-                          type="number"
-                          value={bufferMinutes}
-                          onChange={(e) => setBufferMinutes(parseInt(e.target.value) || 0)}
-                          className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white text-center"
-                          min="0"
-                          max="10"
-                        />
-                        <div className="text-xs text-gray-400 text-center mt-1">Minutes</div>
-                      </div>
-                      <div>
-                        <input
-                          type="number"
-                          value={bufferSeconds}
-                          onChange={(e) => setBufferSeconds(parseInt(e.target.value) || 0)}
-                          className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white text-center"
-                          min="0"
-                          max="59"
-                        />
-                        <div className="text-xs text-gray-400 text-center mt-1">Seconds</div>
-                      </div>
-                    </div>
-                    <p className="text-xs text-gray-400 mt-2">
-                      Time to transition between each presenter
-                    </p>
-                  </div>
-
-                  {/* Event Preview */}
-                  <div className="bg-green-900/20 border border-green-700/50 rounded-lg p-4">
-                    <h4 className="text-green-400 font-semibold mb-3">Event Timeline Preview</h4>
-                    <div className="text-green-300 text-sm space-y-1">
-                      {presenters.map((presenter, index) => (
-                        <div key={presenter.id}>
-                          {index + 1}. {presenter.name || `Presenter ${index + 1}`} ({presenter.minutes}:{presenter.seconds.toString().padStart(2, '0')})
-                          {index < presenters.length - 1 && ` + Buffer (${bufferMinutes}:${bufferSeconds.toString().padStart(2, '0')})`}
-                        </div>
-                      ))}
-                      <div className="font-semibold text-green-200 mt-2">
-                        Total Event Time: {calculateEventTotalTime()} minutes
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
             
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={() => {
-                  setShowCreateModal(false)
-                  resetCreateForm()
-                }}
-                className="flex-1 bg-gray-600 hover:bg-gray-700 text-white px-4 py-3 rounded-lg font-medium"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={createTimer}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg font-medium"
-              >
-                {timerType === 'single' ? 'Create Timer' : 'Create Event Timers'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* QR Code Modal */}
-      {showQRModal && selectedTimer && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-gray-800 rounded-xl p-6 w-full max-w-md border border-gray-700">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                <QrCode className="w-6 h-6" />
-                Share Presenter View
-              </h2>
-              <button
-                onClick={() => setShowQRModal(false)}
-                className="text-gray-400 hover:text-white text-2xl leading-none"
-              >
-                ×
-              </button>
-            </div>
-            
-            <div className="text-center mb-6">
-              <div className="bg-white p-4 rounded-lg mb-4 inline-block">
-                <div className="w-48 h-48 bg-gray-200 flex items-center justify-center text-gray-600">
-                  QR Code for:<br/>
-                  {generatePresenterUrl()}
-                </div>
-              </div>
-              <p className="text-gray-300 text-sm mb-4">
-                Scan this QR code or use the link below to open the presenter view on another device
-              </p>
-              <div className="bg-gray-700 p-3 rounded-lg mb-4">
-                <code className="text-green-400 text-xs break-all">
-                  {generatePresenterUrl()}
-                </code>
-              </div>
-            </div>
-            
-            <div className="flex gap-3">
-              <button
-                onClick={() => navigator.clipboard.writeText(generatePresenterUrl())}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg font-medium"
-              >
-                Copy Link
-              </button>
-              <button
-                onClick={() => setShowQRModal(false)}
-                className="flex-1 bg-gray-600 hover:bg-gray-700 text-white px-4 py-3 rounded-lg font-medium"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Timer Logs Modal */}
-      {showLogsModal && selectedTimer && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-gray-800 rounded-xl p-6 w-full max-w-2xl border border-gray-700 max-h-[80vh] overflow-hidden">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                <FileText className="w-6 h-6" />
-                Timer Logs - {selectedTimer.name}
-              </h2>
-              <button
-                onClick={() => setShowLogsModal(false)}
-                className="text-gray-400 hover:text-white text-2xl leading-none"
-              >
-                ×
-              </button>
-            </div>
-            
-            <div className="overflow-y-auto max-h-96">
-              {timerLogs.length > 0 ? (
-                <div className="space-y-2">
-                  {timerLogs.map((log, index) => (
-                    <div key={index} className={`rounded-lg p-3 ${
-                      log.action === 'expired' ? 'bg-red-900/30' : 'bg-gray-700/50'
-                    }`}>
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <span className="text-white font-medium capitalize">
-                            {log.action === 'expired' && '⚠️ '}
-                            {log.action === 'finished' && '✅ '}
-                            {log.action}
-                          </span>
-                          {log.time_value && (
-                            <span className="text-blue-400 ml-2">
-                              {formatTime(log.time_value)}
-                            </span>
-                          )}
-                          {log.notes && (
-                            <p className="text-gray-300 text-sm mt-1">{log.notes}</p>
-                          )}
-                        </div>
-                        <span className="text-gray-400 text-xs">
-                          {new Date(log.created_at).toLocaleString()}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-gray-400 text-center py-8">No logs available for this timer</p>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Message Settings Modal */}
-      {showMessageModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-gray-800 rounded-xl p-6 w-full max-w-lg border border-gray-700">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                <Settings className="w-6 h-6" />
-                Message Settings
-              </h2>
-              <button
-                onClick={() => setShowMessageModal(false)}
-                className="text-gray-400 hover:text-white text-2xl leading-none"
-              >
-                ×
-              </button>
-            </div>
-            
-            {/* Add New Message */}
-            <div className="mb-6">
-              <h3 className="text-lg font-semibold text-white mb-3">Add New Quick Message</h3>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  className="flex-1 p-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400"
-                  placeholder="e.g., 🔔 2 minutes left"
-                />
-                <button
-                  onClick={addQuickMessage}
-                  className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-3 rounded-lg"
-                >
-                  <Plus className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-
-            {/* Current Messages */}
-            <div className="mb-6">
-              <h3 className="text-lg font-semibold text-white mb-3">Current Quick Messages</h3>
-              <div className="space-y-2">
-                {quickMessages.map((msg) => (
-                  <div key={msg.id} className="flex items-center justify-between bg-gray-700/50 rounded-lg p-3">
-                    <span className="text-white">{msg.text}</span>
-                    <button
-                      onClick={() => removeQuickMessage(msg.id)}
-                      className="text-red-400 hover:text-red-300 p-1"
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Reset Button */}
-            <button
-              onClick={resetToDefaults}
-              className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2"
-            >
-              <RotateCcw className="w-5 h-5" />
-              Reset to Defaults
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
