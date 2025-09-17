@@ -1834,4 +1834,6 @@ export default function ProTimerApp({ session }) {
               <p className="text-3xl font-bold text-purple-400">
                 {new Set(timers.map(timer => timer.presenter_name)).size}
               </p>
+            </div>
+          </div>
             
