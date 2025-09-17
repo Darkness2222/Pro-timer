@@ -129,7 +129,7 @@ export default function ProTimerApp({ session }) {
       console.log('No session found, user should be redirected to auth')
       return
     }
-  }, [])
+  }, [session])
 
   // Buffer timer countdown effect
   useEffect(() => {
@@ -1561,7 +1561,6 @@ export default function ProTimerApp({ session }) {
             timers={timers}
             timerSessions={timerSessions}
             onStartTimer={handleStartTimer}
-            timerSessions={timerSessions}
             onPauseTimer={handlePauseTimer}
             onStopTimer={handleStopTimer}
             onResetTimer={handleResetTimer}
@@ -1836,4 +1835,9 @@ export default function ProTimerApp({ session }) {
               </p>
             </div>
           </div>
+        </div>
+      )}
+    </div>
+  )
+}
             
