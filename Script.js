@@ -1,6 +1,7 @@
 // Minimal test version - just to see if Pro Timer tab works
 (()=>{
 const $=s=>document.querySelector(s);
+const $$=s=>document.querySelectorAll(s);
 const LS={theme:‘synccue.theme’};
 const screens=[‘mainTimer’,‘pomodoro’,‘stopwatch’,‘proTimer’];
 let si=0;
@@ -47,6 +48,72 @@ themeToggle.addEventListener(‘click’, ()=>
 applyTheme(document.body.classList.contains(‘dark’)?‘light’:‘dark’)
 );
 }
+
+// Settings modal functionality
+function showModal(modalId) {
+  const modal = $(modalId);
+  if(modal) {
+    modal.classList.remove('hidden');
+  }
+}
+
+function hideModal(modalId) {
+  const modal = $(modalId);
+  if(modal) {
+    modal.classList.add('hidden');
+  }
+}
+
+// Settings button event listeners
+const settingsButtons = [
+  { button: '#mainSettings', modal: '#mtSettings' },
+  { button: '#pomoSettings', modal: '#pmSettings' },
+  { button: '#swSettings', modal: '#swSettingsModal' }
+];
+
+settingsButtons.forEach(({button, modal}) => {
+  const btn = $(button);
+  if(btn) {
+    btn.addEventListener('click', () => showModal(modal));
+  }
+});
+
+// Close button event listeners for all modals
+const closeButtons = [
+  { button: '#mtClose', modal: '#mtSettings' },
+  { button: '#mtCancel', modal: '#mtSettings' },
+  { button: '#pmClose', modal: '#pmSettings' },
+  { button: '#pmCancel', modal: '#pmSettings' },
+  { button: '#swClose', modal: '#swSettingsModal' },
+  { button: '#swCancel', modal: '#swSettingsModal' }
+];
+
+closeButtons.forEach(({button, modal}) => {
+  const btn = $(button);
+  if(btn) {
+    btn.addEventListener('click', () => hideModal(modal));
+  }
+});
+
+// Close modal when clicking outside of it
+$$('.modal').forEach(modal => {
+  modal.addEventListener('click', (e) => {
+    if(e.target === modal) {
+      modal.classList.add('hidden');
+    }
+  });
+});
+
+// Export functionality placeholders
+const exportButtons = ['#mtExport', '#pmExport', '#swExport2'];
+exportButtons.forEach(btnId => {
+  const btn = $(btnId);
+  if(btn) {
+    btn.addEventListener('click', () => {
+      alert('Export functionality would be implemented here');
+    });
+  }
+});
 
 // Pro Timer simple test
 function showProTimer() {
