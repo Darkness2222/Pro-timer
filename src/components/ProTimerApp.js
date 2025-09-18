@@ -5,6 +5,7 @@ import { getProductByPriceId } from '../stripe-config'
 import { Play, Pause, Square, RotateCcw, Settings, MessageSquare, Plus, Minus, Clock, Users, Timer as TimerIcon, QrCode, ExternalLink, FileText, Crown, User, LogOut, CheckCircle, X } from 'lucide-react'
 import SubscriptionModal from './SubscriptionModal'
 import SuccessPage from './SuccessPage'
+import SettingsModal from './SettingsModal'
 
 export default function ProTimerApp({ session }) {
   const [currentView, setCurrentView] = useState('overview')
@@ -1837,6 +1838,19 @@ export default function ProTimerApp({ session }) {
           </div>
         </div>
       )}
+
+      {/* Settings Modal */}
+      <SettingsModal
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+      />
+
+      {/* Subscription Modal */}
+      <SubscriptionModal
+        isOpen={showSubscriptionModal}
+        onClose={() => setShowSubscriptionModal(false)}
+        session={session}
+      />
     </div>
   )
 }
