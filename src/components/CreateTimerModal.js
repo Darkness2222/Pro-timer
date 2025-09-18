@@ -41,8 +41,13 @@ export default function CreateTimerModal({ isOpen, onClose, onCreate }) {
       bufferSeconds
     }
     
-    onCreate(formData)
-    resetForm()
+    try {
+      onCreate(formData)
+      resetForm()
+    } catch (error) {
+      console.error('Error creating timer:', error)
+      // Don't reset form on error so user doesn't lose data
+    }
   }
 
   const addPresenter = () => {
