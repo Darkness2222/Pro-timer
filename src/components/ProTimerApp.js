@@ -388,62 +388,96 @@ export default function ProTimerApp({ session }) {
   }
 
   const createTimer = async (formData) => {
-    if (formData.timerType === 'single') {
-      if (!formData.newTimerName.trim() || !formData.newTimerPresenter.trim() || !formData.newTimerDuration) return
+    try {
+      if (formData.timerType === 'event') {
+        // Create multiple timers for event
+        for (let i = 0; i < formData.presenters.length; i++) {
+          const presenter = formData.presenters[i]
+          const duration = (presenter.minutes * 60) + presenter.seconds
+          
+          if (!presenter.name.trim() || duration <= 0) {
+            console.error('Invalid presenter data:', presenter)
+            continue
+          }
+          
+          const { data, error } = await supabase
+            .from('timers')
+            .insert({
+              name: formData.eventName,
+              presenter_name: presenter.name,
+              duration: duration,
+              user_id: session?.user?.id || null,
+              timer_type: 'event'
+            })
+            .select()
+            .single()
 
-      try {
+          if (error) {
+            console.error('Error creating event timer:', error)
+            throw error
+          }
+
+          // Create timer session
+          const { error: sessionError } = await supabase
+            .from('timer_sessions')
+            .insert({
+              timer_id: data.id,
+              time_left: duration,
+              is_running: false
+            })
+
+          if (sessionError) {
+            console.error('Error creating timer session:', sessionError)
+            throw sessionError
+          }
+        }
+      } else {
+        // Create single timer
+        const duration = parseInt(formData.newTimerDuration) * 60
+        
+        if (!formData.newTimerName.trim() || !formData.newTimerPresenter.trim() || duration <= 0) {
+          throw new Error('Invalid timer data provided')
+        }
+        
         const { data, error } = await supabase
           .from('timers')
-          .insert([{
-            name: formData.newTimerName.trim(),
-            presenter_name: formData.newTimerPresenter.trim(),
-            duration: parseInt(formData.newTimerDuration) * 60, // Convert minutes to seconds
+          .insert({
+            name: formData.newTimerName,
+            presenter_name: formData.newTimerPresenter,
+            duration: duration,
             user_id: session?.user?.id || null,
-            timer_type: formData.timerType || 'single'
-          }])
+            timer_type: 'single'
+          })
           .select()
           .single()
 
-        if (error) throw error
+        if (error) {
+          console.error('Error creating timer:', error)
+          throw error
+        }
 
-        setTimers(prev => [data, ...prev])
-        setShowCreateModal(false)
-        
-        // Reload logs to include new timer
-        loadAllTimerLogs()
-      } catch (error) {
-        console.error('Error creating timer:', error)
-        alert('Error creating timer: ' + error.message)
+        // Create timer session
+        const { error: sessionError } = await supabase
+          .from('timer_sessions')
+          .insert({
+            timer_id: data.id,
+            time_left: duration,
+            is_running: false
+          })
+
+        if (sessionError) {
+          console.error('Error creating timer session:', sessionError)
+          throw sessionError
+        }
       }
-    } else {
-      // Event Timer - create multiple timers
-      if (!formData.eventName.trim() || formData.presenters.length === 0) return
 
-      try {
-        const timersToCreate = formData.presenters.map((presenter, index) => ({
-          name: `${formData.eventName.trim()} - ${presenter.name.trim() || `Presenter ${index + 1}`}`,
-          presenter_name: presenter.name.trim() || `Presenter ${index + 1}`,
-          duration: (presenter.minutes * 60) + presenter.seconds,
-          user_id: session?.user?.id || null,
-          timer_type: formData.timerType || 'event'
-        }))
-
-        const { data, error } = await supabase
-          .from('timers')
-          .insert(timersToCreate)
-          .select()
-
-        if (error) throw error
-
-        setTimers(prev => [...data, ...prev])
-        setShowCreateModal(false)
-        
-        // Reload logs to include new timers
-        loadAllTimerLogs()
-      } catch (error) {
-        console.error('Error creating event timers:', error)
-        alert('Error creating event timers: ' + error.message)
-      }
+      // Reload timers and close modal
+      await loadTimers()
+      setShowCreateModal(false)
+    } catch (error) {
+      console.error('Error in createTimer:', error)
+      // Don't close modal on error, let user try again
+      // Could add error state here to show user what went wrong
     }
   }
 
