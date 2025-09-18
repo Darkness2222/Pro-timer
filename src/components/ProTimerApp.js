@@ -7,7 +7,6 @@ import SubscriptionModal from './SubscriptionModal'
 import SuccessPage from './SuccessPage'
 import CreateTimerModal from './CreateTimerModal'
 import SettingsModal from './SettingsModal'
-import SettingsModal from './SettingsModal'
 
 export default function ProTimerApp({ session }) {
   const [currentView, setCurrentView] = useState('overview')
@@ -1620,6 +1619,26 @@ export default function ProTimerApp({ session }) {
          )}
        </div>
      )}
+
+      {/* Settings Modal */}
+      <SettingsModal
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+      />
+
+      {/* Create Timer Modal */}
+      <CreateTimerModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onCreate={createTimer}
+      />
+
+      {/* Subscription Modal */}
+      <SubscriptionModal
+        isOpen={showSubscriptionModal}
+        onClose={() => setShowSubscriptionModal(false)}
+        session={session}
+      />
 
       {/* Timer Overview */}
       {currentView === 'overview' && (
