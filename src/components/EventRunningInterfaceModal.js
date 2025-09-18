@@ -1,3 +1,4 @@
+```javascript
 import React, { useState, useEffect } from 'react'
 import { X, Clock, CheckCircle, Play, Users, Plus, Settings } from 'lucide-react'
 
@@ -54,7 +55,7 @@ export default function EventRunningInterfaceModal({
   const formatDuration = (seconds) => {
     const minutes = Math.floor(seconds / 60)
     const remainingSeconds = seconds % 60
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
+    return \`${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
   }
 
   const getTimerStatus = (timer) => {
@@ -64,7 +65,7 @@ export default function EventRunningInterfaceModal({
       return {
         status: 'Completed',
         detail: session?.time_left !== undefined 
-          ? `Completed in ${formatDuration(timer.duration - session.time_left)}`
+          ? \`Completed in ${formatDuration(timer.duration - session.time_left)}`
           : 'Completed',
         icon: CheckCircle,
         color: 'text-green-400',
@@ -78,7 +79,7 @@ export default function EventRunningInterfaceModal({
     if (session?.is_running) {
       return {
         status: 'Current',
-        detail: `${formatDuration(session.time_left || timer.duration)} remaining`,
+        detail: \`${formatDuration(session.time_left || timer.duration)} remaining`,
         icon: Clock,
         color: 'text-blue-400',
         bgColor: 'bg-blue-600 bg-opacity-20',
@@ -91,7 +92,7 @@ export default function EventRunningInterfaceModal({
     if (bufferTimerState.isRunning && timer.id === nextUpTimer?.id) {
       return {
         status: 'Buffer',
-        detail: `${formatDuration(timer.duration)} allocated`,
+        detail: \`${formatDuration(timer.duration)} allocated`,
         icon: Clock,
         color: 'text-orange-400',
         bgColor: 'bg-orange-600 bg-opacity-20',
@@ -103,7 +104,7 @@ export default function EventRunningInterfaceModal({
     
     return {
       status: 'Upcoming',
-      detail: `${formatDuration(timer.duration)} allocated`,
+      detail: \`${formatDuration(timer.duration)} allocated`,
       icon: Clock,
       color: 'text-gray-400',
       bgColor: 'bg-gray-600 bg-opacity-20',
@@ -124,11 +125,11 @@ export default function EventRunningInterfaceModal({
     const currentPresenterIndex = currentRunningTimer ? eventTimers.findIndex(t => t.id === currentRunningTimer.id) + 1 : completedCount + 1
     
     if (currentState === 'final') {
-      return `Event Completed • ${totalPresenters} presentations finished`
+      return \`Event Completed • ${totalPresenters} presentations finished`
     }
     
     if (currentState === 'buffer') {
-      return `Presenter ${currentPresenterIndex} of ${totalPresenters} • Buffer time`
+      return \`Presenter ${currentPresenterIndex} of ${totalPresenters} • Buffer time`
     }
     
     const remainingTime = eventTimers
@@ -138,7 +139,7 @@ export default function EventRunningInterfaceModal({
         return total + (session?.time_left || timer.duration)
       }, 0)
     
-    return `Presenter ${currentPresenterIndex} of ${totalPresenters} • ${formatDuration(remainingTime)} remaining`
+    return \`Presenter ${currentPresenterIndex} of ${totalPresenters} • ${formatDuration(remainingTime)} remaining`
   }
 
   return (
@@ -165,70 +166,51 @@ export default function EventRunningInterfaceModal({
         <div className="p-6 overflow-y-auto max-h-[calc(95vh-120px)]">
           {/* Main Timer Section (Presenter Active) */}
           {currentState === 'presenter' && currentRunningTimer && (
-            <div className="bg-white bg-opacity-10 backdrop-blur-xl rounded-3xl p-10 mb-8 text-center border border-white border-opacity-20">
-              <div className="text-2xl font-semibold text-blue-300 mb-4">
+            <div className="main-timer-section">
+              <div className="current-presenter">
                 {currentRunningTimer.presenter_name} - {currentRunningTimer.name}
               </div>
-              <div className="text-7xl font-bold font-mono mb-6 text-shadow-lg">
+              <div className={\`main-timer ${timerSessions[currentRunningTimer.id]?.time_left <= 120 ? 'timer-danger' : timerSessions[currentRunningTimer.id]?.time_left <= 300 ? 'timer-warning' : ''}`}>
                 {formatDuration(timerSessions[currentRunningTimer.id]?.time_left || currentRunningTimer.duration)}
               </div>
-              <div className="flex gap-5 justify-center">
-                <button
-                  onClick={() => onStartNextTimer(nextUpTimer?.id)}
-                  className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white px-8 py-4 rounded-2xl font-semibold transition-all transform hover:-translate-y-1 hover:shadow-lg"
-                >
-                  Finish Presenter
-                </button>
-                <button
-                  onClick={() => onExtendTimer(currentRunningTimer.id, 5)}
-                  className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-8 py-4 rounded-2xl font-semibold transition-all transform hover:-translate-y-1 hover:shadow-lg"
-                >
-                  +5 Min
-                </button>
+              <div className="timer-controls">
+                <button className="btn btn-finish" onClick={() => onStartNextTimer(nextUpTimer?.id)}>Finish Presenter</button>
+                {/* Pause/Resume button - assuming it's handled elsewhere or not needed here */}
+                <button className="btn btn-extend" onClick={() => onExtendTimer(currentRunningTimer.id, 5)}>+5 Min</button>
               </div>
             </div>
           )}
 
           {/* Buffer Section */}
           {currentState === 'buffer' && bufferTimerState.isRunning && (
-            <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-3xl p-10 mb-8 text-center text-white">
-              <div className="text-3xl font-bold mb-2">Transition Buffer</div>
-              <div className="text-lg opacity-90 mb-6">
+            <div className="buffer-section active">
+              <div className="buffer-title">Transition Buffer</div>
+              <div className="buffer-subtitle">
                 Time between {completedTimers[completedTimers.length - 1]?.presenter_name} and {nextUpTimer?.presenter_name}
               </div>
-              <div className="text-6xl font-bold font-mono mb-8">
+              <div className="buffer-timer">
                 {formatDuration(bufferTimerState.timeLeft)}
               </div>
               
-              <div className="flex gap-5 justify-center items-center mb-8">
+              <div className="buffer-controls">
                 <div 
-                  className={`auto-start-toggle ${autoStartNextEvent ? 'enabled' : ''} bg-white bg-opacity-20 border-2 border-white border-opacity-30 rounded-xl px-5 py-3 flex items-center gap-3 cursor-pointer transition-all hover:bg-opacity-30`}
+                  className={\`auto-start-toggle ${autoStartNextEvent ? 'enabled' : ''}`}
                   onClick={() => onToggleAutoStart(!autoStartNextEvent)}
                 >
-                  <div className={`toggle-switch ${autoStartNextEvent ? 'enabled' : ''} w-10 h-5 bg-white bg-opacity-30 rounded-full relative transition-all ${autoStartNextEvent ? 'bg-green-500' : ''}`}>
-                    <div className={`toggle-knob w-4 h-4 bg-white rounded-full absolute top-0.5 transition-all ${autoStartNextEvent ? 'left-5' : 'left-0.5'}`}></div>
+                  <div className={\`toggle-switch ${autoStartNextEvent ? 'enabled' : ''}`}>
+                    <div className={\`toggle-knob ${autoStartNextEvent ? 'enabled' : ''}`}></div>
                   </div>
-                  <span className="font-medium">Auto-start next presenter</span>
+                  <span>Auto-start next presenter</span>
                 </div>
                 
-                <button
-                  onClick={() => onStartNextTimer(nextUpTimer?.id)}
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-4 rounded-2xl font-semibold transition-all transform hover:-translate-y-1"
-                >
-                  Start Now
-                </button>
-                <button
-                  onClick={() => onExtendBuffer(1)}
-                  className="bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-6 py-4 rounded-2xl font-semibold border-2 border-white border-opacity-30 transition-all"
-                >
-                  +1 Min
-                </button>
+                <button className="btn btn-manual-start" onClick={() => onStartNextTimer(nextUpTimer?.id)}>Start Now</button>
+                <button className="btn btn-extend-buffer" onClick={() => onExtendBuffer(1)}>+1 Min</button>
               </div>
 
               {nextUpTimer && (
-                <div className="bg-blue-600 bg-opacity-20 border border-blue-500 border-opacity-30 rounded-xl p-4">
-                  <div className="text-sm opacity-80 mb-2">Next Up:</div>
-                  <div className="text-xl font-semibold text-blue-200">
+                <div className="next-presenter-preview">
+                  <div className="next-title">Next Up:</div>
+                  <div className="next-name">
                     {nextUpTimer.presenter_name} - {nextUpTimer.name} ({formatDuration(nextUpTimer.duration)})
                   </div>
                 </div>
@@ -237,8 +219,8 @@ export default function EventRunningInterfaceModal({
           )}
 
           {/* Event Progress Section */}
-          <div className="bg-white bg-opacity-10 backdrop-blur-xl rounded-2xl p-8 border border-white border-opacity-20">
-            <h3 className="text-2xl font-semibold text-white mb-6 text-center">Event Progress</h3>
+          <div className="progress-section">
+            <h3 className="progress-title">Event Progress</h3>
             {eventTimers.length === 0 ? (
               <div className="text-center py-8">
                 <Clock className="w-12 h-12 text-gray-600 mx-auto mb-3" />
@@ -253,30 +235,30 @@ export default function EventRunningInterfaceModal({
                   return (
                     <div
                       key={timer.id}
-                      className={`presenter-item flex items-center p-4 rounded-xl transition-all duration-300 ${
-                        timerStatus.status === 'Completed' ? 'completed bg-green-600 bg-opacity-20 border border-green-600 border-opacity-30' :
-                        timerStatus.status === 'Current' || timerStatus.status === 'Buffer' ? 'current bg-blue-600 bg-opacity-20 border border-blue-600 border-opacity-40 transform scale-105' :
-                        'upcoming bg-white bg-opacity-5 border border-white border-opacity-10 opacity-70'
+                      className={\`presenter-item ${
+                        timerStatus.status === 'Completed' ? 'completed' :
+                        timerStatus.status === 'Current' || timerStatus.status === 'Buffer' ? 'current' :
+                        'upcoming'
                       }`}
                     >
-                      <div className={`presenter-number w-8 h-8 rounded-full flex items-center justify-center font-semibold text-sm mr-4 ${timerStatus.numberBg} text-white`}>
+                      <div className={\`presenter-number ${timerStatus.numberBg}`}>
                         {timerStatus.numberText}
                       </div>
                       
-                      <div className="presenter-info flex-1">
-                        <div className="presenter-name font-semibold text-white mb-1">
+                      <div className="presenter-info">
+                        <div className="presenter-name">
                           {timer.presenter_name} - {timer.name}
                         </div>
-                        <div className="presenter-duration text-sm opacity-70">
+                        <div className="presenter-duration">
                           {timerStatus.detail}
                         </div>
                       </div>
                       
-                      <div className={`presenter-status px-3 py-1 rounded-full text-sm font-semibold ml-3 ${
-                        timerStatus.status === 'Completed' ? 'status-completed bg-green-600 bg-opacity-30 text-green-300' :
-                        timerStatus.status === 'Current' ? 'status-current bg-blue-600 bg-opacity-30 text-blue-300' :
-                        timerStatus.status === 'Buffer' ? 'status-buffer bg-orange-600 bg-opacity-30 text-orange-300' :
-                        'status-upcoming bg-white bg-opacity-10 text-gray-300'
+                      <div className={\`presenter-status ${
+                        timerStatus.status === 'Completed' ? 'status-completed' :
+                        timerStatus.status === 'Current' ? 'status-current' :
+                        timerStatus.status === 'Buffer' ? 'status-current' : // Use current style for buffer status
+                        'status-upcoming'
                       }`}>
                         {timerStatus.status}
                       </div>
@@ -327,3 +309,4 @@ export default function EventRunningInterfaceModal({
     </div>
   )
 }
+```
