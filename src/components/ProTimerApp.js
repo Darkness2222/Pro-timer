@@ -5,6 +5,8 @@ import { getProductByPriceId } from '../stripe-config'
 import { Play, Pause, Square, RotateCcw, Settings, MessageSquare, Plus, Minus, Clock, Users, Timer as TimerIcon, QrCode, ExternalLink, FileText, Crown, User, LogOut, CheckCircle, X } from 'lucide-react'
 import SubscriptionModal from './SubscriptionModal'
 import SuccessPage from './SuccessPage'
+import CreateTimerModal from './CreateTimerModal'
+import SettingsModal from './SettingsModal'
 import SettingsModal from './SettingsModal'
 
 export default function ProTimerApp({ session }) {
@@ -14,13 +16,6 @@ export default function ProTimerApp({ session }) {
   const [timers, setTimers] = useState([])
   const [loading, setLoading] = useState(true)
   const [showCreateModal, setShowCreateModal] = useState(false)
-  const [timerType, setTimerType] = useState('single')
-  const [eventName, setEventName] = useState('')
-  const [presenters, setPresenters] = useState([
-    { id: 1, name: '', minutes: 15, seconds: 0 }
-  ])
-  const [bufferMinutes, setBufferMinutes] = useState(2)
-  const [bufferSeconds, setBufferSeconds] = useState(0)
   const [showMessageModal, setShowMessageModal] = useState(false)
   const [messagesExpanded, setMessagesExpanded] = useState(false)
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false)
@@ -92,9 +87,6 @@ export default function ProTimerApp({ session }) {
   const DEFAULT_BUFFER_DURATION = 30 // 30 seconds
   
   // Form states
-  const [newTimerName, setNewTimerName] = useState('')
-  const [newTimerPresenter, setNewTimerPresenter] = useState('')
-  const [newTimerDuration, setNewTimerDuration] = useState('')
   const [newMessage, setNewMessage] = useState('')
   
   const intervalRef = useRef(null)
@@ -395,18 +387,19 @@ export default function ProTimerApp({ session }) {
     loadAllTimerLogs()
   }
 
-  const createTimer = async () => {
-    if (timerType === 'single') {
-      if (!newTimerName.trim() || !newTimerPresenter.trim() || !newTimerDuration) return
+  const createTimer = async (formData) => {
+    if (formData.timerType === 'single') {
+      if (!formData.newTimerName.trim() || !formData.newTimerPresenter.trim() || !formData.newTimerDuration) return
 
       try {
         const { data, error } = await supabase
           .from('timers')
           .insert([{
-            name: newTimerName.trim(),
-            presenter_name: newTimerPresenter.trim(),
-            duration: parseInt(newTimerDuration) * 60, // Convert minutes to seconds
-            user_id: session?.user?.id || null
+            name: formData.newTimerName.trim(),
+            presenter_name: formData.newTimerPresenter.trim(),
+            duration: parseInt(formData.newTimerDuration) * 60, // Convert minutes to seconds
+            user_id: session?.user?.id || null,
+            timer_type: formData.timerType || 'single'
           }])
           .select()
           .single()
@@ -414,7 +407,6 @@ export default function ProTimerApp({ session }) {
         if (error) throw error
 
         setTimers(prev => [data, ...prev])
-        resetCreateForm()
         setShowCreateModal(false)
         
         // Reload logs to include new timer
@@ -425,14 +417,15 @@ export default function ProTimerApp({ session }) {
       }
     } else {
       // Event Timer - create multiple timers
-      if (!eventName.trim() || presenters.length === 0) return
+      if (!formData.eventName.trim() || formData.presenters.length === 0) return
 
       try {
-        const timersToCreate = presenters.map((presenter, index) => ({
-          name: `${eventName.trim()} - ${presenter.name.trim() || `Presenter ${index + 1}`}`,
+        const timersToCreate = formData.presenters.map((presenter, index) => ({
+          name: `${formData.eventName.trim()} - ${presenter.name.trim() || `Presenter ${index + 1}`}`,
           presenter_name: presenter.name.trim() || `Presenter ${index + 1}`,
           duration: (presenter.minutes * 60) + presenter.seconds,
-          user_id: session?.user?.id || null
+          user_id: session?.user?.id || null,
+          timer_type: formData.timerType || 'event'
         }))
 
         const { data, error } = await supabase
@@ -443,7 +436,6 @@ export default function ProTimerApp({ session }) {
         if (error) throw error
 
         setTimers(prev => [...data, ...prev])
-        resetCreateForm()
         setShowCreateModal(false)
         
         // Reload logs to include new timers
@@ -925,47 +917,6 @@ export default function ProTimerApp({ session }) {
     ])
   }
 
-  const resetCreateForm = () => {
-    setNewTimerName('')
-    setNewTimerPresenter('')
-    setNewTimerDuration('')
-    setTimerType('single')
-    setEventName('')
-    setPresenters([{ id: 1, name: '', minutes: 15, seconds: 0 }])
-    setBufferMinutes(2)
-    setBufferSeconds(0)
-  }
-
-  const addPresenter = () => {
-    if (presenters.length < 8) {
-      setPresenters(prev => [...prev, {
-        id: Date.now(),
-        name: '',
-        minutes: 10,
-        seconds: 0
-      }])
-    }
-  }
-
-  const removePresenter = (id) => {
-    if (presenters.length > 1) {
-      setPresenters(prev => prev.filter(p => p.id !== id))
-    }
-  }
-
-  const updatePresenter = (id, field, value) => {
-    setPresenters(prev => prev.map(p => 
-      p.id === id ? { ...p, [field]: value } : p
-    ))
-  }
-
-  const calculateEventTotalTime = () => {
-    const presenterTime = presenters.reduce((total, presenter) => 
-      total + (presenter.minutes * 60) + presenter.seconds, 0
-    )
-    const bufferTime = (presenters.length - 1) * ((bufferMinutes * 60) + bufferSeconds)
-    return Math.ceil((presenterTime + bufferTime) / 60) // Return in minutes
-  }
   const handlePauseAll = async () => {
     // Pause all running timers
     const runningTimers = Object.entries(timerSessions).filter(([_, session]) => session?.is_running)
@@ -1557,34 +1508,6 @@ export default function ProTimerApp({ session }) {
       )}
 
       <div className="px-4 sm:px-0">
-        {currentView === 'overview' && (
-          <TimerOverview
-            timers={timers}
-            timerSessions={timerSessions}
-            onStartTimer={handleStartTimer}
-            onPauseTimer={handlePauseTimer}
-            onStopTimer={handleStopTimer}
-            onResetTimer={handleResetTimer}
-          />
-        )}
-        
-        {currentView === 'create' && (
-          <div className="bg-white shadow rounded-lg p-6">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">Create New Timer</h2>
-            <p className="text-gray-600 mb-6">
-              Create a new presentation timer with custom settings.
-            </p>
-            
-            <div className="space-y-4">
-              <div className="p-4 bg-blue-50 rounded-lg">
-                <h3 className="font-medium text-blue-900">Timer Creation Coming Soon</h3>
-                <p className="mt-2 text-blue-800 text-sm">
-                  Timer creation interface will be implemented in the next update.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Presenter View */}
