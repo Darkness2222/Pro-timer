@@ -1762,6 +1762,13 @@ export default function ProTimerApp({ session }) {
         </div>
       )}
 
+      {/* Create Timer Modal */}
+      <CreateTimerModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onCreate={createTimer}
+      />
+
       {/* Settings Modal */}
       <SettingsModal
         isOpen={showSettings}
@@ -1777,4 +1784,3 @@ export default function ProTimerApp({ session }) {
     </div>
   )
 }
-            
