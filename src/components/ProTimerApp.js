@@ -20,6 +20,7 @@ export default function ProTimerApp({ session }) {
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false)
   const [subscription, setSubscription] = useState(null)
   const [showSuccess, setShowSuccess] = useState(false)
+  const [autoStartNextEvent, setAutoStartNextEvent] = useState(true)
   const [bufferTimerState, setBufferTimerState] = useState({
     isRunning: false,
     timeLeft: 0,
