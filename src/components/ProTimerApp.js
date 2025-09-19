@@ -1643,7 +1643,6 @@ export default function ProTimerApp({ session }) {
            <div className="text-center">
              <h1 className="text-4xl font-bold text-white mb-4">No Timer Selected</h1>
              <p className="text-xl text-gray-300">Please select a timer from the Admin Dashboard</p>
-            onShowSubscriptionModal={() => setShowSubscriptionModal(true)}
            </div>
          )}
        </div>
@@ -1653,6 +1652,7 @@ export default function ProTimerApp({ session }) {
       <SettingsModal
         isOpen={showSettings}
         onClose={() => setShowSettings(false)}
+        onShowSubscriptionModal={() => setShowSubscriptionModal(true)}
       />
 
       {/* Create Timer Modal */}
