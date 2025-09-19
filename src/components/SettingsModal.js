@@ -52,11 +52,32 @@ export default function SettingsModal({ isOpen, onClose, onShowSubscriptionModal
     })
   }
 
+  const handleModalClick = (e) => {
+    // Prevent event bubbling that might cause page refresh
+    e.stopPropagation()
+  }
+
+  const handleContentClick = (e) => {
+    // Prevent any form submission or navigation
+    e.preventDefault()
+    e.stopPropagation()
+  }
+
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-gray-800 rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto border border-gray-700">
+    <div 
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose()
+        }
+      }}
+    >
+      <div 
+        className="bg-gray-800 rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto border border-gray-700"
+        onClick={handleModalClick}
+      >
         {/* Header */}
         <div className="flex justify-between items-center p-6 border-b border-gray-700">
           <div className="flex items-center gap-2">
@@ -72,7 +93,7 @@ export default function SettingsModal({ isOpen, onClose, onShowSubscriptionModal
         </div>
 
         {/* Content */}
-        <div className="p-6">
+        <div className="p-6" onClick={handleContentClick}>
           {/* Timer Preferences Section */}
           <div className="mb-8">
             <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
@@ -246,7 +267,7 @@ export default function SettingsModal({ isOpen, onClose, onShowSubscriptionModal
         </div>
 
         {/* Account & Subscription Section */}
-        <div className="mb-8">
+        <div className="p-6 mb-8" onClick={handleContentClick}>
           <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
             <Crown className="w-5 h-5 text-yellow-400" />
             Account & Subscription
@@ -277,7 +298,7 @@ export default function SettingsModal({ isOpen, onClose, onShowSubscriptionModal
         </div>
 
         {/* Footer */}
-        <div className="p-6 border-t border-gray-700 bg-gray-900">
+        <div className="p-6 border-t border-gray-700 bg-gray-900" onClick={handleContentClick}>
           <div className="flex justify-between items-center">
             <button
               onClick={handleResetToDefaults}
