@@ -1228,8 +1228,6 @@ export default function ProTimerApp({ session }) {
                   )}
                 </span>
               </div>
-              {!userProfile?.is_pro && (
-              )}
               {session && (
                 <button
                   onClick={handleSignOut}
