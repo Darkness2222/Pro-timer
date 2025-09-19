@@ -291,7 +291,7 @@ export default function SettingsModal({ isOpen, onClose, onShowSubscriptionModal
                 </button>
               </div>
               <div className="mt-3 text-xs text-gray-400">
-                • Remote presenter/admin sync • Custom stage cues • Room PIN protection
+                • Remote presenter/admin sync • Custom stage cues • Reporting protection
               </div>
             </div>
           </div>
