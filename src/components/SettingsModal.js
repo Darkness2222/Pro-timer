@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
-import { X, Settings, Volume2, Vibrate, Clock, Monitor, RotateCcw } from 'lucide-react'
+import { X, Settings, Volume2, Vibrate, Clock, Monitor, RotateCcw, Crown } from 'lucide-react'
 
-export default function SettingsModal({ isOpen, onClose }) {
+export default function SettingsModal({ isOpen, onClose, onShowSubscriptionModal }) {
   // Settings state
   const [settings, setSettings] = useState({
     // Timer Preferences
@@ -240,6 +240,37 @@ export default function SettingsModal({ isOpen, onClose }) {
                   />
                   <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                 </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Account & Subscription Section */}
+        <div className="mb-8">
+          <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+            <Crown className="w-5 h-5 text-yellow-400" />
+            Account & Subscription
+          </h3>
+          <div className="space-y-4">
+            <div className="bg-gray-700 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-white font-medium">SyncCue Pro</h4>
+                  <p className="text-gray-400 text-sm">Unlock advanced features for professional presentations</p>
+                </div>
+                <button
+                  onClick={() => {
+                    onShowSubscriptionModal()
+                    onClose()
+                  }}
+                  className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 shadow-lg"
+                >
+                  <Crown className="w-4 h-4" />
+                  Upgrade to Pro
+                </button>
+              </div>
+              <div className="mt-3 text-xs text-gray-400">
+                • Remote presenter/admin sync • Custom stage cues • Room PIN protection
               </div>
             </div>
           </div>

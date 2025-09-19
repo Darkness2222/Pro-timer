@@ -1229,13 +1229,6 @@ export default function ProTimerApp({ session }) {
                 </span>
               </div>
               {!userProfile?.is_pro && (
-                <button
-                  onClick={() => setShowSubscriptionModal(true)}
-                  className="bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-1 rounded-lg text-sm font-medium transition-colors flex items-center gap-1"
-                >
-                  <Crown className="w-4 h-4" />
-                  Upgrade to Pro
-                </button>
               )}
               {session && (
                 <button
@@ -1650,6 +1643,7 @@ export default function ProTimerApp({ session }) {
            <div className="text-center">
              <h1 className="text-4xl font-bold text-white mb-4">No Timer Selected</h1>
              <p className="text-xl text-gray-300">Please select a timer from the Admin Dashboard</p>
+            onShowSubscriptionModal={() => setShowSubscriptionModal(true)}
            </div>
          )}
        </div>
