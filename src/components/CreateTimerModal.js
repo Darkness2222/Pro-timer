@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { X, Plus, Minus, Clock, Users, Timer as TimerIcon } from 'lucide-react'
+import { X, Plus, Clock, Users, Timer as TimerIcon } from 'lucide-react'
 
 export default function CreateTimerModal({ isOpen, onClose, onCreate }) {
   const [timerType, setTimerType] = useState('single')
