@@ -76,7 +76,7 @@ export default function SubscriptionModal({ isOpen, onClose, session }) {
               'Remote presenter/admin sync',
               'Real-time timer control',
               'Custom stage cues & messages',
-              'Room PIN protection',
+              'Indepth Reporting',
               'Priority support'
             ].map((feature, index) => (
               <div key={index} className="flex items-center gap-2 text-sm text-gray-300">
