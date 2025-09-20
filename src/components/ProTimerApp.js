@@ -4,6 +4,7 @@ import TimerOverview from './TimerOverview'
 import { getProductByPriceId } from '../stripe-config'
 import { Play, Pause, Square, RotateCcw, Settings, MessageSquare, Plus, Minus, Clock, Users, Timer as TimerIcon, QrCode, ExternalLink, FileText, Crown, User, LogOut, CheckCircle, X } from 'lucide-react'
 import SubscriptionModal from './SubscriptionModal'
+import ReportsPage from './ReportsPage'
 import SuccessPage from './SuccessPage'
 import CreateTimerModal from './CreateTimerModal'
 import SettingsModal from './SettingsModal'
@@ -1533,115 +1534,15 @@ export default function ProTimerApp({ session }) {
       )}
 
       <div className="px-4 sm:px-0">
-      </div>
-
-      {/* Presenter View */}
-      {currentView === 'presenter' && (
-        <div className="min-h-screen flex flex-col items-center justify-center p-8 relative">
-          {selectedTimer ? (
-            <>
-             {/* Status Indicator */}
-             <div className="absolute top-8 right-8">
-               <div className={`w-4 h-4 rounded-full ${isRunning ? 'bg-green-500' : 'bg-red-500'} shadow-lg`}></div>
-             </div>
-
-             {/* Timer Info */}
-             <div className="text-center mb-8">
-               <h1 className="text-4xl font-bold text-white mb-2">{selectedTimer.name}</h1>
-               <p className="text-xl text-blue-300 flex items-center justify-center gap-2">
-                 <Users className="w-6 h-6" />
-                 {selectedTimer.presenter_name}
-               </p>
-             </div>
-
-             {/* Large Timer Display */}
-             <div className="text-center mb-8">
-               <div className={`text-8xl md:text-9xl font-mono font-bold mb-6 ${
-                 timeLeft < 0 ? 'text-red-500 animate-pulse' : 'text-orange-400'
-               }`}>
-                 {formatTime(timeLeft)}
-               </div>
-               {timeLeft < 0 && (
-                 <div className="text-4xl font-bold text-red-500 mb-4 animate-pulse">
-                   ⚠️ OVERTIME ⚠️
-                 </div>
-               )}
-               <div className="w-full max-w-4xl bg-gray-700 rounded-full h-6 mb-4">
-                 <div
-                   className="bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 h-6 rounded-full transition-all duration-1000"
-                   style={{ width: `${Math.min(100, getProgressPercentage())}%` }}
-                 ></div>
-               </div>
-               <p className="text-2xl text-gray-300">
-                 {timeLeft < 0 ? 'PRESENTER IS OVER TIME' : `${Math.round(getProgressPercentage())}% elapsed`}
-               </p>
-             </div>
-
-             {/* Current Message Display */}
-             {messages && messages.length > 0 && (
-               <div className="bg-yellow-500/20 border border-yellow-500/50 rounded-xl p-6 mb-8 max-w-2xl">
-                 <div className="text-center">
-                   <div className="text-2xl mb-2">💬</div>
-                   <p className="text-xl text-yellow-100 font-medium">
-                     {messages[0].message}
-                   </p>
-                   <p className="text-sm text-yellow-200/70 mt-2">
-                     {new Date(messages[0].sent_at).toLocaleTimeString()}
-                   </p>
-                 </div>
-               </div>
-             )}
-
-             {/* Messages from Control - Floating Button */}
-             <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2">
-               <button
-                 onClick={() => setMessagesExpanded(!messagesExpanded)}
-                 className="bg-gray-800/80 backdrop-blur-sm hover:bg-gray-700/80 text-white px-6 py-3 rounded-full border border-gray-600 flex items-center gap-2 shadow-lg"
-               >
-                 <MessageSquare className="w-5 h-5" />
-                 Messages from Control
-                 <span className={`transform transition-transform ${messagesExpanded ? 'rotate-180' : ''}`}>
-                   ▼
-                 </span>
-               </button>
-
-               {/* Messages Popup */}
-               {messagesExpanded && (
-                 <div className="absolute bottom-full mb-4 left-1/2 transform -translate-x-1/2 w-96 bg-gray-800/90 backdrop-blur-sm rounded-xl border border-gray-600 shadow-xl">
-                   <div className="p-4">
-                     <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
-                       <MessageSquare className="w-5 h-5" />
-                       Messages from Control
-                     </h3>
-                     <div className="space-y-2 max-h-64 overflow-y-auto">
-                       {messages && messages.length > 0 ? (
-                         messages.slice(0, 5).map((message, index) => (
-                           <div key={index} className="bg-gray-700/50 rounded-lg p-3">
-                             <div className="flex items-start gap-2">
-                               <span className="text-lg">💬</span>
-                               <div className="flex-1">
-                                 <p className="text-white text-sm">{message.message}</p>
-                                 <p className="text-gray-400 text-xs mt-1">
-                                   {new Date(message.sent_at).toLocaleTimeString()}
-                                 </p>
-                               </div>
-                             </div>
-                           </div>
-                         ))
-                       ) : (
-                         <p className="text-gray-400 text-center py-4">No messages yet</p>
-                       )}
-                     </div>
-                   </div>
-                 </div>
-               )}
-             </div>
-           </>
-         ) : (
-           <div className="text-center">
-             <h1 className="text-4xl font-bold text-white mb-4">No Timer Selected</h1>
-             <p className="text-xl text-gray-300">Please select a timer from the Admin Dashboard</p>
-           </div>
+          <ReportsPage 
+            timers={allTimers}
+            timerLogs={filteredLogs}
+            reportStartDate={reportStartDate}
+            reportEndDate={reportEndDate}
+            onStartDateChange={setReportStartDate}
+            onEndDateChange={setReportEndDate}
+            onExportCSV={exportToCSV}
+          />
          )}
        </div>
      )}
