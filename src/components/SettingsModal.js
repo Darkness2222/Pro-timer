@@ -106,21 +106,14 @@ export default function SettingsModal({ isOpen, onClose, onShowSubscriptionModal
                   <label className="text-white font-medium">Sound Notifications</label>
                   <p className="text-gray-400 text-sm">Play sound when timer starts, pauses, or finishes</p>
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer">
+                <label className="relative inline-flex items-center cursor-pointer" onClick={(e) => e.stopPropagation()}>
                   <input
                     type="checkbox"
                     checked={settings.soundNotifications}
                     onChange={(e) => handleSettingChange('soundNotifications', e.target.checked)}
                     className="sr-only peer"
                   />
-                  <div 
-                    className="w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"
-                    onClick={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      handleSettingChange('soundNotifications', !settings.soundNotifications)
-                    }}
-                  ></div>
+                  <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                 </label>
               </div>
 
@@ -132,7 +125,7 @@ export default function SettingsModal({ isOpen, onClose, onShowSubscriptionModal
                   </div>
                   <p className="text-gray-400 text-sm">Vibrate device on timer events (mobile only)</p>
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer">
+                <label className="relative inline-flex items-center cursor-pointer" onClick={(e) => e.stopPropagation()}>
                   <input
                     type="checkbox"
                     checked={settings.vibrationFeedback}
@@ -148,7 +141,7 @@ export default function SettingsModal({ isOpen, onClose, onShowSubscriptionModal
                   <label className="text-white font-medium">Auto-start Next Timer</label>
                   <p className="text-gray-400 text-sm">Automatically start the next timer in sequence</p>
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer">
+                <label className="relative inline-flex items-center cursor-pointer" onClick={(e) => e.stopPropagation()}>
                   <input
                     type="checkbox"
                     checked={settings.autoStartNext}
@@ -173,7 +166,7 @@ export default function SettingsModal({ isOpen, onClose, onShowSubscriptionModal
                   <label className="text-white font-medium">Show Seconds</label>
                   <p className="text-gray-400 text-sm">Display seconds in timer countdown</p>
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer">
+                <label className="relative inline-flex items-center cursor-pointer" onClick={(e) => e.stopPropagation()}>
                   <input
                     type="checkbox"
                     checked={settings.showSeconds}
@@ -189,7 +182,7 @@ export default function SettingsModal({ isOpen, onClose, onShowSubscriptionModal
                   <label className="text-white font-medium">24-Hour Format</label>
                   <p className="text-gray-400 text-sm">Use 24-hour time format for timestamps</p>
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer">
+                <label className="relative inline-flex items-center cursor-pointer" onClick={(e) => e.stopPropagation()}>
                   <input
                     type="checkbox"
                     checked={settings.use24HourFormat}
@@ -205,7 +198,7 @@ export default function SettingsModal({ isOpen, onClose, onShowSubscriptionModal
                   <label className="text-white font-medium">Fullscreen on Start</label>
                   <p className="text-gray-400 text-sm">Automatically enter fullscreen when timer starts</p>
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer">
+                <label className="relative inline-flex items-center cursor-pointer" onClick={(e) => e.stopPropagation()}>
                   <input
                     type="checkbox"
                     checked={settings.fullscreenOnStart}
@@ -230,7 +223,7 @@ export default function SettingsModal({ isOpen, onClose, onShowSubscriptionModal
                   <label className="text-white font-medium">Overtime Warning</label>
                   <p className="text-gray-400 text-sm">Show warning when timer goes into overtime</p>
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer">
+                <label className="relative inline-flex items-center cursor-pointer" onClick={(e) => e.stopPropagation()}>
                   <input
                     type="checkbox"
                     checked={settings.overtimeWarning}
@@ -246,7 +239,7 @@ export default function SettingsModal({ isOpen, onClose, onShowSubscriptionModal
                   <label className="text-white font-medium">Halfway Notification</label>
                   <p className="text-gray-400 text-sm">Alert when timer reaches 50% completion</p>
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer">
+                <label className="relative inline-flex items-center cursor-pointer" onClick={(e) => e.stopPropagation()}>
                   <input
                     type="checkbox"
                     checked={settings.halfwayNotification}
@@ -262,21 +255,14 @@ export default function SettingsModal({ isOpen, onClose, onShowSubscriptionModal
                   <label className="text-white font-medium">Final Minute Alert</label>
                   <p className="text-gray-400 text-sm">Special alert when 1 minute remains</p>
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer">
+                <label className="relative inline-flex items-center cursor-pointer" onClick={(e) => e.stopPropagation()}>
                   <input
                     type="checkbox"
                     checked={settings.finalMinuteAlert}
                     onChange={(e) => handleSettingChange('finalMinuteAlert', e.target.checked)}
                     className="sr-only peer"
                   />
-                  <div 
-                    className="w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"
-                    onClick={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      handleSettingChange('finalMinuteAlert', !settings.finalMinuteAlert)
-                    }}
-                  ></div>
+                  <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                 </label>
               </div>
             </div>
