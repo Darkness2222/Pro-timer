@@ -509,11 +509,7 @@ export default function ProTimerApp({ session }) {
       await loadMessages(timer.id)
       await loadTimerLogs(timer.id)
     } catch (error) {
-      console.error('
-      )
-    }
-  }
-}Error loading timer data:', error)
+      console.error('Error loading timer data:', error)
       // Don't throw the error, just log it
     }
   }
