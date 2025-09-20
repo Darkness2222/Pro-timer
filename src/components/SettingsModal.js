@@ -119,7 +119,10 @@ export default function SettingsModal({ isOpen, onClose, onShowSubscriptionModal
 
               <div className="flex items-center justify-between">
                 <div>
+                  <div className="flex items-center gap-2">
+                    <Vibrate className="w-4 h-4 text-purple-400" />
                   <label className="text-white font-medium">Vibration Feedback</label>
+                  </div>
                   <p className="text-gray-400 text-sm">Vibrate device on timer events (mobile only)</p>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">

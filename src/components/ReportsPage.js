@@ -13,6 +13,11 @@ export default function ReportsPage({
   const [filteredLogs, setFilteredLogs] = useState([])
   const [allTimers, setAllTimers] = useState([])
 
+  // Update allTimers when timers prop changes
+  useEffect(() => {
+    setAllTimers(timers)
+  }, [timers])
+
   // Filter logs based on date range
   useEffect(() => {
     let filtered = timerLogs
