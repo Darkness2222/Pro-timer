@@ -1257,7 +1257,7 @@ export default function ProTimerApp({ session }) {
               </div>
             )}
           </div>
-        </span>
+        </div>
       </nav>
 
       {/* Admin Dashboard */}
