@@ -509,7 +509,11 @@ export default function ProTimerApp({ session }) {
       await loadMessages(timer.id)
       await loadTimerLogs(timer.id)
     } catch (error) {
-      console.error('Error loading timer data:', error)
+      console.error('
+      )
+    }
+  }
+}Error loading timer data:', error)
       // Don't throw the error, just log it
     }
   }
@@ -1651,6 +1655,79 @@ export default function ProTimerApp({ session }) {
           onEndDateChange={(date) => setReportDateRange(prev => ({ ...prev, end: date }))}
           onExportCSV={exportTimersCSV}
         />
+      )}
+
+      {/* Create Timer Modal */}
+      <CreateTimerModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onCreate={createTimer}
+      />
+
+      {/* Settings Modal */}
+      <SettingsModal
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+      />
+
+      {/* Subscription Modal */}
+      <SubscriptionModal
+        isOpen={showSubscriptionModal}
+        onClose={() => setShowSubscriptionModal(false)}
+        session={session}
+      />
+    </div>
+  )
+}arget.value }))}
+                  className="p-2 bg-gray-700 border border-gray-600 rounded text-white text-sm"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-gray-300 text-sm">To:</label>
+                <input
+                  type="date"
+                  value={reportDateRange.end}
+                  onChange={(e) => setReportDateRange(prev => ({ ...prev, end: e.target.value }))}
+                  className="p-2 bg-gray-700 border border-gray-600 rounded text-white text-sm"
+                />
+              </div>
+              <button
+                onClick={exportTimersCSV}
+                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2"
+              >
+                <FileText className="w-4 h-4" />
+                Export CSV
+              </button>
+            </div>
+            <p className="text-gray-400 text-sm">
+              Export includes all timer creations and activity logs. Leave dates empty to export all data.
+            </p>
+          </div>
+
+          {/* Summary Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+            <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 border border-gray-700">
+              <h3 className="text-lg font-semibold text-white mb-2">Total Timers</h3>
+              <p className="text-3xl font-bold text-blue-400">{timers.length}</p>
+            </div>
+            <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 border border-gray-700">
+              <h3 className="text-lg font-semibold text-white mb-2">Total Actions</h3>
+              <p className="text-3xl font-bold text-green-400">{allTimerLogs.length}</p>
+            </div>
+            <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 border border-gray-700">
+              <h3 className="text-lg font-semibold text-white mb-2">Active Sessions</h3>
+              <p className="text-3xl font-bold text-orange-400">
+                {Object.values(timerSessions).filter(session => session?.is_running).length}
+              </p>
+            </div>
+            <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 border border-gray-700">
+              <h3 className="text-lg font-semibold text-white mb-2">Total Presenters</h3>
+              <p className="text-3xl font-bold text-purple-400">
+                {new Set(timers.map(timer => timer.presenter_name)).size}
+              </p>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Create Timer Modal */}
