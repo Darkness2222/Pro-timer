@@ -1281,7 +1281,7 @@ export default function ProTimerApp({ session }) {
                     : 'text-white'
                 }`}>
                   {formatTime(timerSessions[selectedTimer.id]?.time_left || selectedTimer.duration)}
-                </span>
+                </div>
                 <div className="text-2xl mb-8">
                   {selectedTimer.presenter_name} - {selectedTimer.name}
                 </div>
@@ -1303,8 +1303,8 @@ export default function ProTimerApp({ session }) {
               </div>
             )}
           </div>
-        </div>
-      </nav>
+        )
+      }
 
       {/* Admin Dashboard */}
       {currentView === 'admin' && (
