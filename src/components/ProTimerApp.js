@@ -1224,6 +1224,52 @@ export default function ProTimerApp({ session }) {
                 <User className="w-5 h-5" />
                 <span className="text-sm text-white">
                   {session?.user?.email || 'Guest'}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      {/* Presenter View */}
+      {currentView === 'presenter' && (
+        <div className="flex items-center justify-center min-h-screen bg-black text-white">
+          {selectedTimer ? (
+            <div className="text-center">
+              <div className={`text-8xl font-mono font-bold mb-4 ${
+                (timerSessions[selectedTimer.id]?.time_left || selectedTimer.duration) <= 0 
+                  ? 'text-red-500 animate-pulse' 
+                  : (timerSessions[selectedTimer.id]?.time_left || selectedTimer.duration) <= 60 
+                  ? 'text-yellow-500' 
+                  : 'text-white'
+              }`}>
+                {formatTime(timerSessions[selectedTimer.id]?.time_left || selectedTimer.duration)}
+              </div>
+              <div className="text-2xl mb-8">
+                {selectedTimer.presenter_name} - {selectedTimer.name}
+              </div>
+              {(timerSessions[selectedTimer.id]?.time_left || selectedTimer.duration) <= 0 && (
+                <div className="text-xl text-red-400 font-bold mb-4">
+                  ⚠️ OVERTIME ⚠️
+                </div>
+              )}
+              {recentMessage && (
+                <div className="text-xl bg-yellow-600 bg-opacity-20 border border-yellow-500 rounded-lg p-4 max-w-md mx-auto">
+                  {recentMessage}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="text-center">
+              <div className="text-4xl font-bold mb-4 text-gray-400">No Timer Selected</div>
+              <p className="text-gray-500">Start a timer from the Admin Dashboard to see it here</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Admin Dashboard */}
+      {currentView === 'admin' && (
           <div className="flex items-center justify-center min-h-screen bg-black text-white">
             {selectedTimer ? (
               <div className="text-center">
