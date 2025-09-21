@@ -1235,7 +1235,7 @@ export default function ProTimerApp({ session }) {
                     : 'text-white'
                 }`}>
                   {formatTime(timerSessions[selectedTimer.id]?.time_left || selectedTimer.duration)}
-                </div>
+                </span>
                 <div className="text-2xl mb-8">
                   {selectedTimer.presenter_name} - {selectedTimer.name}
                 </div>
