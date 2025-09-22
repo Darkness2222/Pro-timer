@@ -1292,7 +1292,7 @@ export default function ProTimerApp({ session }) {
             {timers.map((timer) => {
               const session = timerSessions[timer.id];
               return (
-              <div
+                <div
                 key={timer.id}
                 className={`bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 border cursor-pointer transition-all aspect-square flex flex-col relative group ${
                   selectedTimer?.id === timer.id
@@ -1334,7 +1334,7 @@ export default function ProTimerApp({ session }) {
                     </div>
                   </div>
                 </div>
-              </div>
+                </div>
               );
             })}
           </div>
