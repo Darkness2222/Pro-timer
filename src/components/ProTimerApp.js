@@ -1242,13 +1242,22 @@ export default function ProTimerApp({ session }) {
                   ? 'text-red-500 animate-pulse' 
                   : (timerSessions[selectedTimer.id]?.time_left || selectedTimer.duration) <= 60 
                   ? 'text-yellow-500' 
-                  : 'text-white'
+                  : 'text-red-500'
               }`}>
                 {formatTime(timerSessions[selectedTimer.id]?.time_left || selectedTimer.duration)}
               </div>
               <div className="text-2xl mb-8">
                 {selectedTimer.presenter_name} - {selectedTimer.name}
               </div>
+              
+              {/* Progress Bar */}
+              <div className="w-full max-w-2xl mx-auto bg-gray-700 rounded-full h-6 mb-8">
+                <div
+                  className="bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 h-6 rounded-full transition-all duration-1000"
+                  style={{ width: `${Math.min(100, getProgressPercentageFromSession(timerSessions[selectedTimer.id], selectedTimer.duration))}%` }}
+                ></div>
+              </div>
+              
               {(timerSessions[selectedTimer.id]?.time_left || selectedTimer.duration) <= 0 && (
                 <div className="text-xl text-red-400 font-bold mb-4">
                   ⚠️ OVERTIME ⚠️
