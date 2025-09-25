@@ -23,6 +23,7 @@ export default function ProTimerApp({ session }) {
   const [showSuccess, setShowSuccess] = useState(false)
   const [autoStartNextEvent, setAutoStartNextEvent] = useState(true)
   const [bufferTimerState, setBufferTimerState] = useState({
+  const [recentMessage, setRecentMessage] = useState('')
     isRunning: false,
     timeLeft: 0,
     duration: 0
