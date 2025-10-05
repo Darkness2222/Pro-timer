@@ -92,11 +92,12 @@ export default function ProTimerApp({ session }) {
   const [newMessage, setNewMessage] = useState('')
   
   const intervalRef = useRef(null)
+  const messageSubscriptionRef = useRef(null)
 
   // Load user profile
   const loadUserProfile = useCallback(async () => {
     if (!session?.user) return
-    
+
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -117,6 +118,75 @@ export default function ProTimerApp({ session }) {
   useEffect(() => {
     loadUserProfile()
   }, [loadUserProfile])
+
+  // Real-time message subscription
+  useEffect(() => {
+    if (!selectedTimer) {
+      if (messageSubscriptionRef.current) {
+        messageSubscriptionRef.current.unsubscribe()
+        messageSubscriptionRef.current = null
+      }
+      setRecentMessage('')
+      return
+    }
+
+    // Load the most recent message when timer is selected
+    const loadRecentMessage = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('timer_messages')
+          .select('*')
+          .eq('timer_id', selectedTimer.id)
+          .order('sent_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+
+        if (!error && data) {
+          setRecentMessage(data.message)
+          setTimeout(() => {
+            setRecentMessage('')
+          }, 10000)
+        }
+      } catch (error) {
+        console.error('Error loading recent message:', error)
+      }
+    }
+
+    loadRecentMessage()
+
+    // Set up real-time subscription
+    const channel = supabase
+      .channel(`timer_messages:${selectedTimer.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'timer_messages',
+          filter: `timer_id=eq.${selectedTimer.id}`
+        },
+        (payload) => {
+          console.log('New message received:', payload)
+          setRecentMessage(payload.new.message)
+          setMessages(prev => [payload.new, ...prev])
+
+          // Auto-clear message after 10 seconds
+          setTimeout(() => {
+            setRecentMessage('')
+          }, 10000)
+        }
+      )
+      .subscribe()
+
+    messageSubscriptionRef.current = channel
+
+    return () => {
+      if (messageSubscriptionRef.current) {
+        messageSubscriptionRef.current.unsubscribe()
+        messageSubscriptionRef.current = null
+      }
+    }
+  }, [selectedTimer?.id])
 
   // Add session validation
   useEffect(() => {
@@ -1234,45 +1304,104 @@ export default function ProTimerApp({ session }) {
 
       {/* Presenter View */}
       {currentView === 'presenter' && (
-        <div className="flex items-center justify-center min-h-screen bg-black text-white">
+        <div className="relative flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-indigo-900 text-white overflow-hidden">
+          {/* Back to Auth Button */}
+          <button
+            onClick={() => setCurrentView('admin')}
+            className="absolute top-4 right-4 bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+          >
+            Back to Auth
+          </button>
+
           {selectedTimer ? (
-            <div className="text-center">
-              <div className={`text-8xl font-mono font-bold mb-4 ${
-                (timerSessions[selectedTimer.id]?.time_left || selectedTimer.duration) <= 0 
-                  ? 'text-red-500 animate-pulse' 
-                  : (timerSessions[selectedTimer.id]?.time_left || selectedTimer.duration) <= 60 
-                  ? 'text-yellow-500' 
-                  : 'text-red-500'
+            <div className="text-center w-full max-w-4xl px-8">
+              {/* Timer Title */}
+              <h1 className="text-5xl md:text-6xl font-bold mb-4">
+                {selectedTimer.name}
+              </h1>
+
+              {/* Presenter Name with Icon */}
+              <div className="flex items-center justify-center gap-3 mb-12 text-xl md:text-2xl text-blue-200">
+                <Users className="w-6 h-6" />
+                <span>{selectedTimer.presenter_name}</span>
+              </div>
+
+              {/* Main Timer Display */}
+              <div className={`text-[180px] md:text-[220px] font-mono font-bold leading-none mb-8 ${
+                (timerSessions[selectedTimer.id]?.time_left || selectedTimer.duration) <= 0
+                  ? 'text-red-500 animate-pulse'
+                  : (timerSessions[selectedTimer.id]?.time_left || selectedTimer.duration) <= 60
+                  ? 'text-yellow-500'
+                  : 'text-orange-400'
               }`}>
                 {formatTime(timerSessions[selectedTimer.id]?.time_left || selectedTimer.duration)}
               </div>
-              <div className="text-2xl mb-8">
-                {selectedTimer.presenter_name} - {selectedTimer.name}
-              </div>
-              
+
               {/* Progress Bar */}
-              <div className="w-full max-w-2xl mx-auto bg-gray-700 rounded-full h-6 mb-8">
+              <div className="w-full max-w-3xl mx-auto bg-gray-700/50 rounded-full h-4 mb-8">
                 <div
-                  className="bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 h-6 rounded-full transition-all duration-1000"
+                  className="bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 h-4 rounded-full transition-all duration-1000"
                   style={{ width: `${Math.min(100, getProgressPercentageFromSession(timerSessions[selectedTimer.id], selectedTimer.duration))}%` }}
                 ></div>
               </div>
-              
+
+              {/* Percentage Remaining */}
+              <div className="text-2xl text-blue-200 mb-12">
+                {Math.max(0, Math.round(100 - getProgressPercentageFromSession(timerSessions[selectedTimer.id], selectedTimer.duration)))}% remaining
+              </div>
+
+              {/* Overtime Warning */}
               {(timerSessions[selectedTimer.id]?.time_left || selectedTimer.duration) <= 0 && (
-                <div className="text-xl text-red-400 font-bold mb-4">
+                <div className="text-3xl text-red-400 font-bold mb-8 animate-pulse">
                   ⚠️ OVERTIME ⚠️
                 </div>
               )}
+
+              {/* Recent Message Display */}
               {recentMessage && (
-                <div className="text-xl bg-yellow-600 bg-opacity-20 border border-yellow-500 rounded-lg p-4 max-w-md mx-auto">
+                <div className="text-2xl bg-yellow-600/30 border-2 border-yellow-500 rounded-xl p-6 max-w-2xl mx-auto mb-8 animate-pulse">
                   {recentMessage}
                 </div>
               )}
+
+              {/* Messages from Control Dropdown */}
+              <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 w-full max-w-2xl px-8">
+                <button
+                  onClick={() => setMessagesExpanded(!messagesExpanded)}
+                  className="w-full bg-gray-800/80 hover:bg-gray-700/80 backdrop-blur-sm text-white px-6 py-4 rounded-lg font-medium transition-all border border-gray-600 flex items-center justify-center gap-2"
+                >
+                  <MessageSquare className="w-5 h-5" />
+                  <span>Messages from Control</span>
+                  <span className={`transform transition-transform ${messagesExpanded ? 'rotate-180' : ''}`}>▼</span>
+                </button>
+
+                {/* Message History Panel */}
+                {messagesExpanded && (
+                  <div className="mt-2 bg-gray-800/95 backdrop-blur-sm rounded-lg border border-gray-600 max-h-64 overflow-y-auto">
+                    {messages.length > 0 ? (
+                      <div className="p-4 space-y-3">
+                        {messages.map((msg) => (
+                          <div key={msg.id} className="bg-gray-700/50 rounded-lg p-3 border border-gray-600">
+                            <div className="text-white text-lg mb-1">{msg.message}</div>
+                            <div className="text-gray-400 text-sm">
+                              {new Date(msg.sent_at).toLocaleTimeString()}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="p-6 text-center text-gray-400">
+                        No messages yet
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           ) : (
             <div className="text-center">
-              <div className="text-4xl font-bold mb-4 text-gray-400">No Timer Selected</div>
-              <p className="text-gray-500">Start a timer from the Admin Dashboard to see it here</p>
+              <div className="text-4xl font-bold mb-4 text-gray-300">No Timer Selected</div>
+              <p className="text-gray-400">Start a timer from the Admin Dashboard to see it here</p>
             </div>
           )}
         </div>
