@@ -1979,7 +1979,10 @@ export default function ProTimerApp({ session }) {
         <EventsPage
           session={session}
           onEventSelect={(eventId) => {
+            console.log('onEventSelect called with:', eventId)
+            console.log('Current showCreateEventModal:', showCreateEventModal)
             if (eventId === 'create') {
+              console.log('Setting showCreateEventModal to true')
               setShowCreateEventModal(true)
             } else {
               setSelectedEventId(eventId)

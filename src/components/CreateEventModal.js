@@ -123,6 +123,8 @@ export default function CreateEventModal({ isOpen, onClose, session, onEventCrea
     setPresenters([{ name: '', topic: '', duration: 5 }])
   }
 
+  console.log('CreateEventModal render - isOpen:', isOpen)
+
   if (!isOpen) return null
 
   return (

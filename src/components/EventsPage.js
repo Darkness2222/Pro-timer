@@ -113,7 +113,11 @@ export default function EventsPage({ session, onEventSelect }) {
             <p className="text-gray-400">Manage your multi-presenter events</p>
           </div>
           <button
-            onClick={() => onEventSelect('create')}
+            onClick={() => {
+              console.log('Create Event button clicked')
+              alert('Button clicked!')
+              onEventSelect('create')
+            }}
             className="bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg font-medium transition-colors flex items-center gap-2"
           >
             <Plus className="w-5 h-5" />
