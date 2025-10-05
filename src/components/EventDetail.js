@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { ArrowLeft, Users, Clock, Play, Pause, RotateCcw, Plus, Minus, MessageSquare, Loader2 } from 'lucide-react'
+import { ArrowLeft, Users, Clock, Play, Pause, RotateCcw, Plus, Minus, MessageSquare, Loader as Loader2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
 export default function EventDetail({ eventId, session, onBack }) {

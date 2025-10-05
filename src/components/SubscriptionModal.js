@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { X, Crown, Loader2 } from 'lucide-react'
+import { X, Crown, Loader as Loader2 } from 'lucide-react'
 import { products } from '../stripe-config.js'
 import { supabase } from '../lib/supabase'
 

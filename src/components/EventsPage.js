@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Calendar, Plus, Users, Clock, Play, CheckCircle, XCircle, Loader2 } from 'lucide-react'
+import { Calendar, Plus, Users, Clock, Play, CircleCheck as CheckCircle, Circle as XCircle, Loader as Loader2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
 export default function EventsPage({ session, onEventSelect }) {

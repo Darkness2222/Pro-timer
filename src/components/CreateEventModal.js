@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { X, Plus, Trash2, Users, Loader2 } from 'lucide-react'
+import { X, Plus, Trash2, Users, Loader as Loader2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
 export default function CreateEventModal({ isOpen, onClose, session, onEventCreated }) {
