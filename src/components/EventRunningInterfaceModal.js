@@ -1,4 +1,3 @@
-```javascript
 import React, { useState, useEffect } from 'react'
 import { X, Clock, CheckCircle, Play, Users, Plus, Settings } from 'lucide-react'
 
@@ -55,7 +54,7 @@ export default function EventRunningInterfaceModal({
   const formatDuration = (seconds) => {
     const minutes = Math.floor(seconds / 60)
     const remainingSeconds = seconds % 60
-    return \`${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
   }
 
   const getTimerStatus = (timer) => {
@@ -64,8 +63,8 @@ export default function EventRunningInterfaceModal({
     if (timer.status === 'finished_early' || completedTimers.some(completed => completed.id === timer.id)) {
       return {
         status: 'Completed',
-        detail: session?.time_left !== undefined 
-          ? \`Completed in ${formatDuration(timer.duration - session.time_left)}`
+        detail: session?.time_left !== undefined
+          ? `Completed in ${formatDuration(timer.duration - session.time_left)}`
           : 'Completed',
         icon: CheckCircle,
         color: 'text-green-400',
@@ -79,7 +78,7 @@ export default function EventRunningInterfaceModal({
     if (session?.is_running) {
       return {
         status: 'Current',
-        detail: \`${formatDuration(session.time_left || timer.duration)} remaining`,
+        detail: `${formatDuration(session.time_left || timer.duration)} remaining`,
         icon: Clock,
         color: 'text-blue-400',
         bgColor: 'bg-blue-600 bg-opacity-20',
@@ -92,7 +91,7 @@ export default function EventRunningInterfaceModal({
     if (bufferTimerState.isRunning && timer.id === nextUpTimer?.id) {
       return {
         status: 'Buffer',
-        detail: \`${formatDuration(timer.duration)} allocated`,
+        detail: `${formatDuration(timer.duration)} allocated`,
         icon: Clock,
         color: 'text-orange-400',
         bgColor: 'bg-orange-600 bg-opacity-20',
@@ -101,10 +100,10 @@ export default function EventRunningInterfaceModal({
         numberText: eventTimers.findIndex(t => t.id === timer.id) + 1
       }
     }
-    
+
     return {
       status: 'Upcoming',
-      detail: \`${formatDuration(timer.duration)} allocated`,
+      detail: `${formatDuration(timer.duration)} allocated`,
       icon: Clock,
       color: 'text-gray-400',
       bgColor: 'bg-gray-600 bg-opacity-20',
@@ -125,21 +124,21 @@ export default function EventRunningInterfaceModal({
     const currentPresenterIndex = currentRunningTimer ? eventTimers.findIndex(t => t.id === currentRunningTimer.id) + 1 : completedCount + 1
     
     if (currentState === 'final') {
-      return \`Event Completed • ${totalPresenters} presentations finished`
+      return `Event Completed • ${totalPresenters} presentations finished`
     }
-    
+
     if (currentState === 'buffer') {
-      return \`Presenter ${currentPresenterIndex} of ${totalPresenters} • Buffer time`
+      return `Presenter ${currentPresenterIndex} of ${totalPresenters} • Buffer time`
     }
-    
+
     const remainingTime = eventTimers
       .filter(timer => !completedTimers.some(completed => completed.id === timer.id))
       .reduce((total, timer) => {
         const session = timerSessions[timer.id]
         return total + (session?.time_left || timer.duration)
       }, 0)
-    
-    return \`Presenter ${currentPresenterIndex} of ${totalPresenters} • ${formatDuration(remainingTime)} remaining`
+
+    return `Presenter ${currentPresenterIndex} of ${totalPresenters} • ${formatDuration(remainingTime)} remaining`
   }
 
   return (
@@ -170,7 +169,7 @@ export default function EventRunningInterfaceModal({
               <div className="current-presenter">
                 {currentRunningTimer.presenter_name} - {currentRunningTimer.name}
               </div>
-              <div className={\`main-timer ${timerSessions[currentRunningTimer.id]?.time_left <= 120 ? 'timer-danger' : timerSessions[currentRunningTimer.id]?.time_left <= 300 ? 'timer-warning' : ''}`}>
+              <div className={`main-timer ${timerSessions[currentRunningTimer.id]?.time_left <= 120 ? 'timer-danger' : timerSessions[currentRunningTimer.id]?.time_left <= 300 ? 'timer-warning' : ''}`}>
                 {formatDuration(timerSessions[currentRunningTimer.id]?.time_left || currentRunningTimer.duration)}
               </div>
               <div className="timer-controls">
@@ -193,12 +192,12 @@ export default function EventRunningInterfaceModal({
               </div>
               
               <div className="buffer-controls">
-                <div 
-                  className={\`auto-start-toggle ${autoStartNextEvent ? 'enabled' : ''}`}
+                <div
+                  className={`auto-start-toggle ${autoStartNextEvent ? 'enabled' : ''}`}
                   onClick={() => onToggleAutoStart(!autoStartNextEvent)}
                 >
-                  <div className={\`toggle-switch ${autoStartNextEvent ? 'enabled' : ''}`}>
-                    <div className={\`toggle-knob ${autoStartNextEvent ? 'enabled' : ''}`}></div>
+                  <div className={`toggle-switch ${autoStartNextEvent ? 'enabled' : ''}`}>
+                    <div className={`toggle-knob ${autoStartNextEvent ? 'enabled' : ''}`}></div>
                   </div>
                   <span>Auto-start next presenter</span>
                 </div>
@@ -235,13 +234,13 @@ export default function EventRunningInterfaceModal({
                   return (
                     <div
                       key={timer.id}
-                      className={\`presenter-item ${
+                      className={`presenter-item ${
                         timerStatus.status === 'Completed' ? 'completed' :
                         timerStatus.status === 'Current' || timerStatus.status === 'Buffer' ? 'current' :
                         'upcoming'
                       }`}
                     >
-                      <div className={\`presenter-number ${timerStatus.numberBg}`}>
+                      <div className={`presenter-number ${timerStatus.numberBg}`}>
                         {timerStatus.numberText}
                       </div>
                       
@@ -254,7 +253,7 @@ export default function EventRunningInterfaceModal({
                         </div>
                       </div>
                       
-                      <div className={\`presenter-status ${
+                      <div className={`presenter-status ${
                         timerStatus.status === 'Completed' ? 'status-completed' :
                         timerStatus.status === 'Current' ? 'status-current' :
                         timerStatus.status === 'Buffer' ? 'status-current' : // Use current style for buffer status
@@ -309,4 +308,3 @@ export default function EventRunningInterfaceModal({
     </div>
   )
 }
-```

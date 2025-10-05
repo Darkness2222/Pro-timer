@@ -8,6 +8,7 @@ import ReportsPage from './ReportsPage'
 import SuccessPage from './SuccessPage'
 import CreateTimerModal from './CreateTimerModal'
 import SettingsModal from './SettingsModal'
+import EventRunningInterfaceModal from './EventRunningInterfaceModal'
 
 export default function ProTimerApp({ session }) {
   const [currentView, setCurrentView] = useState('overview')
@@ -28,6 +29,7 @@ export default function ProTimerApp({ session }) {
     duration: 0
   })
   const [recentMessage, setRecentMessage] = useState('')
+  const [showEventInterface, setShowEventInterface] = useState(false)
 
   // Check for success parameter in URL
   useEffect(() => {
@@ -199,35 +201,37 @@ export default function ProTimerApp({ session }) {
   // Buffer timer countdown effect
   useEffect(() => {
     let interval = null
-    
+
     if (bufferTimerState.isRunning && bufferTimerState.timeLeft > 0) {
       interval = setInterval(() => {
         setBufferTimerState(prev => {
           const newTimeLeft = prev.timeLeft - 1
-          
+
           if (newTimeLeft <= 0) {
-            // Buffer finished, auto-start next timer
-            const eventTimers = timers
-              .filter(timer => timer.timer_type === 'event')
-              .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
-            
-            const nextUpTimer = eventTimers.find(timer => 
-              timer.status === 'active' && 
-              !timerSessions[timer.id]?.is_running &&
-              timer.status !== 'finished_early'
-            )
-            
-            if (nextUpTimer) {
-              handleStartTimer(nextUpTimer.id)
+            // Buffer finished, auto-start next timer if enabled
+            if (autoStartNextEvent) {
+              const eventTimers = timers
+                .filter(timer => timer.timer_type === 'event')
+                .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+
+              const nextUpTimer = eventTimers.find(timer =>
+                timer.status === 'active' &&
+                !timerSessions[timer.id]?.is_running &&
+                timer.status !== 'finished_early'
+              )
+
+              if (nextUpTimer) {
+                handleStartTimer(nextUpTimer.id)
+              }
             }
-            
+
             return {
               isRunning: false,
               timeLeft: 0,
               duration: 0
             }
           }
-          
+
           return {
             ...prev,
             timeLeft: newTimeLeft
@@ -235,11 +239,11 @@ export default function ProTimerApp({ session }) {
         })
       }, 1000)
     }
-    
+
     return () => {
       if (interval) clearInterval(interval)
     }
-  }, [bufferTimerState.isRunning, bufferTimerState.timeLeft, timers, timerSessions])
+  }, [bufferTimerState.isRunning, bufferTimerState.timeLeft, timers, timerSessions, autoStartNextEvent])
 
   // Load timers on component mount
   useEffect(() => {
@@ -462,16 +466,19 @@ export default function ProTimerApp({ session }) {
   const createTimer = async (formData) => {
     try {
       if (formData.timerType === 'event') {
+        // Calculate buffer duration in seconds
+        const bufferDuration = (formData.bufferMinutes * 60) + formData.bufferSeconds
+
         // Create multiple timers for event
         for (let i = 0; i < formData.presenters.length; i++) {
           const presenter = formData.presenters[i]
           const duration = (presenter.minutes * 60) + presenter.seconds
-          
+
           if (!presenter.name.trim() || duration <= 0) {
             console.error('Invalid presenter data:', presenter)
             continue
           }
-          
+
           const { data, error } = await supabase
             .from('timers')
             .insert({
@@ -479,7 +486,8 @@ export default function ProTimerApp({ session }) {
               presenter_name: presenter.name,
               duration: duration,
               user_id: session?.user?.id || null,
-              timer_type: 'event'
+              timer_type: 'event',
+              buffer_duration: bufferDuration
             })
             .select()
             .single()
@@ -812,31 +820,69 @@ export default function ProTimerApp({ session }) {
   const handleFinishTimer = async (timerId) => {
     try {
       const session = timerSessions[timerId]
-      
+      const finishedTimer = timers.find(t => t.id === timerId)
+
+      // Update timer status to finished_early in database
+      const { error: updateError } = await supabase
+        .from('timers')
+        .update({ status: 'finished_early' })
+        .eq('id', timerId)
+
+      if (updateError) {
+        console.error('Error updating timer status:', updateError)
+        return
+      }
+
+      // Update timer session to finished state
+      const { error: sessionError } = await supabase
+        .from('timer_sessions')
+        .update({
+          time_left: 0,
+          is_running: false,
+          updated_at: new Date().toISOString()
+        })
+        .eq('timer_id', timerId)
+
+      if (sessionError) {
+        console.error('Error updating timer session:', sessionError)
+      }
+
       // Log the finish action
-      await logTimerAction(timerId, 'finish', session?.time_left || 0, 0, 'Timer finished early')
-      
+      const { error: logError } = await supabase
+        .from('timer_logs')
+        .insert({
+          timer_id: timerId,
+          action: 'finish',
+          time_value: session?.time_left || 0,
+          notes: 'Timer finished early by user'
+        })
+
+      if (logError) {
+        console.error('Error logging finish action:', logError)
+      }
+
       // Remove from local state
       setTimers(prev => prev.filter(t => t.id !== timerId))
-      
+
       // Check if this is an event timer and start buffer if there's a next timer
-      const finishedTimer = timers.find(t => t.id === timerId)
       if (finishedTimer?.timer_type === 'event') {
         const eventTimers = timers
-          .filter(timer => timer.timer_type === 'event' && timer.id !== timerId)
+          .filter(timer => timer.timer_type === 'event' && timer.id !== timerId && timer.status === 'active')
           .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
-        
-        const nextUpTimer = eventTimers.find(timer => 
-          timer.status === 'active' && 
+
+        const nextUpTimer = eventTimers.find(timer =>
           !timerSessions[timer.id]?.is_running
         )
-        
+
         if (nextUpTimer) {
+          // Use the stored buffer duration from the timer
+          const bufferDuration = nextUpTimer.buffer_duration || DEFAULT_BUFFER_DURATION
+
           // Start buffer countdown
           setBufferTimerState({
             isRunning: true,
-            timeLeft: DEFAULT_BUFFER_DURATION,
-            duration: DEFAULT_BUFFER_DURATION
+            timeLeft: bufferDuration,
+            duration: bufferDuration
           })
         }
       }
@@ -1106,21 +1152,66 @@ export default function ProTimerApp({ session }) {
           duration: 0
         })
       }
-      
+
       // Find currently running event timer and finish it
       const eventTimers = timers.filter(timer => timer.timer_type === 'event')
-      const currentRunningTimer = eventTimers.find(timer => 
+      const currentRunningTimer = eventTimers.find(timer =>
         timerSessions[timer.id]?.is_running
       )
-      
+
       if (currentRunningTimer) {
         await handleFinishTimer(currentRunningTimer.id)
       }
-      
+
       // Start the next timer
-      await handleStartTimer(timerId)
+      if (timerId) {
+        await handleStartTimer(timerId)
+      }
     } catch (error) {
       console.error('Error starting next event timer:', error)
+    }
+  }
+
+  const handleExtendBuffer = (minutes) => {
+    setBufferTimerState(prev => ({
+      ...prev,
+      timeLeft: prev.timeLeft + (minutes * 60),
+      duration: prev.duration + (minutes * 60)
+    }))
+  }
+
+  const handleExtendTimer = async (timerId, minutes) => {
+    try {
+      const session = timerSessions[timerId]
+      if (!session) return
+
+      const additionalTime = minutes * 60
+      const newTimeLeft = session.time_left + additionalTime
+
+      const { error } = await supabase
+        .from('timer_sessions')
+        .update({
+          time_left: newTimeLeft,
+          updated_at: new Date().toISOString()
+        })
+        .eq('timer_id', timerId)
+
+      if (error) throw error
+
+      // Log the extension
+      await supabase
+        .from('timer_logs')
+        .insert({
+          timer_id: timerId,
+          action: 'extend',
+          time_value: newTimeLeft,
+          duration_change: additionalTime,
+          notes: `Extended timer by ${minutes} minutes`
+        })
+
+      await updateTimerSessions()
+    } catch (error) {
+      console.error('Error extending timer:', error)
     }
   }
 
@@ -1700,6 +1791,13 @@ export default function ProTimerApp({ session }) {
             </div>
             <div className="flex items-center gap-3">
               <button
+                onClick={() => setShowEventInterface(true)}
+                className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
+              >
+                <Users className="w-4 h-4" />
+                Event Interface
+              </button>
+              <button
                 onClick={handlePlayAll}
                 className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
               >
@@ -1795,6 +1893,21 @@ export default function ProTimerApp({ session }) {
         onClose={() => setShowSubscriptionModal(false)}
         session={session}
       />
+
+      {/* Event Running Interface Modal */}
+      {showEventInterface && (
+        <EventRunningInterfaceModal
+          timers={timers}
+          timerSessions={timerSessions}
+          bufferTimerState={bufferTimerState}
+          autoStartNextEvent={autoStartNextEvent}
+          onClose={() => setShowEventInterface(false)}
+          onStartNextTimer={handleStartNextEventTimer}
+          onExtendBuffer={handleExtendBuffer}
+          onToggleAutoStart={setAutoStartNextEvent}
+          onExtendTimer={handleExtendTimer}
+        />
+      )}
     </div>
   )
 }
