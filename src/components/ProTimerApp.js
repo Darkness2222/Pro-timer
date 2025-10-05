@@ -1556,14 +1556,21 @@ export default function ProTimerApp({ session }) {
             <p className="text-gray-300">Create and manage presentation timers</p>
           </div>
 
-          {/* Create Timer Button */}
-          <div className="mb-8">
+          {/* Create Timer and Event Interface Buttons */}
+          <div className="mb-8 flex items-center gap-4">
             <button
               onClick={() => setShowCreateModal(true)}
               className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium flex items-center gap-2"
             >
               <Plus className="w-5 h-5" />
               Create New Timer
+            </button>
+            <button
+              onClick={() => setShowEventInterface(true)}
+              className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg font-medium flex items-center gap-2"
+            >
+              <Users className="w-5 h-5" />
+              Event Interface
             </button>
           </div>
 
@@ -1880,13 +1887,6 @@ export default function ProTimerApp({ session }) {
               <p className="text-gray-300">Monitor all active timers</p>
             </div>
             <div className="flex items-center gap-3">
-              <button
-                onClick={() => setShowEventInterface(true)}
-                className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
-              >
-                <Users className="w-4 h-4" />
-                Event Interface
-              </button>
               <button
                 onClick={handlePlayAll}
                 className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
