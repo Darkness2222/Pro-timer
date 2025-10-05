@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { X, Clock, CheckCircle, Play, Users, Plus, Settings } from 'lucide-react'
+import { X, Clock, CircleCheck as CheckCircle, Play, Users, Plus, Settings } from 'lucide-react'
 
 export default function EventRunningInterfaceModal({ 
   timers, 
