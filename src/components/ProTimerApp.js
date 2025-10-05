@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import TimerOverview from './TimerOverview'
 import { getProductByPriceId } from '../stripe-config'
-import { Play, Pause, Square, RotateCcw, Settings, MessageSquare, Plus, Minus, Clock, Users, Timer as TimerIcon, QrCode, ExternalLink, FileText, Crown, User, LogOut, CircleCheck as CheckCircle, X } from 'lucide-react'
+import { Play, Pause, Square, RotateCcw, Settings, MessageSquare, Plus, Minus, Clock, Users, Timer as TimerIcon, QrCode, ExternalLink, FileText, Crown, LogOut, CircleCheck as CheckCircle, X } from 'lucide-react'
 import SubscriptionModal from './SubscriptionModal'
 import ReportsPage from './ReportsPage'
 import SuccessPage from './SuccessPage'
@@ -1423,14 +1423,6 @@ export default function ProTimerApp({ session }) {
               >
                 ⚙️ Settings
               </button>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <User className="w-5 h-5" />
-                <span className="text-sm text-white">
-                  {session?.user?.email || 'Guest'}
-                </span>
-              </div>
             </div>
           </div>
         </div>
