@@ -861,6 +861,13 @@ export default function ProTimerApp({ session }) {
         console.error('Error logging finish action:', logError)
       }
 
+      // Clear selected timer if it was the one that finished
+      if (selectedTimer?.id === timerId) {
+        setSelectedTimer(null)
+        setTimeLeft(0)
+        setIsRunning(false)
+      }
+
       // Reload timers to reflect the status change
       await loadTimers()
       await updateTimerSessions()
@@ -1646,7 +1653,7 @@ export default function ProTimerApp({ session }) {
                   Stop
                 </button>
                 <button
-                  onClick={finishTimer}
+                  onClick={() => handleFinishTimer(selectedTimer.id)}
                   disabled={timeLeft <= 0}
                   className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-6 py-3 rounded-lg font-medium flex items-center gap-2"
                 >
