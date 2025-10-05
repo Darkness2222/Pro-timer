@@ -1305,14 +1305,6 @@ export default function ProTimerApp({ session }) {
       {/* Presenter View */}
       {currentView === 'presenter' && (
         <div className="relative flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-indigo-900 text-white overflow-hidden">
-          {/* Back to Auth Button */}
-          <button
-            onClick={() => setCurrentView('admin')}
-            className="absolute top-4 right-4 bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
-          >
-            Back to Auth
-          </button>
-
           {selectedTimer ? (
             <div className="text-center w-full max-w-4xl px-8">
               {/* Timer Title */}
@@ -1331,8 +1323,8 @@ export default function ProTimerApp({ session }) {
                 (timerSessions[selectedTimer.id]?.time_left || selectedTimer.duration) <= 0
                   ? 'text-red-500 animate-pulse'
                   : (timerSessions[selectedTimer.id]?.time_left || selectedTimer.duration) <= 60
-                  ? 'text-yellow-500'
-                  : 'text-orange-400'
+                  ? 'text-red-400'
+                  : 'text-red-500'
               }`}>
                 {formatTime(timerSessions[selectedTimer.id]?.time_left || selectedTimer.duration)}
               </div>
@@ -1461,7 +1453,7 @@ export default function ProTimerApp({ session }) {
                   <p className="text-gray-300 mb-2 text-xs truncate">Presenter: {timer.presenter_name}</p>
                   
                   <div className="mt-auto">
-                    <div className="text-lg font-mono text-blue-400 mb-2">
+                    <div className="text-lg font-mono text-red-500 mb-2">
                       {formatTimeFromSession(session, timer.duration)}
                     </div>
                     {/* Progress Bar */}
@@ -1488,7 +1480,7 @@ export default function ProTimerApp({ session }) {
               {/* Timer Display */}
               <div className="text-center mb-6">
                 <div className={`text-6xl font-mono font-bold mb-4 ${
-                  timeLeft < 0 ? 'text-red-500 animate-pulse' : 'text-orange-400'
+                  timeLeft < 0 ? 'text-red-500 animate-pulse' : 'text-red-500'
                 }`}>
                   {formatTime(timeLeft)}
                 </div>
@@ -1742,7 +1734,7 @@ export default function ProTimerApp({ session }) {
                   </div>
                   <h3 className="text-xl font-semibold text-white mb-2">{timer.name}</h3>
                   <p className="text-gray-300 mb-4">Presenter: {timer.presenter_name}</p>
-                  <div className="text-3xl font-mono text-blue-400 mb-4">
+                  <div className="text-3xl font-mono text-red-500 mb-4">
                     {(() => {
                       if (!session) return formatTime(timer.duration);
                       
