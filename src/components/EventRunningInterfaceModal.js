@@ -15,6 +15,16 @@ export default function EventRunningInterfaceModal({
   onResumeTimer
 }) {
   const [currentState, setCurrentState] = useState('presenter') // presenter, buffer, final
+  const [, forceUpdate] = useState(0)
+
+  // Force re-render every second to update timer displays
+  useEffect(() => {
+    const interval = setInterval(() => {
+      forceUpdate(prev => prev + 1)
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [])
 
   // Filter and sort event timers by creation time
   const eventTimers = timers
