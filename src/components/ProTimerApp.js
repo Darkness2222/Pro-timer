@@ -1479,6 +1479,21 @@ export default function ProTimerApp({ session }) {
                   style={{ width: `${((bufferTimerState.duration - bufferTimerState.timeLeft) / bufferTimerState.duration) * 100}%` }}
                 ></div>
               </div>
+
+              {/* Finish Buffer Button */}
+              <button
+                onClick={() => {
+                  setBufferTimerState({
+                    isRunning: false,
+                    timeLeft: 0,
+                    duration: 0
+                  })
+                }}
+                className="bg-green-600 hover:bg-green-700 text-white px-8 py-4 rounded-lg font-bold text-xl transition-colors flex items-center gap-3 mx-auto"
+              >
+                <CheckCircle className="w-6 h-6" />
+                Finish Buffer
+              </button>
             </div>
           ) : selectedTimer ? (
             <div className="text-center w-full max-w-4xl px-8">
