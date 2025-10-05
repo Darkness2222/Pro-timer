@@ -1510,13 +1510,23 @@ export default function ProTimerApp({ session }) {
 
               {/* Main Timer Display */}
               <div className={`text-[180px] md:text-[220px] font-mono font-bold leading-none mb-8 ${
-                (timerSessions[selectedTimer.id]?.time_left || selectedTimer.duration) <= 0
-                  ? 'text-red-500 animate-pulse'
-                  : (timerSessions[selectedTimer.id]?.time_left || selectedTimer.duration) <= 60
-                  ? 'text-red-400'
-                  : 'text-red-500'
+                (() => {
+                  const session = timerSessions[selectedTimer.id]
+                  let currentTimeLeft = session?.time_left || selectedTimer.duration
+                  if (session?.is_running) {
+                    const now = new Date(currentTime)
+                    const lastUpdate = new Date(session.updated_at)
+                    const elapsedSinceUpdate = Math.floor((now - lastUpdate) / 1000)
+                    currentTimeLeft = session.time_left - elapsedSinceUpdate
+                  }
+                  return currentTimeLeft <= 0
+                    ? 'text-red-500 animate-pulse'
+                    : currentTimeLeft <= 60
+                    ? 'text-red-400'
+                    : 'text-red-500'
+                })()
               }`}>
-                {formatTime(timerSessions[selectedTimer.id]?.time_left || selectedTimer.duration)}
+                {formatTimeFromSession(timerSessions[selectedTimer.id], selectedTimer.duration)}
               </div>
 
               {/* Progress Bar */}
@@ -1533,11 +1543,21 @@ export default function ProTimerApp({ session }) {
               </div>
 
               {/* Overtime Warning */}
-              {(timerSessions[selectedTimer.id]?.time_left || selectedTimer.duration) <= 0 && (
-                <div className="text-3xl text-red-400 font-bold mb-8 animate-pulse">
-                  ⚠️ OVERTIME ⚠️
-                </div>
-              )}
+              {(() => {
+                const session = timerSessions[selectedTimer.id]
+                let currentTimeLeft = session?.time_left || selectedTimer.duration
+                if (session?.is_running) {
+                  const now = new Date(currentTime)
+                  const lastUpdate = new Date(session.updated_at)
+                  const elapsedSinceUpdate = Math.floor((now - lastUpdate) / 1000)
+                  currentTimeLeft = session.time_left - elapsedSinceUpdate
+                }
+                return currentTimeLeft <= 0 && (
+                  <div className="text-3xl text-red-400 font-bold mb-8 animate-pulse">
+                    ⚠️ OVERTIME ⚠️
+                  </div>
+                )
+              })()}
 
               {/* Recent Message Display */}
               {recentMessage && (
