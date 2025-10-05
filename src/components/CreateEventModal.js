@@ -21,18 +21,34 @@ export default function CreateEventModal({ isOpen, onClose, session, onEventCrea
   }, [isOpen, session])
 
   const loadOrganization = async () => {
+    if (!session?.user?.id) {
+      console.error('No user session')
+      return
+    }
+
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('organization_members')
         .select('organization_id')
         .eq('user_id', session.user.id)
         .maybeSingle()
 
+      if (error) {
+        console.error('Error loading organization:', error)
+        alert('Error loading organization: ' + error.message)
+        return
+      }
+
       if (data) {
+        console.log('Organization loaded:', data.organization_id)
         setOrganizationId(data.organization_id)
+      } else {
+        console.error('No organization found for user')
+        alert('No organization found. Please contact support.')
       }
     } catch (error) {
       console.error('Error loading organization:', error)
+      alert('Error loading organization: ' + error.message)
     }
   }
 
@@ -55,11 +71,6 @@ export default function CreateEventModal({ isOpen, onClose, session, onEventCrea
   const handleSubmit = async (e) => {
     e.preventDefault()
 
-    if (!organizationId) {
-      alert('Organization not found')
-      return
-    }
-
     if (presenters.some(p => !p.name || !p.topic)) {
       alert('Please fill in all presenter details')
       return
@@ -68,10 +79,26 @@ export default function CreateEventModal({ isOpen, onClose, session, onEventCrea
     setLoading(true)
 
     try {
+      // Get organization ID fresh if not loaded
+      let orgId = organizationId
+      if (!orgId) {
+        console.log('Organization ID not in state, fetching...')
+        const { data, error } = await supabase
+          .from('organization_members')
+          .select('organization_id')
+          .eq('user_id', session.user.id)
+          .maybeSingle()
+
+        if (error || !data) {
+          throw new Error('Organization not found')
+        }
+        orgId = data.organization_id
+      }
+
       const { data: eventData, error: eventError } = await supabase
         .from('events')
         .insert({
-          organization_id: organizationId,
+          organization_id: orgId,
           name: eventName,
           description: eventDescription,
           event_date: eventDate || null,
@@ -122,8 +149,6 @@ export default function CreateEventModal({ isOpen, onClose, session, onEventCrea
     setAutoStartNext(false)
     setPresenters([{ name: '', topic: '', duration: 5 }])
   }
-
-  console.log('CreateEventModal render - isOpen:', isOpen)
 
   if (!isOpen) return null
 
