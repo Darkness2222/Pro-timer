@@ -1192,6 +1192,37 @@ export default function ProTimerApp({ session }) {
     }))
   }
 
+  const handleResumeTimer = async (timerId) => {
+    try {
+      const session = timerSessions[timerId]
+      if (!session) return
+
+      const { error } = await supabase
+        .from('timer_sessions')
+        .update({
+          is_running: true,
+          updated_at: new Date().toISOString()
+        })
+        .eq('timer_id', timerId)
+
+      if (error) throw error
+
+      // Log the resume action
+      await supabase
+        .from('timer_logs')
+        .insert({
+          timer_id: timerId,
+          action: 'start',
+          time_value: session.time_left,
+          notes: 'Timer resumed'
+        })
+
+      await updateTimerSessions()
+    } catch (error) {
+      console.error('Error resuming timer:', error)
+    }
+  }
+
   const handleExtendTimer = async (timerId, minutes) => {
     try {
       const session = timerSessions[timerId]
@@ -1941,6 +1972,8 @@ export default function ProTimerApp({ session }) {
           onExtendBuffer={handleExtendBuffer}
           onToggleAutoStart={setAutoStartNextEvent}
           onExtendTimer={handleExtendTimer}
+          onPauseTimer={handlePauseTimer}
+          onResumeTimer={handleResumeTimer}
         />
       )}
     </div>

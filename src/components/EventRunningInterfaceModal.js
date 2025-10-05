@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react'
-import { X, Clock, CircleCheck as CheckCircle, Play, Users, Plus, Settings } from 'lucide-react'
+import { X, Clock, CircleCheck as CheckCircle, Play, Pause, Square, Plus } from 'lucide-react'
 
-export default function EventRunningInterfaceModal({ 
-  timers, 
-  timerSessions, 
+export default function EventRunningInterfaceModal({
+  timers,
+  timerSessions,
   bufferTimerState,
   autoStartNextEvent,
-  onClose, 
+  onClose,
   onStartNextTimer,
   onExtendBuffer,
   onToggleAutoStart,
-  onExtendTimer
+  onExtendTimer,
+  onPauseTimer,
+  onResumeTimer
 }) {
   const [currentState, setCurrentState] = useState('presenter') // presenter, buffer, final
 
@@ -172,10 +174,58 @@ export default function EventRunningInterfaceModal({
               <div className={`main-timer ${timerSessions[currentRunningTimer.id]?.time_left <= 120 ? 'timer-danger' : timerSessions[currentRunningTimer.id]?.time_left <= 300 ? 'timer-warning' : ''}`}>
                 {formatDuration(timerSessions[currentRunningTimer.id]?.time_left || currentRunningTimer.duration)}
               </div>
+
+              {/* Up Next Display */}
+              {nextUpTimer && (
+                <div className="next-presenter-preview" style={{ marginTop: '20px', marginBottom: '20px' }}>
+                  <div className="next-title">Up Next:</div>
+                  <div className="next-name">
+                    {nextUpTimer.presenter_name} - {nextUpTimer.name} ({formatDuration(nextUpTimer.duration)})
+                  </div>
+                </div>
+              )}
+
               <div className="timer-controls">
-                <button className="btn btn-finish" onClick={() => onStartNextTimer(nextUpTimer?.id)}>Finish Presenter</button>
-                {/* Pause/Resume button - assuming it's handled elsewhere or not needed here */}
-                <button className="btn btn-extend" onClick={() => onExtendTimer(currentRunningTimer.id, 5)}>+5 Min</button>
+                {timerSessions[currentRunningTimer.id]?.is_running ? (
+                  <>
+                    <button
+                      className="btn btn-pause"
+                      onClick={() => onPauseTimer && onPauseTimer(currentRunningTimer.id)}
+                    >
+                      <Pause className="w-4 h-4" />
+                      Pause
+                    </button>
+                    <button
+                      className="btn btn-finish"
+                      onClick={() => onStartNextTimer(nextUpTimer?.id)}
+                    >
+                      <Square className="w-4 h-4" />
+                      Finish
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      className="btn btn-primary"
+                      onClick={() => onResumeTimer && onResumeTimer(currentRunningTimer.id)}
+                      style={{ background: 'linear-gradient(135deg, #48bb78 0%, #38a169 100%)' }}
+                    >
+                      <Play className="w-4 h-4" />
+                      Start
+                    </button>
+                    <button
+                      className="btn btn-finish"
+                      onClick={() => onStartNextTimer(nextUpTimer?.id)}
+                    >
+                      <Square className="w-4 h-4" />
+                      Finish
+                    </button>
+                  </>
+                )}
+                <button className="btn btn-extend" onClick={() => onExtendTimer(currentRunningTimer.id, 5)}>
+                  <Plus className="w-4 h-4" />
+                  +5 Min
+                </button>
               </div>
             </div>
           )}
@@ -229,8 +279,7 @@ export default function EventRunningInterfaceModal({
               <div className="space-y-3">
                 {eventTimers.map((timer, index) => {
                   const timerStatus = getTimerStatus(timer)
-                  const StatusIcon = timerStatus.icon
-                  
+
                   return (
                     <div
                       key={timer.id}

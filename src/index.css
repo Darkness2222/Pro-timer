@@ -875,6 +875,16 @@ body:not(.dark) .fs-time {
   box-shadow: 0 8px 25px rgba(72, 187, 120, 0.4);
 }
 
+.btn-start {
+  background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+  color: white;
+}
+
+.btn-start:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(72, 187, 120, 0.4);
+}
+
 /* Buffer State Styles */
 .buffer-section {
   background: linear-gradient(135deg, #f6ad55 0%, #ed8936 100%);
@@ -1099,24 +1109,30 @@ body:not(.dark) .fs-time {
 }
 
 .next-presenter-preview {
-  background: rgba(102, 126, 234, 0.1);
-  border: 1px solid rgba(102, 126, 234, 0.3);
+  background: rgba(102, 126, 234, 0.2);
+  border: 2px solid rgba(102, 126, 234, 0.4);
   border-radius: 12px;
   padding: 16px;
   margin-top: 20px;
   text-align: center;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
 }
 
 .next-title {
-  font-size: 14px;
-  opacity: 0.8;
+  font-size: 16px;
+  font-weight: 600;
+  opacity: 0.9;
   margin-bottom: 8px;
+  color: #a5b4fc;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .next-name {
-  font-size: 18px;
-  font-weight: 600;
-  color: #90cdf4;
+  font-size: 20px;
+  font-weight: 700;
+  color: #c7d2fe;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 /* Tailwind CSS imports */
