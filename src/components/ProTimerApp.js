@@ -1567,10 +1567,40 @@ export default function ProTimerApp({ session }) {
             </button>
           </div>
 
+          {/* Buffer Timer Display */}
+          {bufferTimerState.isRunning && (
+            <div className="mb-4">
+              <div className="bg-orange-900/50 backdrop-blur-sm rounded-xl p-4 border border-orange-600/50 flex flex-col">
+                <div className="flex justify-between items-start mb-2">
+                  <div className="w-2 h-2 rounded-full bg-orange-500"></div>
+                </div>
+                <h3 className="text-sm font-semibold text-white mb-1">Buffer Time</h3>
+                <p className="text-gray-300 mb-2 text-xs">Transition Period</p>
+                <div className="text-lg font-mono text-orange-400 mb-2">
+                  {formatTime(bufferTimerState.timeLeft)}
+                </div>
+                <div className="w-full bg-gray-700 rounded-full h-1">
+                  <div
+                    className="bg-orange-500 h-1 rounded-full transition-all duration-1000"
+                    style={{ width: `${Math.max(0, (bufferTimerState.timeLeft / bufferTimerState.duration) * 100)}%` }}
+                  ></div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Timers Grid */}
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-            {timers.map((timer) => {
+            {timers.map((timer, index) => {
               const session = timerSessions[timer.id];
+              // Get event timers sorted by creation time to determine presenter number
+              const eventTimers = timers
+                .filter(t => t.timer_type === 'event')
+                .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+              const presenterNumber = timer.timer_type === 'event'
+                ? eventTimers.findIndex(t => t.id === timer.id) + 1
+                : null;
+
               return (
                 <div
                 key={timer.id}
@@ -1590,16 +1620,18 @@ export default function ProTimerApp({ session }) {
                 >
                   ×
                 </button>
-                
+
                 {/* Main clickable area */}
                 <div className="flex-1 flex flex-col" onClick={() => selectTimer(timer)}>
                   {/* Status Indicator */}
                   <div className="flex justify-between items-start mb-2">
                     <div className={`w-2 h-2 rounded-full ${session?.is_running ? 'bg-green-500' : 'bg-red-500'}`}></div>
                   </div>
-                  
+
                   <h3 className="text-sm font-semibold text-white mb-1 line-clamp-2 leading-tight">{timer.name}</h3>
-                  <p className="text-gray-300 mb-2 text-xs truncate">Presenter: {timer.presenter_name}</p>
+                  <p className="text-gray-300 mb-2 text-xs truncate">
+                    {presenterNumber ? `Presenter ${presenterNumber.toString().padStart(2, '0')}` : 'Presenter'}: {timer.presenter_name}
+                  </p>
                   
                   <div className="mt-auto">
                     <div className="text-lg font-mono text-red-500 mb-2">
@@ -1875,9 +1907,17 @@ export default function ProTimerApp({ session }) {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {timers.map((timer) => {
               const session = timerSessions[timer.id];
+              // Get event timers sorted by creation time to determine presenter number
+              const eventTimers = timers
+                .filter(t => t.timer_type === 'event')
+                .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+              const presenterNumber = timer.timer_type === 'event'
+                ? eventTimers.findIndex(t => t.id === timer.id) + 1
+                : null;
+
               return (
-                <div 
-                  key={timer.id} 
+                <div
+                  key={timer.id}
                   className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700 cursor-pointer hover:border-gray-600 transition-colors"
                   onClick={() => {
                     setSelectedTimer(timer)
@@ -1889,7 +1929,9 @@ export default function ProTimerApp({ session }) {
                     <div className={`w-3 h-3 rounded-full ${session?.is_running ? 'bg-green-500' : 'bg-red-500'}`}></div>
                   </div>
                   <h3 className="text-xl font-semibold text-white mb-2">{timer.name}</h3>
-                  <p className="text-gray-300 mb-4">Presenter: {timer.presenter_name}</p>
+                  <p className="text-gray-300 mb-4">
+                    {presenterNumber ? `Presenter ${presenterNumber.toString().padStart(2, '0')}` : 'Presenter'}: {timer.presenter_name}
+                  </p>
                   <div className="text-3xl font-mono text-red-500 mb-4">
                     {(() => {
                       if (!session) return formatTime(timer.duration);
