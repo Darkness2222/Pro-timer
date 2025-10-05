@@ -1,0 +1,319 @@
+import React, { useState, useEffect } from 'react'
+import { X, Plus, Trash2, Users, Loader2 } from 'lucide-react'
+import { supabase } from '../lib/supabase'
+
+export default function CreateEventModal({ isOpen, onClose, session, onEventCreated }) {
+  const [loading, setLoading] = useState(false)
+  const [organizationId, setOrganizationId] = useState(null)
+  const [eventName, setEventName] = useState('')
+  const [eventDescription, setEventDescription] = useState('')
+  const [eventDate, setEventDate] = useState('')
+  const [bufferDuration, setBufferDuration] = useState(0)
+  const [autoStartNext, setAutoStartNext] = useState(false)
+  const [presenters, setPresenters] = useState([
+    { name: '', topic: '', duration: 5 }
+  ])
+
+  useEffect(() => {
+    if (isOpen && session?.user) {
+      loadOrganization()
+    }
+  }, [isOpen, session])
+
+  const loadOrganization = async () => {
+    try {
+      const { data } = await supabase
+        .from('organization_members')
+        .select('organization_id')
+        .eq('user_id', session.user.id)
+        .maybeSingle()
+
+      if (data) {
+        setOrganizationId(data.organization_id)
+      }
+    } catch (error) {
+      console.error('Error loading organization:', error)
+    }
+  }
+
+  const handleAddPresenter = () => {
+    setPresenters([...presenters, { name: '', topic: '', duration: 5 }])
+  }
+
+  const handleRemovePresenter = (index) => {
+    if (presenters.length > 1) {
+      setPresenters(presenters.filter((_, i) => i !== index))
+    }
+  }
+
+  const handlePresenterChange = (index, field, value) => {
+    const updated = [...presenters]
+    updated[index][field] = value
+    setPresenters(updated)
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+
+    if (!organizationId) {
+      alert('Organization not found')
+      return
+    }
+
+    if (presenters.some(p => !p.name || !p.topic)) {
+      alert('Please fill in all presenter details')
+      return
+    }
+
+    setLoading(true)
+
+    try {
+      const { data: eventData, error: eventError } = await supabase
+        .from('events')
+        .insert({
+          organization_id: organizationId,
+          name: eventName,
+          description: eventDescription,
+          event_date: eventDate || null,
+          buffer_duration: bufferDuration,
+          auto_start_next: autoStartNext,
+          status: 'upcoming',
+          created_by: session.user.id
+        })
+        .select()
+        .single()
+
+      if (eventError) throw eventError
+
+      const timersToInsert = presenters.map((presenter, index) => ({
+        name: presenter.topic,
+        presenter_name: presenter.name,
+        duration: presenter.duration * 60,
+        user_id: session.user.id,
+        event_id: eventData.id,
+        presentation_order: index + 1,
+        timer_type: 'event',
+        status: 'active'
+      }))
+
+      const { error: timersError } = await supabase
+        .from('timers')
+        .insert(timersToInsert)
+
+      if (timersError) throw timersError
+
+      alert('Event created successfully!')
+      onEventCreated()
+      onClose()
+      resetForm()
+    } catch (error) {
+      console.error('Error creating event:', error)
+      alert('Failed to create event')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const resetForm = () => {
+    setEventName('')
+    setEventDescription('')
+    setEventDate('')
+    setBufferDuration(0)
+    setAutoStartNext(false)
+    setPresenters([{ name: '', topic: '', duration: 5 }])
+  }
+
+  if (!isOpen) return null
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-gray-800 rounded-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto border border-gray-700">
+        <div className="sticky top-0 bg-gray-800 border-b border-gray-700 p-6">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-3">
+              <Users className="w-6 h-6 text-blue-500" />
+              <h2 className="text-2xl font-bold text-white">Create Event</h2>
+            </div>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-white transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Event Name *
+            </label>
+            <input
+              type="text"
+              value={eventName}
+              onChange={(e) => setEventName(e.target.value)}
+              required
+              className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Annual Conference 2025"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Description
+            </label>
+            <textarea
+              value={eventDescription}
+              onChange={(e) => setEventDescription(e.target.value)}
+              rows={3}
+              className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Brief description of the event..."
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Event Date & Time
+            </label>
+            <input
+              type="datetime-local"
+              value={eventDate}
+              onChange={(e) => setEventDate(e.target.value)}
+              className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Buffer Time (seconds)
+              </label>
+              <input
+                type="number"
+                value={bufferDuration}
+                onChange={(e) => setBufferDuration(parseInt(e.target.value) || 0)}
+                min="0"
+                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="0"
+              />
+              <p className="text-xs text-gray-400 mt-1">Time between presenters</p>
+            </div>
+
+            <div>
+              <label className="flex items-center gap-2 text-sm font-medium text-gray-300 mb-2">
+                <input
+                  type="checkbox"
+                  checked={autoStartNext}
+                  onChange={(e) => setAutoStartNext(e.target.checked)}
+                  className="rounded bg-gray-700 border-gray-600"
+                />
+                Auto-start next presenter
+              </label>
+              <p className="text-xs text-gray-400 mt-1">Automatically start the next presenter after buffer</p>
+            </div>
+          </div>
+
+          <div>
+            <div className="flex justify-between items-center mb-3">
+              <label className="block text-sm font-medium text-gray-300">
+                Presenters *
+              </label>
+              <button
+                type="button"
+                onClick={handleAddPresenter}
+                className="text-blue-400 hover:text-blue-300 text-sm flex items-center gap-1"
+              >
+                <Plus className="w-4 h-4" />
+                Add Presenter
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {presenters.map((presenter, index) => (
+                <div key={index} className="bg-gray-700 rounded-lg p-4 border border-gray-600">
+                  <div className="flex justify-between items-center mb-3">
+                    <div className="text-sm font-medium text-gray-300">Presenter {index + 1}</div>
+                    {presenters.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemovePresenter(index)}
+                        className="text-red-400 hover:text-red-300"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Presenter Name</label>
+                      <input
+                        type="text"
+                        value={presenter.name}
+                        onChange={(e) => handlePresenterChange(index, 'name', e.target.value)}
+                        required
+                        className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="John Doe"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Topic/Title</label>
+                      <input
+                        type="text"
+                        value={presenter.topic}
+                        onChange={(e) => handlePresenterChange(index, 'topic', e.target.value)}
+                        required
+                        className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Opening Keynote"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Duration (minutes)</label>
+                      <input
+                        type="number"
+                        value={presenter.duration}
+                        onChange={(e) => handlePresenterChange(index, 'duration', parseInt(e.target.value) || 5)}
+                        required
+                        min="1"
+                        className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex gap-3 pt-4 border-t border-gray-700">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-3 px-4 rounded-lg font-medium transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <Plus className="w-4 h-4" />
+                  Create Event
+                </>
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}

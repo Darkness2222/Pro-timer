@@ -1,17 +1,16 @@
 import React, { useState } from 'react'
-import { X, Crown, Check, Loader2 } from 'lucide-react'
+import { X, Crown, Loader2 } from 'lucide-react'
 import { products } from '../stripe-config.js'
 import { supabase } from '../lib/supabase'
 
 export default function SubscriptionModal({ isOpen, onClose, session }) {
   const [loading, setLoading] = useState(false)
-  const [selectedPlan, setSelectedPlan] = useState(products[1]?.priceId || '')
+  const [selectedPlan, setSelectedPlan] = useState(products[0]?.priceId || '')
 
   const planOptions = products.map(product => ({
     ...product,
-    displayPrice: product.name === 'Yearly' ? 'C$99.00' : 'C$9.99',
-    interval: product.name === 'Yearly' ? 'year' : 'month',
-    savings: product.name === 'Yearly' ? 'Save 17%' : null
+    displayPrice: `$${product.price.toFixed(2)}`,
+    interval: 'month'
   }))
 
   const handleSubscribe = async () => {
@@ -68,22 +67,7 @@ export default function SubscriptionModal({ isOpen, onClose, session }) {
 
         <div className="space-y-4 mb-6">
           <div className="text-gray-300 text-sm">
-            Unlock advanced features for professional presentations:
-          </div>
-          
-          <div className="space-y-2">
-            {[
-              'Remote presenter/admin sync',
-              'Real-time timer control',
-              'Custom stage cues & messages',
-              'Indepth Reporting',
-              'Priority support'
-            ].map((feature, index) => (
-              <div key={index} className="flex items-center gap-2 text-sm text-gray-300">
-                <Check className="w-4 h-4 text-green-500" />
-                {feature}
-              </div>
-            ))}
+            Choose the plan that fits your team:
           </div>
         </div>
 
@@ -104,10 +88,7 @@ export default function SubscriptionModal({ isOpen, onClose, session }) {
                   <div className="text-gray-400 text-sm">{plan.description}</div>
                 </div>
                 <div className="text-right">
-                  <div className="text-white font-bold">{plan.displayPrice}</div>
-                  {plan.savings && (
-                    <div className="text-green-400 text-xs">{plan.savings}</div>
-                  )}
+                  <div className="text-white font-bold">{plan.displayPrice}/mo</div>
                 </div>
               </div>
             </div>
@@ -127,7 +108,7 @@ export default function SubscriptionModal({ isOpen, onClose, session }) {
           ) : (
             <>
               <Crown className="w-4 h-4" />
-              Subscribe to Pro
+              Subscribe Now
             </>
           )}
         </button>

@@ -2,16 +2,23 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import TimerOverview from './TimerOverview'
 import { getProductByPriceId } from '../stripe-config'
-import { Play, Pause, Square, RotateCcw, Settings, MessageSquare, Plus, Minus, Clock, Users, Timer as TimerIcon, QrCode, ExternalLink, FileText, Crown, LogOut, CircleCheck as CheckCircle, X } from 'lucide-react'
+import { Play, Pause, Square, RotateCcw, Settings, MessageSquare, Plus, Minus, Clock, Users, Timer as TimerIcon, QrCode, ExternalLink, FileText, Crown, LogOut, CircleCheck as CheckCircle, X, Calendar } from 'lucide-react'
 import SubscriptionModal from './SubscriptionModal'
 import ReportsPage from './ReportsPage'
 import SuccessPage from './SuccessPage'
 import CreateTimerModal from './CreateTimerModal'
 import SettingsModal from './SettingsModal'
 import EventRunningInterfaceModal from './EventRunningInterfaceModal'
+import TeamManagement from './TeamManagement'
+import EventsPage from './EventsPage'
+import EventDetail from './EventDetail'
+import CreateEventModal from './CreateEventModal'
 
 export default function ProTimerApp({ session }) {
-  const [currentView, setCurrentView] = useState('overview')
+  const [currentView, setCurrentView] = useState('events')
+  const [selectedEventId, setSelectedEventId] = useState(null)
+  const [showTeamManagement, setShowTeamManagement] = useState(false)
+  const [showCreateEventModal, setShowCreateEventModal] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [selectedTimer, setSelectedTimer] = useState(null)
   const [timers, setTimers] = useState([])
@@ -1374,6 +1381,17 @@ export default function ProTimerApp({ session }) {
               )}
             </div>
               <button
+                onClick={() => { setCurrentView('events'); setSelectedEventId(null); }}
+                className={`inline-flex items-center px-4 py-2 border-b-2 text-sm font-medium ${
+                  currentView === 'events' && !selectedEventId
+                    ? 'border-blue-500 text-blue-400'
+                    : 'border-transparent text-gray-300 hover:text-white hover:border-gray-300'
+                }`}
+              >
+                <Calendar className="w-4 h-4 mr-2" />
+                Events
+              </button>
+              <button
                 onClick={() => setCurrentView('admin')}
                 className={`inline-flex items-center px-4 py-2 border-b-2 text-sm font-medium ${
                   currentView === 'admin'
@@ -1388,23 +1406,12 @@ export default function ProTimerApp({ session }) {
                 onClick={() => setCurrentView('presenter')}
                 className={`inline-flex items-center px-4 py-2 border-b-2 text-sm font-medium ${
                   currentView === 'presenter'
-                    ? 'border-blue-500 text-blue-400'
+                    ? 'border-purple-500 text-purple-400'
                     : 'border-transparent text-gray-300 hover:text-white hover:border-gray-300'
                 }`}
               >
                 <Users className="w-4 h-4 mr-2" />
                 Presenter View
-              </button>
-              <button
-                onClick={() => setCurrentView('overview')}
-                className={`inline-flex items-center px-4 py-2 border-b-2 text-sm font-medium ${
-                  currentView === 'overview'
-                    ? 'border-purple-500 text-purple-400'
-                    : 'border-transparent text-gray-300 hover:text-white hover:border-gray-300'
-                }`}
-              >
-                <TimerIcon className="w-4 h-4 mr-2" />
-                Timer Overview
               </button>
               <button
                 onClick={() => setCurrentView('reports')}
@@ -1416,6 +1423,13 @@ export default function ProTimerApp({ session }) {
               >
                 <FileText className="w-4 h-4 mr-2" />
                 Reports
+              </button>
+              <button
+                onClick={() => setShowTeamManagement(true)}
+                className="px-4 py-2 rounded-lg transition-colors bg-gray-700 text-gray-300 hover:bg-gray-600 flex items-center gap-2"
+              >
+                <Users className="w-4 h-4" />
+                Team
               </button>
               <button
                 onClick={() => setShowSettings(true)}
@@ -1960,9 +1974,32 @@ export default function ProTimerApp({ session }) {
         </div>
       )}
 
+      {/* Events View */}
+      {currentView === 'events' && !selectedEventId && (
+        <EventsPage
+          session={session}
+          onEventSelect={(eventId) => {
+            if (eventId === 'create') {
+              setShowCreateEventModal(true)
+            } else {
+              setSelectedEventId(eventId)
+            }
+          }}
+        />
+      )}
+
+      {/* Event Detail View */}
+      {currentView === 'events' && selectedEventId && (
+        <EventDetail
+          eventId={selectedEventId}
+          session={session}
+          onBack={() => setSelectedEventId(null)}
+        />
+      )}
+
       {/* Reports View */}
       {currentView === 'reports' && (
-        <ReportsPage 
+        <ReportsPage
           timers={timers}
           timerLogs={allTimerLogs}
           reportStartDate={reportDateRange.start}
@@ -1992,6 +2029,25 @@ export default function ProTimerApp({ session }) {
         isOpen={showSubscriptionModal}
         onClose={() => setShowSubscriptionModal(false)}
         session={session}
+      />
+
+      {/* Team Management Modal */}
+      <TeamManagement
+        isOpen={showTeamManagement}
+        onClose={() => setShowTeamManagement(false)}
+        session={session}
+      />
+
+      {/* Create Event Modal */}
+      <CreateEventModal
+        isOpen={showCreateEventModal}
+        onClose={() => setShowCreateEventModal(false)}
+        session={session}
+        onEventCreated={() => {
+          setShowCreateEventModal(false)
+          setCurrentView('events')
+          setSelectedEventId(null)
+        }}
       />
 
       {/* Event Running Interface Modal */}
