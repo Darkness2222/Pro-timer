@@ -861,22 +861,27 @@ export default function ProTimerApp({ session }) {
         console.error('Error logging finish action:', logError)
       }
 
-      // Remove from local state
-      setTimers(prev => prev.filter(t => t.id !== timerId))
+      // Reload timers to reflect the status change
+      await loadTimers()
+      await updateTimerSessions()
 
       // Check if this is an event timer and start buffer if there's a next timer
       if (finishedTimer?.timer_type === 'event') {
-        const eventTimers = timers
-          .filter(timer => timer.timer_type === 'event' && timer.id !== timerId && timer.status === 'active')
-          .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+        // Get fresh list of timers after reload
+        const { data: freshTimers } = await supabase
+          .from('timers')
+          .select('*')
+          .eq('status', 'active')
+          .eq('timer_type', 'event')
+          .order('created_at', { ascending: true })
 
-        const nextUpTimer = eventTimers.find(timer =>
-          !timerSessions[timer.id]?.is_running
-        )
+        const nextUpTimer = freshTimers?.[0]
 
         if (nextUpTimer) {
           // Use the stored buffer duration from the timer
           const bufferDuration = nextUpTimer.buffer_duration || DEFAULT_BUFFER_DURATION
+
+          console.log('Starting buffer timer:', bufferDuration, 'seconds')
 
           // Start buffer countdown
           setBufferTimerState({
@@ -1396,7 +1401,30 @@ export default function ProTimerApp({ session }) {
       {/* Presenter View */}
       {currentView === 'presenter' && (
         <div className="relative flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-indigo-900 text-white overflow-hidden">
-          {selectedTimer ? (
+          {bufferTimerState.isRunning ? (
+            <div className="text-center w-full max-w-4xl px-8">
+              {/* Buffer Timer Display */}
+              <h1 className="text-5xl md:text-6xl font-bold mb-8 text-orange-400">
+                Transition Buffer
+              </h1>
+
+              <div className="text-[180px] md:text-[220px] font-mono font-bold leading-none mb-8 text-orange-400">
+                {formatTime(bufferTimerState.timeLeft)}
+              </div>
+
+              <div className="text-3xl text-orange-200 mb-12">
+                Preparing for next presenter...
+              </div>
+
+              {/* Progress Bar */}
+              <div className="w-full max-w-3xl mx-auto bg-gray-700/50 rounded-full h-4 mb-8">
+                <div
+                  className="bg-gradient-to-r from-orange-500 to-red-500 h-4 rounded-full transition-all duration-1000"
+                  style={{ width: `${((bufferTimerState.duration - bufferTimerState.timeLeft) / bufferTimerState.duration) * 100}%` }}
+                ></div>
+              </div>
+            </div>
+          ) : selectedTimer ? (
             <div className="text-center w-full max-w-4xl px-8">
               {/* Timer Title */}
               <h1 className="text-5xl md:text-6xl font-bold mb-4">
