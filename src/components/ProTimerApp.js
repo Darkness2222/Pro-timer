@@ -295,10 +295,20 @@ export default function ProTimerApp({ session }) {
         .from('timer_sessions')
         .select('*')
       if (error) throw error
-      
+
+      const now = Date.now()
       const sessionsMap = {}
       data?.forEach(session => {
-        sessionsMap[session.timer_id] = session
+        if (session.is_running && session.updated_at) {
+          const elapsedSeconds = Math.floor((now - new Date(session.updated_at).getTime()) / 1000)
+          const calculatedTimeLeft = Math.max(session.time_left - elapsedSeconds, -999)
+          sessionsMap[session.timer_id] = {
+            ...session,
+            time_left: calculatedTimeLeft
+          }
+        } else {
+          sessionsMap[session.timer_id] = session
+        }
       })
       setTimerSessions(sessionsMap)
     } catch (error) {
