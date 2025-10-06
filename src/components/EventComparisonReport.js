@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Calendar, ArrowLeft, TrendingUp, TrendingDown, Minus, BarChart2 } from 'lucide-react'
+import { Calendar, ArrowLeft, TrendingUp, TrendingDown, Minus, ChartBar as BarChart2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
 export default function EventComparisonReport({ session, onBack }) {

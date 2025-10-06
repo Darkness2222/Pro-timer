@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { FileText, TrendingUp, Clock, Target, Award, TriangleAlert as AlertTriangle, Calendar, User, BarChart2, Activity } from 'lucide-react'
+import { FileText, TrendingUp, Clock, Target, Award, TriangleAlert as AlertTriangle, Calendar, User, ChartBar as BarChart2, Activity } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import PresenterPerformanceReport from './PresenterPerformanceReport'
 import EventComparisonReport from './EventComparisonReport'

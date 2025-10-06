@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { User, TrendingUp, TrendingDown, Award, Clock, Target, BarChart3, ArrowLeft } from 'lucide-react'
+import { User, TrendingUp, TrendingDown, Award, Clock, Target, ChartBar as BarChart3, ArrowLeft } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
 export default function PresenterPerformanceReport({ session, onBack }) {
