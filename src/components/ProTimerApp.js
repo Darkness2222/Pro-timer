@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import TimerOverview from './TimerOverview'
 import { getProductByPriceId } from '../stripe-config'
 import { calculateTimeLeft, formatTime as formatTimeUtil, getProgressPercentage as getProgressPercentageUtil } from '../lib/timerUtils'
-import { Play, Pause, Square, RotateCcw, Settings, MessageSquare, Plus, Minus, Clock, Users, Timer as TimerIcon, QrCode, ExternalLink, FileText, Crown, LogOut, CircleCheck as CheckCircle, X, Calendar } from 'lucide-react'
+import { Play, Pause, Square, RotateCcw, Settings, MessageSquare, Plus, Minus, Clock, Users, Timer as TimerIcon, QrCode, ExternalLink, FileText, Crown, LogOut, CircleCheck as CheckCircle, X, Calendar, TriangleAlert as AlertTriangle } from 'lucide-react'
 import SubscriptionModal from './SubscriptionModal'
 import ReportsPage from './ReportsPage'
 import SuccessPage from './SuccessPage'
@@ -86,6 +86,7 @@ export default function ProTimerApp({ session }) {
   const [currentTime, setCurrentTime] = useState(Date.now())
   const [allTimerLogs, setAllTimerLogs] = useState([])
   const [reportDateRange, setReportDateRange] = useState({ start: '', end: '' })
+  const [lastOvertimeLog, setLastOvertimeLog] = useState(null)
   const [quickMessages, setQuickMessages] = useState([
     { id: 1, text: '⏰ 5 minutes remaining', emoji: '⏰' },
     { id: 2, text: '⚡ Please wrap up', emoji: '⚡' },
@@ -269,17 +270,30 @@ export default function ProTimerApp({ session }) {
 
   // Timer countdown effect with overtime tracking
   useEffect(() => {
-    if (isRunning && timeLeft >= 0) {
+    if (isRunning) {
       intervalRef.current = setInterval(() => {
         setTimeLeft(prev => {
-          if (prev <= 1) {
-            // Timer expired - log overtime
+          const newValue = prev - 1
+
+          if (prev === 1) {
+            // Timer just expired - log the first overtime event
             if (selectedTimer) {
               logTimerAction('expired', 0, null, 'Timer reached 00:00 - presenter went over time')
+              setLastOvertimeLog(Date.now())
             }
-            return prev - 1 // Allow negative values for overtime
+          } else if (newValue < 0) {
+            // Timer is in overtime - log every 30 seconds
+            const now = Date.now()
+            if (!lastOvertimeLog || (now - lastOvertimeLog) >= 30000) {
+              if (selectedTimer) {
+                const overtimeSeconds = Math.abs(newValue)
+                logTimerAction('overtime', newValue, null, `Presenter ${overtimeSeconds}s over time`, overtimeSeconds)
+                setLastOvertimeLog(now)
+              }
+            }
           }
-          return prev - 1
+
+          return newValue
         })
       }, 1000)
     } else {
@@ -287,7 +301,7 @@ export default function ProTimerApp({ session }) {
     }
 
     return () => clearInterval(intervalRef.current)
-  }, [isRunning, timeLeft, selectedTimer])
+  }, [isRunning, timeLeft, selectedTimer, lastOvertimeLog])
 
   // Update timer sessions for all timers
   const updateTimerSessions = async () => {
@@ -460,9 +474,9 @@ export default function ProTimerApp({ session }) {
     }
   }
 
-  const logTimerAction = async (action, timeValue = null, durationChange = null, notes = null) => {
+  const logTimerAction = async (action, timeValue = null, durationChange = null, notes = null, overtimeSeconds = null) => {
     if (!selectedTimer) return
-    
+
     try {
       await supabase
         .from('timer_logs')
@@ -471,12 +485,13 @@ export default function ProTimerApp({ session }) {
           action,
           time_value: timeValue,
           duration_change: durationChange,
-          notes
+          notes,
+          overtime_seconds: overtimeSeconds
         }])
     } catch (error) {
       console.error('Error logging action:', error)
     }
-    
+
     // Reload all logs for reports
     loadAllTimerLogs()
   }
@@ -692,8 +707,9 @@ export default function ProTimerApp({ session }) {
 
   const pauseTimer = async () => {
     setIsRunning(false)
-    logTimerAction('pause', timeLeft)
-    
+    const overtimeSeconds = timeLeft < 0 ? Math.abs(timeLeft) : null
+    logTimerAction('pause', timeLeft, null, overtimeSeconds ? `Paused in overtime (${overtimeSeconds}s over)` : null, overtimeSeconds)
+
     // Update session in database
     try {
       await supabase
@@ -711,8 +727,9 @@ export default function ProTimerApp({ session }) {
 
   const stopTimer = async () => {
     setIsRunning(false)
-    logTimerAction('stop', timeLeft)
-    
+    const overtimeSeconds = timeLeft < 0 ? Math.abs(timeLeft) : null
+    logTimerAction('stop', timeLeft, null, overtimeSeconds ? `Stopped in overtime (${overtimeSeconds}s over)` : null, overtimeSeconds)
+
     // Update session in database
     try {
       await supabase
@@ -1016,7 +1033,7 @@ export default function ProTimerApp({ session }) {
 
   const exportTimersCSV = () => {
     const csvData = []
-    
+
     // Add headers
     csvData.push([
       'Timer Name',
@@ -1026,6 +1043,8 @@ export default function ProTimerApp({ session }) {
       'Action',
       'Time Value',
       'Duration Change',
+      'Went Overtime',
+      'Overtime Amount (seconds)',
       'Notes',
       'Action Date'
     ])
@@ -1054,12 +1073,17 @@ export default function ProTimerApp({ session }) {
         '',
         '',
         '',
+        '',
+        '',
         new Date(timer.created_at).toLocaleString()
       ])
     })
-    
+
     // Add log entries
     filteredLogs.forEach(log => {
+      const wentOvertime = log.overtime_seconds && log.overtime_seconds > 0 ? 'Yes' : 'No'
+      const overtimeAmount = log.overtime_seconds && log.overtime_seconds > 0 ? log.overtime_seconds : ''
+
       csvData.push([
         log.timers?.name || 'Unknown Timer',
         log.timers?.presenter_name || 'Unknown Presenter',
@@ -1068,6 +1092,8 @@ export default function ProTimerApp({ session }) {
         log.action,
         log.time_value ? formatTime(log.time_value) : '',
         log.duration_change || '',
+        wentOvertime,
+        overtimeAmount,
         log.notes || '',
         new Date(log.created_at).toLocaleString()
       ])
@@ -1525,8 +1551,12 @@ export default function ProTimerApp({ session }) {
                 const session = timerSessions[selectedTimer.id]
                 const currentTimeLeft = calculateTimeLeft(session, selectedTimer.duration, currentTime)
                 return currentTimeLeft <= 0 && (
-                  <div className="text-3xl text-red-400 font-bold mb-8 animate-pulse">
-                    ⚠️ OVERTIME ⚠️
+                  <div className="flex items-center justify-center gap-4 mb-8 animate-pulse">
+                    <AlertTriangle className="w-16 h-16 text-red-500" />
+                    <div className="text-3xl text-red-400 font-bold">
+                      OVERTIME
+                    </div>
+                    <AlertTriangle className="w-16 h-16 text-red-500" />
                   </div>
                 )
               })()}
@@ -1672,10 +1702,18 @@ export default function ProTimerApp({ session }) {
                   <p className="text-gray-300 mb-2 text-xs truncate">
                     {presenterNumber ? `Presenter ${presenterNumber.toString().padStart(2, '0')}` : 'Presenter'}: {timer.presenter_name}
                   </p>
-                  
+
                   <div className="mt-auto">
-                    <div className="text-lg font-mono text-red-500 mb-2">
-                      {formatTimeFromSession(session, timer.duration)}
+                    <div className="flex items-center justify-center gap-1 mb-2">
+                      {(() => {
+                        const timeLeft = calculateTimeLeft(session, timer.duration, currentTime)
+                        return timeLeft < 0 && (
+                          <AlertTriangle className="w-4 h-4 text-red-500 animate-pulse" />
+                        )
+                      })()}
+                      <div className="text-lg font-mono text-red-500">
+                        {formatTimeFromSession(session, timer.duration)}
+                      </div>
                     </div>
                     {/* Progress Bar */}
                     <div className="w-full bg-gray-700 rounded-full h-1">
@@ -1706,8 +1744,12 @@ export default function ProTimerApp({ session }) {
                   {formatTime(timeLeft)}
                 </div>
                 {timeLeft < 0 && (
-                  <div className="text-2xl font-bold text-red-500 mb-2">
-                    ⚠️ OVERTIME ⚠️
+                  <div className="flex items-center justify-center gap-3 mb-2 animate-pulse">
+                    <AlertTriangle className="w-8 h-8 text-red-500" />
+                    <div className="text-2xl font-bold text-red-500">
+                      OVERTIME
+                    </div>
+                    <AlertTriangle className="w-8 h-8 text-red-500" />
                   </div>
                 )}
                 <div className="w-full bg-gray-700 rounded-full h-4 mb-4">

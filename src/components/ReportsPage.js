@@ -39,10 +39,10 @@ export default function ReportsPage({
 
   // Calculate efficiency metrics
   const calculateEfficiencyMetrics = () => {
-    const completedTimers = allTimers.filter(timer => 
+    const completedTimers = allTimers.filter(timer =>
       timer.status === 'finished_early' || timer.status === 'completed'
     )
-    
+
     if (completedTimers.length === 0) {
       return {
         totalPlannedTime: 0,
@@ -54,7 +54,8 @@ export default function ReportsPage({
         timeSaved: 0,
         timeLost: 0,
         netEfficiency: 0,
-        efficiencyRating: 'No Data'
+        efficiencyRating: 'No Data',
+        overtimeDetails: []
       }
     }
 
@@ -65,16 +66,32 @@ export default function ReportsPage({
     let overtimeCount = 0
     let timeSaved = 0
     let timeLost = 0
+    const overtimeDetails = []
 
     completedTimers.forEach(timer => {
       const plannedDuration = timer.duration
       totalPlannedTime += plannedDuration
 
       // Find finish log to determine actual time
-      const finishLog = filteredLogs.find(log => 
-        log.timer_id === timer.id && 
+      const finishLog = filteredLogs.find(log =>
+        log.timer_id === timer.id &&
         (log.action === 'finished' || log.action === 'expired')
       )
+
+      // Find all overtime logs for this timer
+      const overtimeLogs = filteredLogs.filter(log =>
+        log.timer_id === timer.id &&
+        (log.action === 'overtime' || log.action === 'expired' ||
+         (log.overtime_seconds !== null && log.overtime_seconds > 0))
+      )
+
+      // Get the maximum overtime for this timer
+      let maxOvertime = 0
+      overtimeLogs.forEach(log => {
+        if (log.overtime_seconds && log.overtime_seconds > maxOvertime) {
+          maxOvertime = log.overtime_seconds
+        }
+      })
 
       let actualTime = plannedDuration
       if (finishLog && finishLog.time_value !== null) {
@@ -87,9 +104,17 @@ export default function ReportsPage({
       if (variance < -30) { // Finished more than 30 seconds early
         earlyFinishCount++
         timeSaved += Math.abs(variance)
-      } else if (variance > 30) { // Went more than 30 seconds over
+      } else if (variance > 30 || maxOvertime > 0) { // Went more than 30 seconds over
         overtimeCount++
-        timeLost += variance
+        timeLost += variance > 0 ? variance : maxOvertime
+        if (maxOvertime > 0 || variance > 30) {
+          overtimeDetails.push({
+            timerName: timer.name,
+            presenterName: timer.presenter_name,
+            overtimeSeconds: maxOvertime > 0 ? maxOvertime : variance,
+            timerId: timer.id
+          })
+        }
       } else {
         onTimeCount++
       }
@@ -115,7 +140,8 @@ export default function ReportsPage({
       timeLost,
       netEfficiency,
       efficiencyRating,
-      totalCompleted: completedTimers.length
+      totalCompleted: completedTimers.length,
+      overtimeDetails: overtimeDetails.sort((a, b) => b.overtimeSeconds - a.overtimeSeconds)
     }
   }
 
@@ -339,6 +365,38 @@ export default function ReportsPage({
            metrics.netEfficiency < 0 ? 'Time lost overall' : 'Perfectly balanced'}
         </p>
       </div>
+
+      {/* Overtime Analysis */}
+      {metrics.overtimeDetails && metrics.overtimeDetails.length > 0 && (
+        <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-red-700/50 mb-8">
+          <h3 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5 text-red-400" />
+            Overtime Analysis
+          </h3>
+          <p className="text-gray-400 text-sm mb-4">
+            {metrics.overtimeDetails.length} presenter{metrics.overtimeDetails.length !== 1 ? 's' : ''} went over their allocated time
+          </p>
+          <div className="space-y-3">
+            {metrics.overtimeDetails.map((detail, index) => (
+              <div key={index} className="flex items-center justify-between p-4 bg-red-900/20 border border-red-700/50 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0" />
+                  <div>
+                    <p className="text-white font-medium">{detail.presenterName}</p>
+                    <p className="text-gray-400 text-sm">{detail.timerName}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-red-400 font-bold text-lg">
+                    +{formatDuration(detail.overtimeSeconds)}
+                  </p>
+                  <p className="text-gray-400 text-xs">overtime</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Smart Recommendations */}
       <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700 mb-8">
