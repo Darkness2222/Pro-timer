@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react'
-import { ArrowLeft, Users, Clock, Play, Pause, RotateCcw, Plus, Minus, MessageSquare, Loader as Loader2, QrCode } from 'lucide-react'
+import { ArrowLeft, Users, Clock, Play, Pause, RotateCcw, Plus, Minus, MessageSquare, Loader as Loader2, QrCode, Trash2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { calculateTimeLeft, formatTime as formatTimeUtil } from '../lib/timerUtils'
 import QRCodeModal from './QRCodeModal'
 import AccessManagement from './AccessManagement'
+import { checkIsAdmin } from '../lib/adminUtils'
 
 export default function EventDetail({ eventId, session, onBack }) {
   const [loading, setLoading] = useState(true)
@@ -13,14 +14,24 @@ export default function EventDetail({ eventId, session, onBack }) {
   const [timerSessions, setTimerSessions] = useState({})
   const [currentTime, setCurrentTime] = useState(Date.now())
   const [showQRModal, setShowQRModal] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
 
   useEffect(() => {
     if (eventId && session?.user) {
+      checkAdminStatus()
       loadEventDetail()
       const interval = setInterval(loadEventDetail, 2000)
       return () => clearInterval(interval)
     }
   }, [eventId, session])
+
+  const checkAdminStatus = async () => {
+    if (session?.user) {
+      const adminStatus = await checkIsAdmin(session.user.id)
+      setIsAdmin(adminStatus)
+    }
+  }
 
   const loadEventDetail = async () => {
     try {
@@ -181,6 +192,26 @@ export default function EventDetail({ eventId, session, onBack }) {
     }
   }
 
+  const handleDeleteEvent = async () => {
+    try {
+      const { error } = await supabase
+        .from('events')
+        .update({
+          deleted_at: new Date().toISOString(),
+          deleted_by: session.user.id
+        })
+        .eq('id', eventId)
+
+      if (error) throw error
+
+      setShowDeleteModal(false)
+      onBack()
+    } catch (error) {
+      console.error('Error deleting event:', error)
+      alert('Failed to delete event: ' + error.message)
+    }
+  }
+
   // Update current time every second
   useEffect(() => {
     const interval = setInterval(() => {
@@ -247,6 +278,15 @@ export default function EventDetail({ eventId, session, onBack }) {
                 <QrCode className="w-4 h-4" />
                 QR Code
               </button>
+              {isAdmin && (
+                <button
+                  onClick={() => setShowDeleteModal(true)}
+                  className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Delete
+                </button>
+              )}
               <div className="px-3 py-1 rounded-full bg-blue-500/20 text-blue-400 text-sm font-medium capitalize">
                 {event.status.replace('_', ' ')}
               </div>
@@ -349,6 +389,35 @@ export default function EventDetail({ eventId, session, onBack }) {
           organizationId={event.organization_id}
           onClose={() => setShowQRModal(false)}
         />
+      )}
+
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-xl max-w-md w-full p-6 border border-gray-700">
+            <h3 className="text-xl font-bold text-white mb-4">Delete Event?</h3>
+            <p className="text-gray-300 mb-4">
+              Are you sure you want to delete this event? The event will be moved to "Recently Deleted" where it can be recovered within 5 days.
+            </p>
+            <p className="text-sm text-gray-400 mb-6">
+              After 5 days, the event and all associated data will be permanently deleted.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={handleDeleteEvent}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete Event
+              </button>
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-3 px-4 rounded-lg font-medium transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import TimerOverview from './TimerOverview'
 import { getProductByPriceId } from '../stripe-config'
 import { calculateTimeLeft, formatTime as formatTimeUtil, getProgressPercentage as getProgressPercentageUtil } from '../lib/timerUtils'
-import { Play, Pause, Square, RotateCcw, Settings, MessageSquare, Plus, Minus, Clock, Users, Timer as TimerIcon, QrCode, ExternalLink, FileText, Crown, LogOut, CircleCheck as CheckCircle, X, Calendar, TriangleAlert as AlertTriangle } from 'lucide-react'
+import { Play, Pause, Square, RotateCcw, Settings, MessageSquare, Plus, Minus, Clock, Users, Timer as TimerIcon, QrCode, ExternalLink, FileText, Crown, LogOut, CircleCheck as CheckCircle, X, Calendar, TriangleAlert as AlertTriangle, Trash2 } from 'lucide-react'
 import SubscriptionModal from './SubscriptionModal'
 import ReportsPage from './ReportsPage'
 import SuccessPage from './SuccessPage'
@@ -15,6 +15,8 @@ import EventsPage from './EventsPage'
 import EventDetail from './EventDetail'
 import CreateEventModal from './CreateEventModal'
 import PresentersPage from './PresentersPage'
+import RecentlyDeletedEventsPage from './RecentlyDeletedEventsPage'
+import { checkIsAdmin } from '../lib/adminUtils'
 
 export default function ProTimerApp({ session }) {
   const [currentView, setCurrentView] = useState('events')
@@ -25,6 +27,7 @@ export default function ProTimerApp({ session }) {
   const [selectedTimer, setSelectedTimer] = useState(null)
   const [timers, setTimers] = useState([])
   const [loading, setLoading] = useState(true)
+  const [isAdmin, setIsAdmin] = useState(false)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showMessageModal, setShowMessageModal] = useState(false)
   const [messagesExpanded, setMessagesExpanded] = useState(false)
@@ -129,7 +132,15 @@ export default function ProTimerApp({ session }) {
 
   useEffect(() => {
     loadUserProfile()
+    checkAdminStatus()
   }, [loadUserProfile])
+
+  const checkAdminStatus = async () => {
+    if (session?.user) {
+      const adminStatus = await checkIsAdmin(session.user.id)
+      setIsAdmin(adminStatus)
+    }
+  }
 
   // Real-time message subscription
   useEffect(() => {
@@ -1446,6 +1457,19 @@ export default function ProTimerApp({ session }) {
                 <Users className="w-4 h-4 mr-2" />
                 Presenters
               </button>
+              {isAdmin && (
+                <button
+                  onClick={() => setCurrentView('deleted')}
+                  className={`inline-flex items-center px-4 py-2 border-b-2 text-sm font-medium ${
+                    currentView === 'deleted'
+                      ? 'border-red-500 text-red-400'
+                      : 'border-transparent text-gray-300 hover:text-white hover:border-gray-300'
+                  }`}
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Recently Deleted
+                </button>
+              )}
               <button
                 onClick={() => setShowTeamManagement(true)}
                 className="px-4 py-2 rounded-lg transition-colors bg-gray-700 text-gray-300 hover:bg-gray-600 flex items-center gap-2"
@@ -2095,6 +2119,14 @@ export default function ProTimerApp({ session }) {
       {/* Presenters View */}
       {currentView === 'presenters' && (
         <PresentersPage session={session} />
+      )}
+
+      {/* Recently Deleted Events View */}
+      {currentView === 'deleted' && (
+        <RecentlyDeletedEventsPage
+          session={session}
+          onBack={() => setCurrentView('events')}
+        />
       )}
 
       {/* Create Timer Modal */}
