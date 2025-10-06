@@ -1447,13 +1447,6 @@ export default function ProTimerApp({ session }) {
                 Presenters
               </button>
               <button
-                onClick={() => setShowTeamManagement(true)}
-                className="px-4 py-2 rounded-lg transition-colors bg-gray-700 text-gray-300 hover:bg-gray-600 flex items-center gap-2"
-              >
-                <Users className="w-4 h-4" />
-                Team
-              </button>
-              <button
                 onClick={() => setShowSettings(true)}
                 className="px-4 py-2 rounded-lg transition-colors bg-gray-700 text-gray-300 hover:bg-gray-600"
               >
@@ -2102,6 +2095,7 @@ export default function ProTimerApp({ session }) {
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
         onCreate={createTimer}
+        creationContext="admin"
       />
 
       {/* Settings Modal */}
@@ -2110,6 +2104,7 @@ export default function ProTimerApp({ session }) {
         onClose={() => setShowSettings(false)}
         onShowSubscriptionModal={() => setShowSubscriptionModal(true)}
         onSignOut={handleSignOut}
+        onShowTeamManagement={() => setShowTeamManagement(true)}
       />
 
       {/* Subscription Modal */}
