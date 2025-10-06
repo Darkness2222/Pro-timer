@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { AlertCircle, CheckCircle, Eye, EyeOff } from 'lucide-react'
+import { CircleAlert as AlertCircle, CircleCheck as CheckCircle, Eye, EyeOff } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
 export default function Auth() {
