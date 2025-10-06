@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { ArrowLeft, Users, Clock, Play, Pause, RotateCcw, Plus, Minus, MessageSquare, Loader as Loader2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { calculateTimeLeft, formatTime as formatTimeUtil } from '../lib/timerUtils'
 
 export default function EventDetail({ eventId, session, onBack }) {
   const [loading, setLoading] = useState(true)
@@ -8,6 +9,7 @@ export default function EventDetail({ eventId, session, onBack }) {
   const [timers, setTimers] = useState([])
   const [selectedTimer, setSelectedTimer] = useState(null)
   const [timerSessions, setTimerSessions] = useState({})
+  const [currentTime, setCurrentTime] = useState(Date.now())
 
   useEffect(() => {
     if (eventId && session?.user) {
@@ -176,11 +178,16 @@ export default function EventDetail({ eventId, session, onBack }) {
     }
   }
 
+  // Update current time every second
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(Date.now())
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [])
+
   const formatTime = (seconds) => {
-    const mins = Math.floor(Math.abs(seconds) / 60)
-    const secs = Math.abs(seconds) % 60
-    const sign = seconds < 0 ? '-' : ''
-    return `${sign}${mins}:${secs.toString().padStart(2, '0')}`
+    return formatTimeUtil(seconds)
   }
 
   const getStatusColor = (timer) => {
@@ -290,7 +297,7 @@ export default function EventDetail({ eventId, session, onBack }) {
                     </div>
                     <div className="text-sm text-gray-400">{timer.name}</div>
                     <div className="text-sm text-gray-500 mt-1">
-                      {formatTime(session?.time_left || timer.duration)}
+                      {formatTime(calculateTimeLeft(session, timer.duration, currentTime))}
                     </div>
                   </div>
                 )
@@ -307,6 +314,7 @@ export default function EventDetail({ eventId, session, onBack }) {
                 onTimeAdjust={handleTimeAdjust}
                 onSendMessage={handleSendMessage}
                 formatTime={formatTime}
+                currentTime={currentTime}
               />
             ) : (
               <div className="bg-gray-800 border border-gray-700 rounded-xl p-12 text-center">
@@ -322,7 +330,7 @@ export default function EventDetail({ eventId, session, onBack }) {
   )
 }
 
-function PresenterControl({ timer, session, onTimerControl, onTimeAdjust, onSendMessage, formatTime }) {
+function PresenterControl({ timer, session, onTimerControl, onTimeAdjust, onSendMessage, formatTime, currentTime }) {
   const [customMessage, setCustomMessage] = useState('')
 
   const quickMessages = [
@@ -334,7 +342,7 @@ function PresenterControl({ timer, session, onTimerControl, onTimeAdjust, onSend
   ]
 
   const isRunning = session?.is_running || false
-  const timeLeft = session?.time_left || timer.duration
+  const timeLeft = calculateTimeLeft(session, timer.duration, currentTime)
   const isFinished = timer.status === 'completed' || timer.status === 'finished_early'
 
   return (

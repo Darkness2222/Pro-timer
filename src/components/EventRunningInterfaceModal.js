@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { X, Clock, CircleCheck as CheckCircle, Play, Pause, Square, Plus } from 'lucide-react'
+import { calculateTimeLeft, formatTime as formatTimeUtil } from '../lib/timerUtils'
 
 export default function EventRunningInterfaceModal({
   timers,
@@ -17,9 +18,10 @@ export default function EventRunningInterfaceModal({
   const [currentState, setCurrentState] = useState('presenter') // presenter, buffer, final
   const [, forceUpdate] = useState(0)
 
-  // Force re-render every second to update timer displays
+  // Force re-render every second to update timer displays and current time
   useEffect(() => {
     const interval = setInterval(() => {
+      setCurrentTime(Date.now())
       forceUpdate(prev => prev + 1)
     }, 1000)
 
@@ -63,15 +65,16 @@ export default function EventRunningInterfaceModal({
     }
   }, [bufferTimerState.isRunning, currentRunningTimer, eventTimers.length, completedTimers.length])
 
+  const [currentTime, setCurrentTime] = useState(Date.now())
+
   const formatDuration = (seconds) => {
-    const minutes = Math.floor(seconds / 60)
-    const remainingSeconds = seconds % 60
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
+    return formatTimeUtil(seconds)
   }
 
   const getTimerStatus = (timer) => {
     const session = timerSessions[timer.id]
-    
+    const timeLeft = calculateTimeLeft(session, timer.duration, currentTime)
+
     if (timer.status === 'finished_early' || completedTimers.some(completed => completed.id === timer.id)) {
       return {
         status: 'Completed',
@@ -86,11 +89,11 @@ export default function EventRunningInterfaceModal({
         numberText: '✓'
       }
     }
-    
+
     if (session?.is_running) {
       return {
         status: 'Current',
-        detail: `${formatDuration(session.time_left || timer.duration)} remaining`,
+        detail: `${formatDuration(timeLeft)} remaining`,
         icon: Clock,
         color: 'text-blue-400',
         bgColor: 'bg-blue-600 bg-opacity-20',
@@ -147,7 +150,8 @@ export default function EventRunningInterfaceModal({
       .filter(timer => !completedTimers.some(completed => completed.id === timer.id))
       .reduce((total, timer) => {
         const session = timerSessions[timer.id]
-        return total + (session?.time_left || timer.duration)
+        const timeLeft = calculateTimeLeft(session, timer.duration, currentTime)
+        return total + timeLeft
       }, 0)
 
     return `Presenter ${currentPresenterIndex} of ${totalPresenters} • ${formatDuration(remainingTime)} remaining`
@@ -181,8 +185,11 @@ export default function EventRunningInterfaceModal({
               <div className="current-presenter">
                 {currentRunningTimer.presenter_name} - {currentRunningTimer.name}
               </div>
-              <div className={`main-timer ${timerSessions[currentRunningTimer.id]?.time_left <= 120 ? 'timer-danger' : timerSessions[currentRunningTimer.id]?.time_left <= 300 ? 'timer-warning' : ''}`}>
-                {formatDuration(timerSessions[currentRunningTimer.id]?.time_left || currentRunningTimer.duration)}
+              <div className={`main-timer ${(() => {
+                const timeLeft = calculateTimeLeft(timerSessions[currentRunningTimer.id], currentRunningTimer.duration, currentTime)
+                return timeLeft <= 120 ? 'timer-danger' : timeLeft <= 300 ? 'timer-warning' : ''
+              })()}`}>
+                {formatDuration(calculateTimeLeft(timerSessions[currentRunningTimer.id], currentRunningTimer.duration, currentTime))}
               </div>
 
               {/* Up Next Display */}

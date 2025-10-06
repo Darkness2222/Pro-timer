@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import TimerOverview from './TimerOverview'
 import { getProductByPriceId } from '../stripe-config'
+import { calculateTimeLeft, formatTime as formatTimeUtil, getProgressPercentage as getProgressPercentageUtil } from '../lib/timerUtils'
 import { Play, Pause, Square, RotateCcw, Settings, MessageSquare, Plus, Minus, Clock, Users, Timer as TimerIcon, QrCode, ExternalLink, FileText, Crown, LogOut, CircleCheck as CheckCircle, X, Calendar } from 'lucide-react'
 import SubscriptionModal from './SubscriptionModal'
 import ReportsPage from './ReportsPage'
@@ -1101,19 +1102,17 @@ export default function ProTimerApp({ session }) {
   const handlePauseAll = async () => {
     // Pause all running timers
     const runningTimers = Object.entries(timerSessions).filter(([_, session]) => session?.is_running)
-    
+
     for (const [timerId, session] of runningTimers) {
       console.log('Pausing timer:', timerId)
-      
-      // Calculate current time left for running timers
-      let currentTimeLeft = session.time_left
-      if (session.is_running) {
-        const now = new Date(currentTime)
-        const lastUpdate = new Date(session.updated_at)
-        const elapsedSinceUpdate = Math.floor((now - lastUpdate) / 1000)
-        currentTimeLeft = session.time_left - elapsedSinceUpdate
-      }
-      
+
+      // Find the timer to get its original duration
+      const timer = timers.find(t => t.id === timerId)
+      if (!timer) continue
+
+      // Calculate current time left for running timers using shared utility
+      const currentTimeLeft = calculateTimeLeft(session, timer.duration, currentTime)
+
       try {
         await supabase
           .from('timer_sessions')
@@ -1130,7 +1129,7 @@ export default function ProTimerApp({ session }) {
         console.error('Error pausing timer:', error)
       }
     }
-    
+
     // Update timer sessions
     await updateTimerSessions()
   }
@@ -1308,27 +1307,12 @@ export default function ProTimerApp({ session }) {
   }
 
   const formatTime = (seconds) => {
-    const isNegative = seconds < 0
-    const absSeconds = Math.abs(seconds)
-    const mins = Math.floor(absSeconds / 60)
-    const secs = absSeconds % 60
-    const timeString = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
-    return isNegative ? `-${timeString}` : timeString
+    return formatTimeUtil(seconds)
   }
 
   const formatTimeFromSession = (session, originalDuration) => {
-    if (!session) return formatTime(originalDuration)
-    
-    if (session.is_running) {
-      // Calculate time based on when it was last updated
-      const now = new Date(currentTime)
-      const lastUpdate = new Date(session.updated_at)
-      const elapsedSinceUpdate = Math.floor((now - lastUpdate) / 1000)
-      const calculatedTimeLeft = session.time_left - elapsedSinceUpdate
-      return formatTime(calculatedTimeLeft)
-    }
-    
-    return formatTime(session.time_left)
+    const timeLeft = calculateTimeLeft(session, originalDuration, currentTime)
+    return formatTime(timeLeft)
   }
   const getProgressPercentage = () => {
     if (!selectedTimer) return 0
@@ -1336,17 +1320,7 @@ export default function ProTimerApp({ session }) {
   }
 
   const getProgressPercentageFromSession = (session, originalDuration) => {
-    if (!session) return 0
-    
-    let currentTimeLeft = session.time_left
-    if (session.is_running) {
-      const now = new Date(currentTime)
-      const lastUpdate = new Date(session.updated_at)
-      const elapsedSinceUpdate = Math.floor((now - lastUpdate) / 1000)
-      currentTimeLeft = session.time_left - elapsedSinceUpdate
-    }
-    
-    return ((originalDuration - currentTimeLeft) / originalDuration) * 100
+    return getProgressPercentageUtil(session, originalDuration, currentTime)
   }
 
   const generatePresenterUrl = () => {
@@ -1522,13 +1496,7 @@ export default function ProTimerApp({ session }) {
               <div className={`text-[180px] md:text-[220px] font-mono font-bold leading-none mb-8 ${
                 (() => {
                   const session = timerSessions[selectedTimer.id]
-                  let currentTimeLeft = session?.time_left || selectedTimer.duration
-                  if (session?.is_running) {
-                    const now = new Date(currentTime)
-                    const lastUpdate = new Date(session.updated_at)
-                    const elapsedSinceUpdate = Math.floor((now - lastUpdate) / 1000)
-                    currentTimeLeft = session.time_left - elapsedSinceUpdate
-                  }
+                  const currentTimeLeft = calculateTimeLeft(session, selectedTimer.duration, currentTime)
                   return currentTimeLeft <= 0
                     ? 'text-red-500 animate-pulse'
                     : currentTimeLeft <= 60
@@ -1555,13 +1523,7 @@ export default function ProTimerApp({ session }) {
               {/* Overtime Warning */}
               {(() => {
                 const session = timerSessions[selectedTimer.id]
-                let currentTimeLeft = session?.time_left || selectedTimer.duration
-                if (session?.is_running) {
-                  const now = new Date(currentTime)
-                  const lastUpdate = new Date(session.updated_at)
-                  const elapsedSinceUpdate = Math.floor((now - lastUpdate) / 1000)
-                  currentTimeLeft = session.time_left - elapsedSinceUpdate
-                }
+                const currentTimeLeft = calculateTimeLeft(session, selectedTimer.duration, currentTime)
                 return currentTimeLeft <= 0 && (
                   <div className="text-3xl text-red-400 font-bold mb-8 animate-pulse">
                     ⚠️ OVERTIME ⚠️
@@ -2004,19 +1966,7 @@ export default function ProTimerApp({ session }) {
                     {presenterNumber ? `Presenter ${presenterNumber.toString().padStart(2, '0')}` : 'Presenter'}: {timer.presenter_name}
                   </p>
                   <div className="text-3xl font-mono text-red-500 mb-4">
-                    {(() => {
-                      if (!session) return formatTime(timer.duration);
-                      
-                      let timeLeft = session.time_left;
-                      if (session.is_running) {
-                        const now = new Date(currentTime);
-                        const lastUpdate = new Date(session.updated_at);
-                        const elapsedSinceUpdate = Math.floor((now - lastUpdate) / 1000);
-                        timeLeft = session.time_left - elapsedSinceUpdate;
-                      }
-                      
-                      return formatTime(timeLeft);
-                    })()}
+                    {formatTime(calculateTimeLeft(session, timer.duration, currentTime))}
                   </div>
                   <div className="w-full bg-gray-700 rounded-full h-2">
                     <div 
