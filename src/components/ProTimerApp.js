@@ -2082,6 +2082,7 @@ export default function ProTimerApp({ session }) {
           onStartDateChange={(date) => setReportDateRange(prev => ({ ...prev, start: date }))}
           onEndDateChange={(date) => setReportDateRange(prev => ({ ...prev, end: date }))}
           onExportCSV={exportTimersCSV}
+          session={session}
         />
       )}
 
