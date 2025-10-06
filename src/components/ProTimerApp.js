@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import TimerOverview from './TimerOverview'
 import { getProductByPriceId } from '../stripe-config'
 import { calculateTimeLeft, formatTime as formatTimeUtil, getProgressPercentage as getProgressPercentageUtil } from '../lib/timerUtils'
+import { playSound, vibrate, requestFullscreen } from '../lib/notificationUtils'
 import { Play, Pause, Square, RotateCcw, Settings, MessageSquare, Plus, Minus, Clock, Users, Timer as TimerIcon, QrCode, ExternalLink, FileText, Crown, LogOut, CircleCheck as CheckCircle, X, Calendar, TriangleAlert as AlertTriangle, Trash2 } from 'lucide-react'
 import SubscriptionModal from './SubscriptionModal'
 import ReportsPage from './ReportsPage'
@@ -39,6 +40,17 @@ export default function ProTimerApp({ session }) {
   })
   const [recentMessage, setRecentMessage] = useState('')
   const [showEventInterface, setShowEventInterface] = useState(false)
+  const [userSettings, setUserSettings] = useState({
+    soundNotifications: true,
+    vibrationFeedback: false,
+    autoStartNext: false,
+    showSeconds: true,
+    use24HourFormat: false,
+    fullscreenOnStart: false,
+    overtimeWarning: true,
+    halfwayNotification: true,
+    finalMinuteAlert: true
+  })
 
   // Check for success parameter in URL
   useEffect(() => {
@@ -129,7 +141,47 @@ export default function ProTimerApp({ session }) {
 
   useEffect(() => {
     loadUserProfile()
+    loadUserSettings()
   }, [loadUserProfile])
+
+  const loadUserSettings = useCallback(async () => {
+    if (!session?.user) return
+
+    try {
+      const { data, error } = await supabase
+        .from('user_settings')
+        .select('*')
+        .eq('user_id', session.user.id)
+        .maybeSingle()
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error loading settings:', error)
+        return
+      }
+
+      if (data) {
+        setUserSettings({
+          soundNotifications: data.sound_notifications,
+          vibrationFeedback: data.vibration_feedback,
+          autoStartNext: data.auto_start_next,
+          showSeconds: data.show_seconds,
+          use24HourFormat: data.use_24_hour_format,
+          fullscreenOnStart: data.fullscreen_on_start,
+          overtimeWarning: data.overtime_warning,
+          halfwayNotification: data.halfway_notification,
+          finalMinuteAlert: data.final_minute_alert
+        })
+        setAutoStartNextEvent(data.auto_start_next)
+      }
+    } catch (error) {
+      console.error('Error loading settings:', error)
+    }
+  }, [session?.user])
+
+  const handleSettingsChange = (newSettings) => {
+    setUserSettings(newSettings)
+    setAutoStartNextEvent(newSettings.autoStartNext)
+  }
 
   // Real-time message subscription
   useEffect(() => {
@@ -276,17 +328,39 @@ export default function ProTimerApp({ session }) {
         setTimeLeft(prev => {
           const newValue = prev - 1
 
-          if (prev === 1) {
-            // Timer just expired - log the first overtime event
-            if (selectedTimer) {
+          if (selectedTimer) {
+            if (userSettings.halfwayNotification && prev === Math.floor(selectedTimer.duration / 2)) {
+              if (userSettings.soundNotifications) {
+                playSound('warning')
+              }
+              if (userSettings.vibrationFeedback) {
+                vibrate(150)
+              }
+            }
+
+            if (userSettings.finalMinuteAlert && prev === 60) {
+              if (userSettings.soundNotifications) {
+                playSound('warning')
+              }
+              if (userSettings.vibrationFeedback) {
+                vibrate([100, 50, 100])
+              }
+            }
+
+            if (prev === 1) {
+              if (userSettings.overtimeWarning) {
+                if (userSettings.soundNotifications) {
+                  playSound('overtime')
+                }
+                if (userSettings.vibrationFeedback) {
+                  vibrate(300)
+                }
+              }
               logTimerAction('expired', 0, null, 'Timer reached 00:00 - presenter went over time')
               setLastOvertimeLog(Date.now())
-            }
-          } else if (newValue < 0) {
-            // Timer is in overtime - log every 30 seconds
-            const now = Date.now()
-            if (!lastOvertimeLog || (now - lastOvertimeLog) >= 30000) {
-              if (selectedTimer) {
+            } else if (newValue < 0) {
+              const now = Date.now()
+              if (!lastOvertimeLog || (now - lastOvertimeLog) >= 30000) {
                 const overtimeSeconds = Math.abs(newValue)
                 logTimerAction('overtime', newValue, null, `Presenter ${overtimeSeconds}s over time`, overtimeSeconds)
                 setLastOvertimeLog(now)
@@ -302,7 +376,7 @@ export default function ProTimerApp({ session }) {
     }
 
     return () => clearInterval(intervalRef.current)
-  }, [isRunning, timeLeft, selectedTimer, lastOvertimeLog])
+  }, [isRunning, timeLeft, selectedTimer, lastOvertimeLog, userSettings])
 
   // Update timer sessions for all timers
   const updateTimerSessions = async () => {
@@ -687,10 +761,20 @@ export default function ProTimerApp({ session }) {
 
   const startTimer = async () => {
     if (!selectedTimer) return
-    
+
     setIsRunning(true)
     logTimerAction('start', timeLeft)
-    
+
+    if (userSettings.soundNotifications) {
+      playSound('start')
+    }
+    if (userSettings.vibrationFeedback) {
+      vibrate(100)
+    }
+    if (userSettings.fullscreenOnStart) {
+      requestFullscreen()
+    }
+
     // Update session in database
     try {
       await supabase
@@ -711,6 +795,13 @@ export default function ProTimerApp({ session }) {
     const overtimeSeconds = timeLeft < 0 ? Math.abs(timeLeft) : null
     logTimerAction('pause', timeLeft, null, overtimeSeconds ? `Paused in overtime (${overtimeSeconds}s over)` : null, overtimeSeconds)
 
+    if (userSettings.soundNotifications) {
+      playSound('pause')
+    }
+    if (userSettings.vibrationFeedback) {
+      vibrate(100)
+    }
+
     // Update session in database
     try {
       await supabase
@@ -730,6 +821,13 @@ export default function ProTimerApp({ session }) {
     setIsRunning(false)
     const overtimeSeconds = timeLeft < 0 ? Math.abs(timeLeft) : null
     logTimerAction('stop', timeLeft, null, overtimeSeconds ? `Stopped in overtime (${overtimeSeconds}s over)` : null, overtimeSeconds)
+
+    if (userSettings.soundNotifications) {
+      playSound('finish')
+    }
+    if (userSettings.vibrationFeedback) {
+      vibrate(200)
+    }
 
     // Update session in database
     try {
@@ -1371,12 +1469,45 @@ export default function ProTimerApp({ session }) {
   }
 
   const formatTime = (seconds) => {
-    return formatTimeUtil(seconds)
+    return formatTimeUtil(seconds, userSettings.showSeconds)
   }
 
   const formatTimeFromSession = (session, originalDuration) => {
     const timeLeft = calculateTimeLeft(session, originalDuration, currentTime)
     return formatTime(timeLeft)
+  }
+
+  const formatDateTime = (timestamp) => {
+    if (!timestamp) return ''
+    const date = new Date(timestamp)
+    const dateStr = date.toLocaleDateString()
+    const hours = date.getHours()
+    const minutes = date.getMinutes()
+
+    if (userSettings.use24HourFormat) {
+      const timeStr = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
+      return `${dateStr} ${timeStr}`
+    } else {
+      const period = hours >= 12 ? 'PM' : 'AM'
+      const displayHours = hours % 12 || 12
+      const timeStr = `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`
+      return `${dateStr} ${timeStr}`
+    }
+  }
+
+  const formatTimeOnly = (timestamp) => {
+    if (!timestamp) return ''
+    const date = new Date(timestamp)
+    const hours = date.getHours()
+    const minutes = date.getMinutes()
+
+    if (userSettings.use24HourFormat) {
+      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
+    } else {
+      const period = hours >= 12 ? 'PM' : 'AM'
+      const displayHours = hours % 12 || 12
+      return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`
+    }
   }
   const getProgressPercentage = () => {
     if (!selectedTimer) return 0
@@ -2143,6 +2274,8 @@ export default function ProTimerApp({ session }) {
         onShowSubscriptionModal={() => setShowSubscriptionModal(true)}
         onSignOut={handleSignOut}
         onShowTeamManagement={() => setShowTeamManagement(true)}
+        session={session}
+        onSettingsChange={handleSettingsChange}
       />
 
       {/* Subscription Modal */}

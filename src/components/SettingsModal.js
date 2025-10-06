@@ -1,24 +1,69 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { X, Settings, Volume2, Vibrate, Clock, Monitor, RotateCcw, Crown, LogOut, Users } from 'lucide-react'
+import { supabase } from '../lib/supabase'
 
-export default function SettingsModal({ isOpen, onClose, onShowSubscriptionModal, onSignOut, onShowTeamManagement }) {
+export default function SettingsModal({ isOpen, onClose, onShowSubscriptionModal, onSignOut, onShowTeamManagement, session, onSettingsChange }) {
   // Settings state
   const [settings, setSettings] = useState({
     // Timer Preferences
     soundNotifications: true,
     vibrationFeedback: false,
     autoStartNext: false,
-    
+
     // Display Preferences
     showSeconds: true,
     use24HourFormat: false,
     fullscreenOnStart: false,
-    
+
     // Notification Preferences
     overtimeWarning: true,
     halfwayNotification: true,
     finalMinuteAlert: true
   })
+  const [loading, setLoading] = useState(false)
+  const [saveMessage, setSaveMessage] = useState('')
+
+  useEffect(() => {
+    if (isOpen && session?.user) {
+      loadSettings()
+    }
+  }, [isOpen, session?.user])
+
+  const loadSettings = async () => {
+    if (!session?.user) return
+
+    try {
+      setLoading(true)
+      const { data, error } = await supabase
+        .from('user_settings')
+        .select('*')
+        .eq('user_id', session.user.id)
+        .maybeSingle()
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error loading settings:', error)
+        return
+      }
+
+      if (data) {
+        setSettings({
+          soundNotifications: data.sound_notifications,
+          vibrationFeedback: data.vibration_feedback,
+          autoStartNext: data.auto_start_next,
+          showSeconds: data.show_seconds,
+          use24HourFormat: data.use_24_hour_format,
+          fullscreenOnStart: data.fullscreen_on_start,
+          overtimeWarning: data.overtime_warning,
+          halfwayNotification: data.halfway_notification,
+          finalMinuteAlert: data.final_minute_alert
+        })
+      }
+    } catch (error) {
+      console.error('Error loading settings:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleSettingChange = (key, value) => {
     setSettings(prev => ({
@@ -27,15 +72,52 @@ export default function SettingsModal({ isOpen, onClose, onShowSubscriptionModal
     }))
   }
 
-  const handleSaveSettings = () => {
-    // TODO: Implement settings persistence (localStorage or database)
-    console.log('Saving settings:', settings)
-    
-    // For now, just close the modal
-    onClose()
-    
-    // You could add a toast notification here
-    // showToast('Settings saved successfully!')
+  const handleSaveSettings = async () => {
+    if (!session?.user) return
+
+    try {
+      setLoading(true)
+      setSaveMessage('')
+
+      const settingsData = {
+        user_id: session.user.id,
+        sound_notifications: settings.soundNotifications,
+        vibration_feedback: settings.vibrationFeedback,
+        auto_start_next: settings.autoStartNext,
+        show_seconds: settings.showSeconds,
+        use_24_hour_format: settings.use24HourFormat,
+        fullscreen_on_start: settings.fullscreenOnStart,
+        overtime_warning: settings.overtimeWarning,
+        halfway_notification: settings.halfwayNotification,
+        final_minute_alert: settings.finalMinuteAlert
+      }
+
+      const { error } = await supabase
+        .from('user_settings')
+        .upsert(settingsData, { onConflict: 'user_id' })
+
+      if (error) {
+        console.error('Error saving settings:', error)
+        setSaveMessage('Error saving settings. Please try again.')
+        return
+      }
+
+      setSaveMessage('Settings saved successfully!')
+
+      if (onSettingsChange) {
+        onSettingsChange(settings)
+      }
+
+      setTimeout(() => {
+        onClose()
+        setSaveMessage('')
+      }, 1500)
+    } catch (error) {
+      console.error('Error saving settings:', error)
+      setSaveMessage('Error saving settings. Please try again.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleResetToDefaults = () => {
@@ -346,10 +428,20 @@ export default function SettingsModal({ isOpen, onClose, onShowSubscriptionModal
 
         {/* Footer */}
         <div className="p-6 border-t border-gray-700 bg-gray-900" onClick={handleContentClick}>
+          {saveMessage && (
+            <div className={`mb-4 p-3 rounded-lg text-center font-medium ${
+              saveMessage.includes('Error')
+                ? 'bg-red-600/20 text-red-400 border border-red-600'
+                : 'bg-green-600/20 text-green-400 border border-green-600'
+            }`}>
+              {saveMessage}
+            </div>
+          )}
           <div className="flex justify-between items-center">
             <button
               onClick={handleResetToDefaults}
-              className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
+              disabled={loading}
+              className="bg-gray-600 hover:bg-gray-700 disabled:bg-gray-700 disabled:opacity-50 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
             >
               <RotateCcw className="w-4 h-4" />
               Reset to Defaults
@@ -357,15 +449,17 @@ export default function SettingsModal({ isOpen, onClose, onShowSubscriptionModal
             <div className="flex gap-3">
               <button
                 onClick={onClose}
-                className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+                disabled={loading}
+                className="bg-gray-600 hover:bg-gray-700 disabled:bg-gray-700 disabled:opacity-50 text-white px-6 py-2 rounded-lg font-medium transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSaveSettings}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+                disabled={loading}
+                className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-700 disabled:opacity-50 text-white px-6 py-2 rounded-lg font-medium transition-colors"
               >
-                Save Settings
+                {loading ? 'Saving...' : 'Save Settings'}
               </button>
             </div>
           </div>
