@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react'
-import { X, Plus, Trash2, Users, Loader as Loader2 } from 'lucide-react'
+import { X, Plus, Trash2, Users, Loader as Loader2, AlertCircle, Search } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
 export default function CreateEventModal({ isOpen, onClose, session, onEventCreated }) {
   const [loading, setLoading] = useState(false)
   const [organizationId, setOrganizationId] = useState(null)
+  const [organizationPresenters, setOrganizationPresenters] = useState([])
+  const [maxPresenters, setMaxPresenters] = useState(3)
   const [eventName, setEventName] = useState('')
   const [eventDescription, setEventDescription] = useState('')
   const [eventDate, setEventDate] = useState('')
@@ -13,6 +15,8 @@ export default function CreateEventModal({ isOpen, onClose, session, onEventCrea
   const [presenters, setPresenters] = useState([
     { name: '', topic: '', duration: 5 }
   ])
+  const [showAddNewPresenter, setShowAddNewPresenter] = useState(false)
+  const [newPresenterName, setNewPresenterName] = useState('')
 
   useEffect(() => {
     if (isOpen && session?.user) {
@@ -42,6 +46,27 @@ export default function CreateEventModal({ isOpen, onClose, session, onEventCrea
       if (data) {
         console.log('Organization loaded:', data.organization_id)
         setOrganizationId(data.organization_id)
+
+        const [orgResult, presentersResult] = await Promise.all([
+          supabase
+            .from('organizations')
+            .select('max_event_presenters')
+            .eq('id', data.organization_id)
+            .single(),
+          supabase
+            .from('organization_presenters')
+            .select('*')
+            .eq('organization_id', data.organization_id)
+            .eq('is_archived', false)
+            .order('presenter_name')
+        ])
+
+        if (orgResult.data) {
+          setMaxPresenters(orgResult.data.max_event_presenters || 3)
+        }
+        if (presentersResult.data) {
+          setOrganizationPresenters(presentersResult.data)
+        }
       } else {
         console.error('No organization found for user')
         alert('No organization found. Please contact support.')
@@ -49,6 +74,46 @@ export default function CreateEventModal({ isOpen, onClose, session, onEventCrea
     } catch (error) {
       console.error('Error loading organization:', error)
       alert('Error loading organization: ' + error.message)
+    }
+  }
+
+  const handleAddNewPresenterToOrg = async () => {
+    if (!newPresenterName.trim()) {
+      alert('Please enter a presenter name')
+      return
+    }
+
+    if (organizationPresenters.length >= maxPresenters) {
+      alert(`You have reached your limit of ${maxPresenters} presenters. Please upgrade your subscription.`)
+      return
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('organization_presenters')
+        .insert({
+          organization_id: organizationId,
+          presenter_name: newPresenterName.trim()
+        })
+        .select()
+        .single()
+
+      if (error) {
+        if (error.code === '23505') {
+          alert('A presenter with this name already exists')
+        } else {
+          throw error
+        }
+        return
+      }
+
+      setOrganizationPresenters([...organizationPresenters, data])
+      setNewPresenterName('')
+      setShowAddNewPresenter(false)
+      alert('Presenter added to your organization roster!')
+    } catch (error) {
+      console.error('Error adding presenter:', error)
+      alert('Failed to add presenter')
     }
   }
 
@@ -123,11 +188,24 @@ export default function CreateEventModal({ isOpen, onClose, session, onEventCrea
         status: 'active'
       }))
 
-      const { error: timersError } = await supabase
+      const { data: timersData, error: timersError } = await supabase
         .from('timers')
         .insert(timersToInsert)
+        .select()
 
       if (timersError) throw timersError
+
+      const assignmentsToInsert = presenters.map((presenter, index) => ({
+        event_id: eventData.id,
+        presenter_name: presenter.name,
+        timer_id: timersData[index].id
+      }))
+
+      const { error: assignmentsError } = await supabase
+        .from('event_presenter_assignments')
+        .insert(assignmentsToInsert)
+
+      if (assignmentsError) throw assignmentsError
 
       alert('Event created successfully!')
       onEventCreated()
@@ -274,14 +352,24 @@ export default function CreateEventModal({ isOpen, onClose, session, onEventCrea
                   <div className="space-y-3">
                     <div>
                       <label className="block text-xs text-gray-400 mb-1">Presenter Name</label>
-                      <input
-                        type="text"
+                      <select
                         value={presenter.name}
                         onChange={(e) => handlePresenterChange(index, 'name', e.target.value)}
                         required
                         className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="John Doe"
-                      />
+                      >
+                        <option value="">Select presenter...</option>
+                        {organizationPresenters.map((p) => (
+                          <option key={p.id} value={p.presenter_name}>
+                            {p.presenter_name}
+                          </option>
+                        ))}
+                      </select>
+                      {organizationPresenters.length === 0 && (
+                        <p className="text-xs text-yellow-400 mt-1">
+                          No presenters in roster. Add one below or go to Presenters page.
+                        </p>
+                      )}
                     </div>
 
                     <div>
@@ -311,6 +399,50 @@ export default function CreateEventModal({ isOpen, onClose, session, onEventCrea
                 </div>
               ))}
             </div>
+          </div>
+
+          <div className="border-t border-gray-700 pt-4">
+            <button
+              type="button"
+              onClick={() => setShowAddNewPresenter(!showAddNewPresenter)}
+              className="text-sm text-blue-400 hover:text-blue-300 flex items-center gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              Add new presenter to organization roster
+            </button>
+
+            {showAddNewPresenter && (
+              <div className="mt-3 p-4 bg-gray-700 rounded-lg border border-gray-600">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertCircle className="w-4 h-4 text-blue-400" />
+                  <p className="text-sm text-gray-300">
+                    Adding to organization roster ({organizationPresenters.length}/{maxPresenters} used)
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newPresenterName}
+                    onChange={(e) => setNewPresenterName(e.target.value)}
+                    placeholder="Enter presenter name..."
+                    className="flex-1 bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        handleAddNewPresenterToOrg()
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddNewPresenterToOrg}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                  >
+                    Add
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="flex gap-3 pt-4 border-t border-gray-700">

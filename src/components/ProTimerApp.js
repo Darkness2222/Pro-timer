@@ -14,6 +14,7 @@ import TeamManagement from './TeamManagement'
 import EventsPage from './EventsPage'
 import EventDetail from './EventDetail'
 import CreateEventModal from './CreateEventModal'
+import PresentersPage from './PresentersPage'
 
 export default function ProTimerApp({ session }) {
   const [currentView, setCurrentView] = useState('events')
@@ -1435,6 +1436,17 @@ export default function ProTimerApp({ session }) {
                 Reports
               </button>
               <button
+                onClick={() => setCurrentView('presenters')}
+                className={`inline-flex items-center px-4 py-2 border-b-2 text-sm font-medium ${
+                  currentView === 'presenters'
+                    ? 'border-yellow-500 text-yellow-400'
+                    : 'border-transparent text-gray-300 hover:text-white hover:border-gray-300'
+                }`}
+              >
+                <Users className="w-4 h-4 mr-2" />
+                Presenters
+              </button>
+              <button
                 onClick={() => setShowTeamManagement(true)}
                 className="px-4 py-2 rounded-lg transition-colors bg-gray-700 text-gray-300 hover:bg-gray-600 flex items-center gap-2"
               >
@@ -2090,6 +2102,11 @@ export default function ProTimerApp({ session }) {
           onEndDateChange={(date) => setReportDateRange(prev => ({ ...prev, end: date }))}
           onExportCSV={exportTimersCSV}
         />
+      )}
+
+      {/* Presenters View */}
+      {currentView === 'presenters' && (
+        <PresentersPage session={session} />
       )}
 
       {/* Create Timer Modal */}

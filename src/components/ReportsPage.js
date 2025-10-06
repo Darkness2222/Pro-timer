@@ -217,9 +217,13 @@ export default function ReportsPage({
             Export CSV
           </button>
         </div>
-        <p className="text-gray-400 text-sm">
-          Export includes all timer creations and activity logs. Leave dates empty to export all data.
-        </p>
+        <div className="flex items-start gap-2 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg mt-4">
+          <FileText className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
+          <div className="text-sm">
+            <p className="text-blue-300 font-medium">Presenter Activity Only</p>
+            <p className="text-blue-400/80">These reports show presenter performance data. Admin actions are excluded.</p>
+          </div>
+        </div>
       </div>
 
       {/* Key Metrics */}

@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react'
-import { ArrowLeft, Users, Clock, Play, Pause, RotateCcw, Plus, Minus, MessageSquare, Loader as Loader2 } from 'lucide-react'
+import { ArrowLeft, Users, Clock, Play, Pause, RotateCcw, Plus, Minus, MessageSquare, Loader as Loader2, QrCode } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { calculateTimeLeft, formatTime as formatTimeUtil } from '../lib/timerUtils'
+import QRCodeModal from './QRCodeModal'
+import AccessManagement from './AccessManagement'
 
 export default function EventDetail({ eventId, session, onBack }) {
   const [loading, setLoading] = useState(true)
@@ -10,6 +12,7 @@ export default function EventDetail({ eventId, session, onBack }) {
   const [selectedTimer, setSelectedTimer] = useState(null)
   const [timerSessions, setTimerSessions] = useState({})
   const [currentTime, setCurrentTime] = useState(Date.now())
+  const [showQRModal, setShowQRModal] = useState(false)
 
   useEffect(() => {
     if (eventId && session?.user) {
@@ -236,8 +239,17 @@ export default function EventDetail({ eventId, session, onBack }) {
                 <p className="text-gray-400">{event.description}</p>
               )}
             </div>
-            <div className="px-3 py-1 rounded-full bg-blue-500/20 text-blue-400 text-sm font-medium capitalize">
-              {event.status.replace('_', ' ')}
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowQRModal(true)}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
+              >
+                <QrCode className="w-4 h-4" />
+                QR Code
+              </button>
+              <div className="px-3 py-1 rounded-full bg-blue-500/20 text-blue-400 text-sm font-medium capitalize">
+                {event.status.replace('_', ' ')}
+              </div>
             </div>
           </div>
 
@@ -325,7 +337,19 @@ export default function EventDetail({ eventId, session, onBack }) {
             )}
           </div>
         </div>
+
+        <div className="mt-6">
+          <AccessManagement eventId={eventId} />
+        </div>
       </div>
+
+      {showQRModal && (
+        <QRCodeModal
+          eventId={eventId}
+          organizationId={event.organization_id}
+          onClose={() => setShowQRModal(false)}
+        />
+      )}
     </div>
   )
 }

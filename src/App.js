@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react'
 import { supabase } from './lib/supabase'
 import Auth from './components/Auth'
 import ProTimerApp from './components/ProTimerApp'
+import PresenterJoinPage from './components/PresenterJoinPage'
+import PresenterView from './components/PresenterView'
 
 function App() {
   const [session, setSession] = useState(null)
@@ -32,6 +34,18 @@ function App() {
         <div className="text-white text-xl">Loading...</div>
       </div>
     )
+  }
+
+  const pathname = window.location.pathname
+
+  if (pathname.startsWith('/event/join/')) {
+    const token = pathname.split('/event/join/')[1]
+    return <PresenterJoinPage token={token} />
+  }
+
+  if (pathname.startsWith('/presenter/')) {
+    const sessionToken = pathname.split('/presenter/')[1]
+    return <PresenterView sessionToken={sessionToken} />
   }
 
   // Show bypass option on auth screen
