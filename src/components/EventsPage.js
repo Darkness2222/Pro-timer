@@ -56,6 +56,7 @@ export default function EventsPage({ session, onEventSelect }) {
             presentation_order
           )
         `)
+        .is('deleted_at', null)
         .eq('organization_id', memberData.organization_id)
         .order('event_date', { ascending: false })
 
