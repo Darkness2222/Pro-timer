@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Clock, MessageSquare, Loader2, AlertCircle } from 'lucide-react'
+import { Clock, MessageSquare, Loader as Loader2, CircleAlert as AlertCircle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { calculateTimeLeft, formatTime as formatTimeUtil } from '../lib/timerUtils'
 

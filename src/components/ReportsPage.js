@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { FileText, TrendingUp, Clock, Target, Award, AlertTriangle } from 'lucide-react'
+import { FileText, TrendingUp, Clock, Target, Award, TriangleAlert as AlertTriangle } from 'lucide-react'
 
 export default function ReportsPage({ 
   timers = [], 

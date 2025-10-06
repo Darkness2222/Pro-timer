@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Users, Clock, Calendar, Check, Loader2, AlertCircle } from 'lucide-react'
+import { Users, Clock, Calendar, Check, Loader as Loader2, CircleAlert as AlertCircle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
 export default function PresenterJoinPage({ token }) {

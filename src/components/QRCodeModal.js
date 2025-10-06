@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { X, QrCode, Download, Copy, Check, Loader2, RefreshCw } from 'lucide-react'
+import { X, QrCode, Download, Copy, Check, Loader as Loader2, RefreshCw } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import { supabase } from '../lib/supabase'
 

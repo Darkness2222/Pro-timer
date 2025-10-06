@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Users, Plus, Archive, Edit2, Trash2, Mail, Phone, FileText, Loader2, AlertCircle } from 'lucide-react'
+import { Users, Plus, Archive, CreditCard as Edit2, Trash2, Mail, Phone, FileText, Loader as Loader2, CircleAlert as AlertCircle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
 export default function PresentersPage({ session }) {

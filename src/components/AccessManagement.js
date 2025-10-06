@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Lock, Check, Clock, Loader2 } from 'lucide-react'
+import { Lock, Check, Clock, Loader as Loader2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
 export default function AccessManagement({ eventId }) {
