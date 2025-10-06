@@ -1,8 +1,8 @@
 import React, { useState } from 'react'
 import { X, Plus, Clock, Users, Timer as TimerIcon } from 'lucide-react'
 
-export default function CreateTimerModal({ isOpen, onClose, onCreate }) {
-  const [timerType, setTimerType] = useState('single')
+export default function CreateTimerModal({ isOpen, onClose, onCreate, creationContext = 'default' }) {
+  const [timerType, setTimerType] = useState(creationContext === 'admin' ? 'single' : 'single')
   const [newTimerName, setNewTimerName] = useState('')
   const [newTimerPresenter, setNewTimerPresenter] = useState('')
   const [newTimerDuration, setNewTimerDuration] = useState('')
@@ -96,7 +96,9 @@ export default function CreateTimerModal({ isOpen, onClose, onCreate }) {
       <div className="bg-gray-800 rounded-xl max-w-2xl w-full max-h-[90vh] overflow-hidden border border-gray-700">
         {/* Header */}
         <div className="flex justify-between items-center p-6 border-b border-gray-700">
-          <h2 className="text-2xl font-bold text-white">Create New Timer</h2>
+          <h2 className="text-2xl font-bold text-white">
+            {creationContext === 'admin' ? 'Create Single Timer' : 'Create New Timer'}
+          </h2>
           <button
             onClick={handleClose}
             className="text-gray-400 hover:text-white transition-colors"
@@ -107,44 +109,46 @@ export default function CreateTimerModal({ isOpen, onClose, onCreate }) {
 
         {/* Content */}
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
-          {/* Timer Type Selection */}
-          <div className="mb-6">
-            <h3 className="text-lg font-semibold text-white mb-4">Timer Type</h3>
-            <div className="grid grid-cols-2 gap-4">
-              <button
-                onClick={() => setTimerType('single')}
-                className={`p-4 rounded-lg border-2 transition-all ${
-                  timerType === 'single'
-                    ? 'border-blue-500 bg-blue-500 bg-opacity-20'
-                    : 'border-gray-600 hover:border-gray-500'
-                }`}
-              >
-                <div className="text-center">
-                  <TimerIcon className="w-8 h-8 text-blue-400 mx-auto mb-2" />
-                  <h4 className="text-white font-medium mb-1">Single Timer</h4>
-                  <p className="text-gray-400 text-sm">One presenter, one timer</p>
-                </div>
-              </button>
-              
-              <button
-                onClick={() => setTimerType('event')}
-                className={`p-4 rounded-lg border-2 transition-all ${
-                  timerType === 'event'
-                    ? 'border-purple-500 bg-purple-500 bg-opacity-20'
-                    : 'border-gray-600 hover:border-gray-500'
-                }`}
-              >
-                <div className="text-center">
-                  <Users className="w-8 h-8 text-purple-400 mx-auto mb-2" />
-                  <h4 className="text-white font-medium mb-1">Event Timer</h4>
-                  <p className="text-gray-400 text-sm">Multiple presenters, sequential</p>
-                </div>
-              </button>
+          {/* Timer Type Selection - Hidden in admin context */}
+          {creationContext !== 'admin' && (
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-white mb-4">Timer Type</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <button
+                  onClick={() => setTimerType('single')}
+                  className={`p-4 rounded-lg border-2 transition-all ${
+                    timerType === 'single'
+                      ? 'border-blue-500 bg-blue-500 bg-opacity-20'
+                      : 'border-gray-600 hover:border-gray-500'
+                  }`}
+                >
+                  <div className="text-center">
+                    <TimerIcon className="w-8 h-8 text-blue-400 mx-auto mb-2" />
+                    <h4 className="text-white font-medium mb-1">Single Timer</h4>
+                    <p className="text-gray-400 text-sm">One presenter, one timer</p>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => setTimerType('event')}
+                  className={`p-4 rounded-lg border-2 transition-all ${
+                    timerType === 'event'
+                      ? 'border-purple-500 bg-purple-500 bg-opacity-20'
+                      : 'border-gray-600 hover:border-gray-500'
+                  }`}
+                >
+                  <div className="text-center">
+                    <Users className="w-8 h-8 text-purple-400 mx-auto mb-2" />
+                    <h4 className="text-white font-medium mb-1">Event Timer</h4>
+                    <p className="text-gray-400 text-sm">Multiple presenters, sequential</p>
+                  </div>
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Single Timer Form */}
-          {timerType === 'single' && (
+          {(timerType === 'single' || creationContext === 'admin') && (
             <div className="space-y-4">
               <div>
                 <label className="block text-white font-medium mb-2">Timer Name</label>
@@ -183,8 +187,8 @@ export default function CreateTimerModal({ isOpen, onClose, onCreate }) {
             </div>
           )}
 
-          {/* Event Timer Form */}
-          {timerType === 'event' && (
+          {/* Event Timer Form - Hidden in admin context */}
+          {timerType === 'event' && creationContext !== 'admin' && (
             <div className="space-y-6">
               <div>
                 <label className="block text-white font-medium mb-2">Event Name</label>
@@ -323,7 +327,7 @@ export default function CreateTimerModal({ isOpen, onClose, onCreate }) {
               disabled={!isFormValid()}
               className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white px-6 py-2 rounded-lg font-medium transition-colors"
             >
-              Create Timer{timerType === 'event' ? 's' : ''}
+              {creationContext === 'admin' ? 'Create Timer' : `Create Timer${timerType === 'event' ? 's' : ''}`}
             </button>
           </div>
         </div>
