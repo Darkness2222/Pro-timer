@@ -1362,12 +1362,30 @@ export default function ProTimerApp({ session }) {
     }
   }
 
-  const handleExtendBuffer = (minutes) => {
+  const handleExtendBuffer = async (minutes) => {
+    const addedSeconds = minutes * 60
+
     setBufferTimerState(prev => ({
       ...prev,
-      timeLeft: prev.timeLeft + (minutes * 60),
-      duration: prev.duration + (minutes * 60)
+      timeLeft: prev.timeLeft + addedSeconds,
+      duration: prev.duration + addedSeconds
     }))
+
+    try {
+      const eventTimers = timers.filter(timer => timer.timer_type === 'event' && timer.status === 'active')
+      const nextTimer = eventTimers.find(timer => !timerSessions[timer.id]?.is_running)
+
+      if (nextTimer && nextTimer.event_id) {
+        await supabase.from('timer_logs').insert({
+          timer_id: nextTimer.id,
+          action: 'buffer_extend',
+          time_value: addedSeconds,
+          notes: `Buffer time extended by ${minutes} minute(s) before ${nextTimer.presenter_name || 'next presenter'}`
+        })
+      }
+    } catch (error) {
+      console.error('Error logging buffer extension:', error)
+    }
   }
 
   const handleResumeTimer = async (timerId) => {

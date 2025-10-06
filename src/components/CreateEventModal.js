@@ -198,7 +198,8 @@ export default function CreateEventModal({ isOpen, onClose, session, onEventCrea
       const assignmentsToInsert = presenters.map((presenter, index) => ({
         event_id: eventData.id,
         presenter_name: presenter.name,
-        timer_id: timersData[index].id
+        timer_id: timersData[index].id,
+        order_index: index
       }))
 
       const { error: assignmentsError } = await supabase

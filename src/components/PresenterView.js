@@ -249,9 +249,9 @@ export default function PresenterView({ sessionToken }) {
               <button
                 onClick={handleFinishPresentation}
                 disabled={finishing}
-                className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-8 py-3 rounded-lg font-semibold transition-colors flex items-center gap-2 shadow-lg"
+                className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-12 py-4 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-3 shadow-xl hover:shadow-2xl active:scale-95 min-h-[60px] min-w-[280px]"
               >
-                <CheckCircle className="w-5 h-5" />
+                <CheckCircle className="w-6 h-6" />
                 {finishing ? 'Finishing...' : 'Finish Presentation'}
               </button>
             )}
