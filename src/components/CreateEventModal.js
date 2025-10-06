@@ -257,6 +257,11 @@ export default function CreateEventModal({ isOpen, onClose, session, onEventCrea
               type="text"
               value={eventName}
               onChange={(e) => setEventName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                }
+              }}
               required
               className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Annual Conference 2025"
@@ -284,6 +289,11 @@ export default function CreateEventModal({ isOpen, onClose, session, onEventCrea
               type="datetime-local"
               value={eventDate}
               onChange={(e) => setEventDate(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                }
+              }}
               className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -297,6 +307,11 @@ export default function CreateEventModal({ isOpen, onClose, session, onEventCrea
                 type="number"
                 value={bufferDuration}
                 onChange={(e) => setBufferDuration(parseInt(e.target.value) || 0)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                  }
+                }}
                 min="0"
                 className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="0"
@@ -378,6 +393,11 @@ export default function CreateEventModal({ isOpen, onClose, session, onEventCrea
                         type="text"
                         value={presenter.topic}
                         onChange={(e) => handlePresenterChange(index, 'topic', e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault()
+                          }
+                        }}
                         required
                         className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         placeholder="Opening Keynote"
@@ -390,6 +410,11 @@ export default function CreateEventModal({ isOpen, onClose, session, onEventCrea
                         type="number"
                         value={presenter.duration}
                         onChange={(e) => handlePresenterChange(index, 'duration', parseInt(e.target.value) || 5)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault()
+                          }
+                        }}
                         required
                         min="1"
                         className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
