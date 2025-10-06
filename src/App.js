@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { supabase } from './lib/supabase'
 import Auth from './components/Auth'
 import ProTimerApp from './components/ProTimerApp'
@@ -8,24 +8,58 @@ import PresenterView from './components/PresenterView'
 function App() {
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(true)
+  const initialLoadComplete = useRef(false)
+  const sessionRef = useRef(null)
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session }, error }) => {
-      if (error) {
-        console.error('Error getting session:', error)
+    let mounted = true
+
+    const initializeAuth = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession()
+        if (error) {
+          console.error('Error getting session:', error)
+        }
+        if (mounted) {
+          sessionRef.current = session
+          setSession(session)
+          setLoading(false)
+          initialLoadComplete.current = true
+        }
+      } catch (error) {
+        console.error('Error initializing auth:', error)
+        if (mounted) {
+          setLoading(false)
+          initialLoadComplete.current = true
+        }
       }
-      setSession(session)
-      setLoading(false)
-    })
+    }
 
-    // Listen for auth changes
+    initializeAuth()
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!mounted || !initialLoadComplete.current) return
+
       console.log('Auth state changed:', _event, session)
-      setSession(session)
+
+      if (_event === 'SIGNED_IN') {
+        if (sessionRef.current?.user?.id !== session?.user?.id) {
+          sessionRef.current = session
+          setSession(session)
+        }
+      } else if (_event === 'SIGNED_OUT') {
+        sessionRef.current = null
+        setSession(null)
+      } else if (_event === 'TOKEN_REFRESHED' || _event === 'USER_UPDATED') {
+        sessionRef.current = session
+        setSession(session)
+      }
     })
 
-    return () => subscription.unsubscribe()
+    return () => {
+      mounted = false
+      subscription.unsubscribe()
+    }
   }, [])
 
   if (loading) {

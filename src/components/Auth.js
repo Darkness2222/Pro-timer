@@ -8,13 +8,18 @@ export default function Auth() {
   const [password, setPassword] = useState('')
   const [isSignUp, setIsSignUp] = useState(false)
   const [message, setMessage] = useState('')
-  const [messageType, setMessageType] = useState('') // 'success' or 'error'
+  const [messageType, setMessageType] = useState('')
   const [rememberMe, setRememberMe] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showForgotPassword, setShowForgotPassword] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleAuth = async (e) => {
     e.preventDefault()
+
+    if (isSubmitting) return
+
+    setIsSubmitting(true)
     setLoading(true)
     setMessage('')
 
@@ -32,27 +37,35 @@ export default function Auth() {
         setMessageType('success')
         setIsSignUp(false)
       } else {
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
         })
         if (error) throw error
-        
-        // Store remember me preference
+
         if (rememberMe) {
           localStorage.setItem('synccue_remember_credentials', JSON.stringify({
             email,
             timestamp: Date.now()
           }))
         }
+
+        if (data?.session) {
+          console.log('Login successful, session established')
+        }
       }
     } catch (error) {
       setMessage(error.message)
       setMessageType('error')
-      // Show forgot password link for invalid credentials
       setShowForgotPassword(error.message === 'Invalid login credentials')
+      setIsSubmitting(false)
     } finally {
       setLoading(false)
+      if (!isSignUp) {
+        setTimeout(() => setIsSubmitting(false), 1000)
+      } else {
+        setIsSubmitting(false)
+      }
     }
   }
 
@@ -134,9 +147,10 @@ export default function Auth() {
               className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400"
               placeholder="your@email.com"
               required
+              disabled={loading}
             />
           </div>
-          
+
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">
               Password
@@ -150,6 +164,7 @@ export default function Auth() {
                 placeholder="••••••••"
                 minLength={6}
                 required
+                disabled={loading}
               />
               <button
                 type="button"
