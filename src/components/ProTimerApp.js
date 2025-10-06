@@ -1640,12 +1640,45 @@ export default function ProTimerApp({ session }) {
           {/* Buffer Timer Display */}
           {bufferTimerState.isRunning && (
             <div className="mb-4">
-              <div className="bg-orange-900/50 backdrop-blur-sm rounded-xl p-4 border border-orange-600/50 flex flex-col">
-                <div className="flex justify-between items-start mb-2">
-                  <div className="w-2 h-2 rounded-full bg-orange-500"></div>
+              <div className="bg-orange-900/50 backdrop-blur-sm rounded-xl p-4 border border-orange-600/50">
+                <div className="flex justify-between items-start mb-3">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className="w-2 h-2 rounded-full bg-orange-500"></div>
+                      <h3 className="text-sm font-semibold text-white">Buffer Time</h3>
+                    </div>
+                    <p className="text-gray-300 text-xs">Transition Period</p>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      // Stop buffer timer
+                      setBufferTimerState({
+                        isRunning: false,
+                        timeLeft: 0,
+                        duration: 0
+                      })
+
+                      // Find and start next event timer
+                      const eventTimers = timers
+                        .filter(timer => timer.timer_type === 'event')
+                        .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+
+                      const nextUpTimer = eventTimers.find(timer =>
+                        timer.status === 'active' &&
+                        !timerSessions[timer.id]?.is_running &&
+                        timer.status !== 'finished_early'
+                      )
+
+                      if (nextUpTimer) {
+                        await handleStartTimer(nextUpTimer.id)
+                      }
+                    }}
+                    className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors"
+                  >
+                    <Play className="w-4 h-4" />
+                    Start Next Presenter
+                  </button>
                 </div>
-                <h3 className="text-sm font-semibold text-white mb-1">Buffer Time</h3>
-                <p className="text-gray-300 mb-2 text-xs">Transition Period</p>
                 <div className="text-lg font-mono text-orange-400 mb-2">
                   {formatTime(bufferTimerState.timeLeft)}
                 </div>
