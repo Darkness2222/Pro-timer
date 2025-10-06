@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react'
-import { FileText, TrendingUp, Clock, Target, Award, TriangleAlert as AlertTriangle, Calendar } from 'lucide-react'
+import { FileText, TrendingUp, Clock, Target, Award, TriangleAlert as AlertTriangle, Calendar, User, BarChart2, Activity } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import PresenterPerformanceReport from './PresenterPerformanceReport'
+import EventComparisonReport from './EventComparisonReport'
 
 export default function ReportsPage({
   timers = [],
@@ -16,6 +18,7 @@ export default function ReportsPage({
   const [allTimers, setAllTimers] = useState([])
   const [events, setEvents] = useState([])
   const [selectedEventId, setSelectedEventId] = useState('all')
+  const [reportView, setReportView] = useState('overview')
 
   // Fetch events from database
   useEffect(() => {
@@ -311,11 +314,69 @@ export default function ReportsPage({
     return { total: event.timers.length, completed: completedTimers.length, onTime, early, overtime }
   }
 
+  if (reportView === 'presenter-performance') {
+    return <PresenterPerformanceReport session={session} onBack={() => setReportView('overview')} />
+  }
+
+  if (reportView === 'event-comparison') {
+    return <EventComparisonReport session={session} onBack={() => setReportView('overview')} />
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-white mb-2">Event Reports & Analytics</h1>
         <p className="text-gray-300">Analyze event performance and presenter efficiency</p>
+      </div>
+
+      {/* Report Navigation Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div
+          onClick={() => setReportView('overview')}
+          className={`bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border cursor-pointer transition-all ${
+            reportView === 'overview'
+              ? 'border-blue-500 bg-blue-500/10'
+              : 'border-gray-700 hover:border-gray-600'
+          }`}
+        >
+          <div className="flex items-center gap-3 mb-3">
+            <Activity className="w-6 h-6 text-blue-400" />
+            <h3 className="text-lg font-semibold text-white">Event Overview</h3>
+          </div>
+          <p className="text-gray-400 text-sm">
+            Detailed event-by-event performance analysis and metrics
+          </p>
+        </div>
+
+        <div
+          onClick={() => setReportView('presenter-performance')}
+          className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700 hover:border-blue-500 cursor-pointer transition-all group"
+        >
+          <div className="flex items-center gap-3 mb-3">
+            <User className="w-6 h-6 text-green-400" />
+            <h3 className="text-lg font-semibold text-white group-hover:text-blue-400">
+              Presenter Performance
+            </h3>
+          </div>
+          <p className="text-gray-400 text-sm">
+            Individual presenter stats, history, and consistency ratings
+          </p>
+        </div>
+
+        <div
+          onClick={() => setReportView('event-comparison')}
+          className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700 hover:border-blue-500 cursor-pointer transition-all group"
+        >
+          <div className="flex items-center gap-3 mb-3">
+            <BarChart2 className="w-6 h-6 text-purple-400" />
+            <h3 className="text-lg font-semibold text-white group-hover:text-blue-400">
+              Event Comparison
+            </h3>
+          </div>
+          <p className="text-gray-400 text-sm">
+            Compare metrics across multiple events side-by-side
+          </p>
+        </div>
       </div>
 
       {/* Event Selector */}

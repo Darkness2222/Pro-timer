@@ -1035,11 +1035,17 @@ export default function ProTimerApp({ session }) {
   const exportTimersCSV = () => {
     const csvData = []
 
-    // Add headers
+    // Add headers with additional analytics fields
     csvData.push([
+      'Event Name',
+      'Event Date',
       'Timer Name',
       'Presenter',
+      'Presentation Order',
       'Duration (minutes)',
+      'Actual Time (minutes)',
+      'Variance (seconds)',
+      'Performance',
       'Created At',
       'Action',
       'Time Value',
@@ -1063,18 +1069,43 @@ export default function ProTimerApp({ session }) {
       )
     }
     
-    // Add timer creation rows
+    // Add enhanced timer rows with analytics
     timers.forEach(timer => {
+      const finishLog = filteredLogs.find(log =>
+        log.timer_id === timer.id && (log.action === 'finished' || log.action === 'expired')
+      )
+
+      const overtimeLogs = filteredLogs.filter(log =>
+        log.timer_id === timer.id && log.overtime_seconds && log.overtime_seconds > 0
+      )
+      const maxOvertime = Math.max(0, ...overtimeLogs.map(l => l.overtime_seconds))
+
+      let actualTime = timer.duration
+      if (finishLog && finishLog.time_value !== null) {
+        actualTime = timer.duration - finishLog.time_value
+      }
+
+      const variance = actualTime - timer.duration
+      let performance = 'On Time'
+      if (variance < -30) performance = 'Early'
+      else if (variance > 30 || maxOvertime > 0) performance = 'Overtime'
+
       csvData.push([
+        timer.event_name || 'Standalone',
+        timer.event_date ? new Date(timer.event_date).toLocaleString() : '',
         timer.name,
         timer.presenter_name,
+        timer.presentation_order || '',
         Math.round(timer.duration / 60),
+        Math.round(actualTime / 60),
+        variance,
+        performance,
         new Date(timer.created_at).toLocaleString(),
         'Timer Created',
         '',
         '',
-        '',
-        '',
+        maxOvertime > 0 ? 'Yes' : 'No',
+        maxOvertime || '',
         '',
         new Date(timer.created_at).toLocaleString()
       ])
@@ -1086,8 +1117,14 @@ export default function ProTimerApp({ session }) {
       const overtimeAmount = log.overtime_seconds && log.overtime_seconds > 0 ? log.overtime_seconds : ''
 
       csvData.push([
+        '',
+        '',
         log.timers?.name || 'Unknown Timer',
         log.timers?.presenter_name || 'Unknown Presenter',
+        '',
+        '',
+        '',
+        '',
         '',
         '',
         log.action,
