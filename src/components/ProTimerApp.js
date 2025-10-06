@@ -1460,18 +1460,6 @@ export default function ProTimerApp({ session }) {
                 ⚙️ Settings
               </button>
             </div>
-            <div className="flex items-center">
-              <button
-                onClick={async () => {
-                  await supabase.auth.signOut()
-                  window.location.href = '/app'
-                }}
-                className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-300 hover:text-white transition-colors"
-              >
-                <LogOut className="w-4 h-4 mr-2" />
-                Sign Out
-              </button>
-            </div>
           </div>
         </div>
       </nav>
@@ -2121,6 +2109,7 @@ export default function ProTimerApp({ session }) {
         isOpen={showSettings}
         onClose={() => setShowSettings(false)}
         onShowSubscriptionModal={() => setShowSubscriptionModal(true)}
+        onSignOut={handleSignOut}
       />
 
       {/* Subscription Modal */}

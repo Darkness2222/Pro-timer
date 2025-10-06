@@ -117,6 +117,14 @@ export default function PresenterView({ sessionToken }) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-6">
       <div className="max-w-4xl mx-auto">
+        {/* Presenter Mode Indicator */}
+        <div className="mb-4 text-center">
+          <span className="inline-flex items-center gap-2 bg-blue-600/20 text-blue-400 px-4 py-2 rounded-full text-sm font-medium border border-blue-500/30">
+            <Clock className="w-4 h-4" />
+            Presenter View
+          </span>
+        </div>
+
         <div className="bg-gray-800 border border-gray-700 rounded-xl p-6 mb-6">
           <div className="text-center mb-4">
             <h1 className="text-4xl font-bold text-white mb-2">{assignment?.presenter_name}</h1>
@@ -187,6 +195,7 @@ export default function PresenterView({ sessionToken }) {
         <div className="text-center mt-8 text-sm text-gray-500">
           <p>Controlled by event administrator</p>
           <p className="mt-1">This page will update automatically</p>
+          <p className="mt-4 text-xs text-gray-600">You are in Presenter Mode - navigation is restricted to this view only</p>
         </div>
       </div>
     </div>

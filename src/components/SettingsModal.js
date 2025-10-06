@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
-import { X, Settings, Volume2, Vibrate, Clock, Monitor, RotateCcw, Crown } from 'lucide-react'
+import { X, Settings, Volume2, Vibrate, Clock, Monitor, RotateCcw, Crown, LogOut } from 'lucide-react'
 
-export default function SettingsModal({ isOpen, onClose, onShowSubscriptionModal }) {
+export default function SettingsModal({ isOpen, onClose, onShowSubscriptionModal, onSignOut }) {
   // Settings state
   const [settings, setSettings] = useState({
     // Timer Preferences
@@ -295,6 +295,28 @@ export default function SettingsModal({ isOpen, onClose, onShowSubscriptionModal
               </div>
               <div className="mt-3 text-xs text-gray-400">
                 • Remote presenter/admin sync • Custom stage cues • Indepth Reporting
+              </div>
+            </div>
+
+            {/* Sign Out Section */}
+            <div className="bg-gray-700 rounded-lg p-4 border border-gray-600">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-white font-medium">Account</h4>
+                  <p className="text-gray-400 text-sm">Sign out of your account</p>
+                </div>
+                <button
+                  onClick={() => {
+                    if (window.confirm('Are you sure you want to sign out?')) {
+                      onSignOut()
+                      onClose()
+                    }
+                  }}
+                  className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
+                >
+                  <LogOut className="w-4 h-4" />
+                  Sign Out
+                </button>
               </div>
             </div>
           </div>
