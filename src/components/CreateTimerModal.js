@@ -82,7 +82,7 @@ export default function CreateTimerModal({ isOpen, onClose, onCreate, creationCo
   }
 
   const isFormValid = () => {
-    if (timerType === 'single') {
+    if (timerType === 'single' || creationContext === 'admin') {
       return newTimerName.trim() && newTimerPresenter.trim() && newTimerDuration
     } else {
       return eventName.trim() && presenters.every(p => p.name.trim())
@@ -148,7 +148,7 @@ export default function CreateTimerModal({ isOpen, onClose, onCreate, creationCo
           )}
 
           {/* Single Timer Form */}
-          {(timerType === 'single' || creationContext === 'admin') && (
+          {(creationContext === 'admin' || timerType === 'single') && (
             <div className="space-y-4">
               <div>
                 <label className="block text-white font-medium mb-2">Timer Name</label>
