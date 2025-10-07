@@ -226,15 +226,16 @@ export default function PresenterView({ sessionToken }) {
               </div>
             )}
             {isFinished && (
-              <div className="text-center">
+              <div className="text-center mt-4">
                 <div className="inline-flex items-center gap-2 bg-green-500/20 text-green-400 px-4 py-2 rounded-full text-lg font-semibold">
+                  <CheckCircle className="w-5 h-5" />
                   Presentation Complete
                 </div>
               </div>
             )}
           </div>
 
-          <div className="flex flex-col items-center gap-4">
+          <div className="flex flex-col items-center gap-6">
             <div className="flex items-center gap-2">
               {isRunning ? (
                 <div className="flex items-center gap-2 text-green-400">
@@ -253,18 +254,11 @@ export default function PresenterView({ sessionToken }) {
               <button
                 onClick={handleFinishPresentation}
                 disabled={finishing}
-                className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-12 py-4 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-3 shadow-xl hover:shadow-2xl active:scale-95 min-h-[60px] min-w-[280px]"
+                className="w-full max-w-md bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-8 py-6 rounded-xl font-bold text-xl transition-all flex items-center justify-center gap-3 shadow-2xl hover:shadow-green-500/50 active:scale-95 border-2 border-green-500"
               >
-                <CheckCircle className="w-6 h-6" />
+                <CheckCircle className="w-7 h-7" />
                 {finishing ? 'Finishing...' : 'Finish Presentation'}
               </button>
-            )}
-
-            {isFinished && (
-              <div className="bg-green-500/20 border border-green-500 rounded-lg px-6 py-3 flex items-center gap-2">
-                <CheckCircle className="w-5 h-5 text-green-400" />
-                <span className="text-green-400 font-semibold">Presentation Complete</span>
-              </div>
             )}
           </div>
         </div>
