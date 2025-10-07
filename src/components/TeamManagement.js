@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react'
-import { X, UserPlus, Mail, Crown, Users, Trash2, Loader as Loader2 } from 'lucide-react'
+import { X, UserPlus, Mail, Crown, Users, Trash2, Loader as Loader2, Shield, Mic2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { products } from '../stripe-config'
+import { ROLES, isOwner, isOwnerOrAdmin, getRoleDisplayName, updateUserRole, validateRoleChange } from '../lib/roleUtils'
 
 export default function TeamManagement({ isOpen, onClose, session }) {
   const [loading, setLoading] = useState(true)
@@ -69,27 +70,67 @@ export default function TeamManagement({ isOpen, onClose, session }) {
   }
 
   const getPlanInfo = () => {
+    const countedMembers = members.filter(m => m.counted_in_limit === true)
+
     if (!subscriptionInfo?.price_id) {
-      return { name: 'Trial', maxUsers: 5, currentUsers: members.length }
+      return {
+        name: 'Trial',
+        maxUsers: 5,
+        currentUsers: countedMembers.length,
+        totalUsers: members.length
+      }
     }
 
     const product = products.find(p => p.priceId === subscriptionInfo.price_id)
     if (!product) {
-      return { name: 'Pro', maxUsers: 5, currentUsers: members.length }
+      return {
+        name: 'Pro',
+        maxUsers: 5,
+        currentUsers: countedMembers.length,
+        totalUsers: members.length
+      }
     }
 
     return {
       name: product.name,
       maxUsers: product.maxUsers,
-      currentUsers: members.length,
-      canAddUsers: product.maxUsers === -1 || members.length < product.maxUsers
+      currentUsers: countedMembers.length,
+      totalUsers: members.length,
+      canAddUsers: product.maxUsers === -1 || countedMembers.length < product.maxUsers
     }
   }
 
-  const handleRemoveMember = async (memberId, memberUserId) => {
+  const handleRoleChange = async (memberId, newRole) => {
+    const member = members.find(m => m.id === memberId)
+    if (!member) return
+
+    const validation = validateRoleChange(member, newRole)
+    if (!validation.valid) {
+      alert(validation.message)
+      return
+    }
+
+    const confirmMessage = `Change ${member.user?.email}'s role to ${getRoleDisplayName(newRole)}?\n\nThis will ${newRole === ROLES.ADMIN ? 'grant admin privileges and remove presentation access' : 'remove admin privileges and grant presentation access'}.`
+
+    if (!window.confirm(confirmMessage)) return
+
+    const result = await updateUserRole(memberId, newRole)
+    if (result.success) {
+      await loadTeamData()
+    } else {
+      alert(`Failed to update role: ${result.error}`)
+    }
+  }
+
+  const handleRemoveMember = async (memberId, member) => {
+    if (isOwner(member)) {
+      alert('Cannot remove the organization owner')
+      return
+    }
+
     if (!window.confirm('Are you sure you want to remove this member?')) return
 
-    if (memberUserId === session.user.id) {
+    if (member.user_id === session.user.id) {
       alert('You cannot remove yourself from the organization')
       return
     }
@@ -128,7 +169,8 @@ export default function TeamManagement({ isOpen, onClose, session }) {
   if (!isOpen) return null
 
   const planInfo = getPlanInfo()
-  const isAdmin = members.find(m => m.user_id === session?.user?.id)?.role === 'admin'
+  const currentMember = members.find(m => m.user_id === session?.user?.id)
+  const canManage = isOwnerOrAdmin(currentMember)
 
   return (
     <>
@@ -163,17 +205,20 @@ export default function TeamManagement({ isOpen, onClose, session }) {
                       <div className="text-xl font-bold text-white">{planInfo.name}</div>
                     </div>
                     <div>
-                      <div className="text-sm text-gray-400">Team Size</div>
+                      <div className="text-sm text-gray-400">Counted Users</div>
                       <div className="text-xl font-bold text-white">
                         {planInfo.currentUsers}
                         {planInfo.maxUsers > 0 && ` / ${planInfo.maxUsers}`}
                         {planInfo.maxUsers === -1 && ' / Unlimited'}
                       </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        {planInfo.totalUsers} total (owner not counted)
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                {isAdmin && (
+                {canManage && (
                   <div className="mb-6">
                     <button
                       onClick={() => setShowInviteModal(true)}
@@ -196,10 +241,10 @@ export default function TeamManagement({ isOpen, onClose, session }) {
                             <Mail className="w-5 h-5 text-gray-400" />
                             <div>
                               <div className="text-white">{invite.email}</div>
-                              <div className="text-sm text-gray-400 capitalize">{invite.role}</div>
+                              <div className="text-sm text-gray-400 capitalize">{getRoleDisplayName(invite.role)}</div>
                             </div>
                           </div>
-                          {isAdmin && (
+                          {canManage && (
                             <button
                               onClick={() => handleCancelInvitation(invite.id)}
                               className="text-red-400 hover:text-red-300 transition-colors"
@@ -216,29 +261,57 @@ export default function TeamManagement({ isOpen, onClose, session }) {
                 <div>
                   <h3 className="text-lg font-semibold text-white mb-3">Team Members</h3>
                   <div className="space-y-2">
-                    {members.map(member => (
-                      <div key={member.id} className="flex items-center justify-between bg-gray-700 rounded-lg p-4">
-                        <div className="flex items-center gap-3">
-                          {member.role === 'admin' ? (
-                            <Crown className="w-5 h-5 text-yellow-500" />
-                          ) : (
-                            <Users className="w-5 h-5 text-gray-400" />
-                          )}
-                          <div>
-                            <div className="text-white">{member.user?.email || 'Unknown'}</div>
-                            <div className="text-sm text-gray-400 capitalize">{member.role}</div>
+                    {members.map(member => {
+                      const roleIcon = member.is_owner ? 'crown' : member.role === 'admin' ? 'shield' : 'mic'
+                      const roleColor = member.is_owner ? 'text-yellow-500' : member.role === 'admin' ? 'text-blue-500' : 'text-green-500'
+                      return (
+                        <div key={member.id} className="flex items-center justify-between bg-gray-700 rounded-lg p-4">
+                          <div className="flex items-center gap-3 flex-1">
+                            {roleIcon === 'crown' ? (
+                              <Crown className={`w-5 h-5 ${roleColor}`} />
+                            ) : roleIcon === 'shield' ? (
+                              <Shield className={`w-5 h-5 ${roleColor}`} />
+                            ) : (
+                              <Mic2 className={`w-5 h-5 ${roleColor}`} />
+                            )}
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <span className="text-white">{member.user?.email || 'Unknown'}</span>
+                                {member.is_owner && (
+                                  <span className="text-xs bg-yellow-500/20 text-yellow-400 px-2 py-0.5 rounded">
+                                    Owner
+                                  </span>
+                                )}
+                                {!member.counted_in_limit && !member.is_owner && (
+                                  <span className="text-xs bg-gray-600 text-gray-300 px-2 py-0.5 rounded">
+                                    Not Counted
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-sm text-gray-400 capitalize">{getRoleDisplayName(member.role)}</div>
+                            </div>
+                            {canManage && !member.is_owner && (
+                              <select
+                                value={member.role}
+                                onChange={(e) => handleRoleChange(member.id, e.target.value)}
+                                className="bg-gray-600 border border-gray-500 rounded px-3 py-1 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              >
+                                <option value="admin">Admin</option>
+                                <option value="presenter">Presenter</option>
+                              </select>
+                            )}
                           </div>
+                          {canManage && member.user_id !== session?.user?.id && !member.is_owner && (
+                            <button
+                              onClick={() => handleRemoveMember(member.id, member)}
+                              className="text-red-400 hover:text-red-300 transition-colors ml-3"
+                            >
+                              <Trash2 className="w-5 h-5" />
+                            </button>
+                          )}
                         </div>
-                        {isAdmin && member.user_id !== session?.user?.id && (
-                          <button
-                            onClick={() => handleRemoveMember(member.id, member.user_id)}
-                            className="text-red-400 hover:text-red-300 transition-colors"
-                          >
-                            <Trash2 className="w-5 h-5" />
-                          </button>
-                        )}
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 </div>
               </>
@@ -253,15 +326,16 @@ export default function TeamManagement({ isOpen, onClose, session }) {
           onClose={() => setShowInviteModal(false)}
           onInviteSent={loadTeamData}
           session={session}
+          planInfo={planInfo}
         />
       )}
     </>
   )
 }
 
-function InviteModal({ organization, onClose, onInviteSent, session }) {
+function InviteModal({ organization, onClose, onInviteSent, session, planInfo }) {
   const [email, setEmail] = useState('')
-  const [role, setRole] = useState('presenter')
+  const [role, setRole] = useState(ROLES.ADMIN)
   const [loading, setLoading] = useState(false)
 
   const handleInvite = async (e) => {
@@ -301,6 +375,13 @@ function InviteModal({ organization, onClose, onInviteSent, session }) {
           </button>
         </div>
 
+        <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 mb-4">
+          <p className="text-sm text-blue-300">
+            <strong>Note:</strong> The organization owner does not count toward your user limit.
+            Current usage: {planInfo.currentUsers} of {planInfo.maxUsers === -1 ? 'unlimited' : planInfo.maxUsers} users
+          </p>
+        </div>
+
         <form onSubmit={handleInvite} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -325,9 +406,14 @@ function InviteModal({ organization, onClose, onInviteSent, session }) {
               onChange={(e) => setRole(e.target.value)}
               className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="presenter">Presenter</option>
-              <option value="admin">Admin</option>
+              <option value={ROLES.ADMIN}>Admin - Manage events and team</option>
+              <option value={ROLES.PRESENTER}>Presenter - Present in events only</option>
             </select>
+            <p className="text-xs text-gray-400 mt-2">
+              {role === ROLES.ADMIN
+                ? 'Admins can create events, manage the team, but cannot present.'
+                : 'Presenters can only present in events and cannot access admin features.'}
+            </p>
           </div>
 
           <button
