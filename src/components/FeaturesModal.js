@@ -66,16 +66,34 @@ export default function FeaturesModal({ isOpen, onClose }) {
       color: 'teal'
     },
     {
-      icon: <Users className="w-6 h-6" />,
-      title: 'Presenter Access System',
-      description: 'Generate unique access links for presenters. They can join events and view their timers without full admin access.',
+      icon: <Shield className="w-6 h-6" />,
+      title: 'PIN-Protected Presenter Access',
+      description: 'Enterprise-grade security with flexible PIN authentication. Choose from no security, PIN optional, or PIN required modes for different event types.',
       color: 'violet'
     },
     {
+      icon: <Users className="w-6 h-6" />,
+      title: 'Secure Presenter Assignment',
+      description: 'Generate QR codes for presenter access with configurable expiration and usage limits. Track all access attempts with detailed audit logs.',
+      color: 'emerald'
+    },
+    {
       icon: <Shield className="w-6 h-6" />,
+      title: 'Flexible Security Levels',
+      description: 'Adapt security to your needs: no security for internal events, PIN optional for balanced security, or PIN required for maximum protection.',
+      color: 'indigo'
+    },
+    {
+      icon: <Shield className="w-6 h-6" />,
+      title: 'Automated Security Features',
+      description: 'Account lockouts after failed PIN attempts, automatic session expiration, and PIN delivery via email or manual sharing.',
+      color: 'cyan'
+    },
+    {
+      icon: <Users className="w-6 h-6" />,
       title: 'Team Collaboration',
       description: 'Invite team members, manage access levels, and collaborate on event management. Perfect for event organizers.',
-      color: 'emerald'
+      color: 'teal'
     }
   ]
 

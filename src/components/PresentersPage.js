@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Users, Plus, Archive, CreditCard as Edit2, Trash2, Mail, Phone, FileText, Loader as Loader2, CircleAlert as AlertCircle } from 'lucide-react'
+import { Users, Plus, Archive, CreditCard as Edit2, Mail, Phone, Loader as Loader2, CircleAlert as AlertCircle, Shield, Key, Copy, Check, Send, RefreshCw, Lock } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
 export default function PresentersPage({ session }) {
@@ -193,7 +193,15 @@ export default function PresentersPage({ session }) {
                 {presenters.map((presenter) => (
                   <tr key={presenter.id} className="border-b border-gray-700 hover:bg-gray-700/50 transition-colors">
                     <td className="p-4">
-                      <div className="font-medium text-white">{presenter.presenter_name}</div>
+                      <div className="flex items-center gap-2">
+                        <div className="font-medium text-white">{presenter.presenter_name}</div>
+                        {presenter.access_pin && (
+                          <Shield className="w-4 h-4 text-green-500" title="PIN Protected" />
+                        )}
+                        {presenter.pin_locked_until && new Date(presenter.pin_locked_until) > new Date() && (
+                          <Lock className="w-4 h-4 text-red-500" title="Account Locked" />
+                        )}
+                      </div>
                       {presenter.notes && (
                         <div className="text-sm text-gray-400 mt-1">{presenter.notes}</div>
                       )}
@@ -232,6 +240,13 @@ export default function PresentersPage({ session }) {
                           title="Edit"
                         >
                           <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleEditPresenter(presenter)}
+                          className="p-2 text-gray-400 hover:text-green-400 transition-colors"
+                          title="Manage PIN"
+                        >
+                          <Key className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => handleDeletePresenter(presenter.id)}
@@ -278,6 +293,117 @@ function PresenterModal({ presenter, organizationId, onClose, onSuccess }) {
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [showPinSection, setShowPinSection] = useState(false)
+  const [pinConfig, setPinConfig] = useState({
+    pin: '',
+    deliveryMethod: 'manual',
+    expirationPolicy: 'never'
+  })
+  const [generatedPin, setGeneratedPin] = useState(presenter?.access_pin || '')
+  const [pinCopied, setPinCopied] = useState(false)
+  const [sendingEmail, setSendingEmail] = useState(false)
+
+  const generatePin = () => {
+    const pin = Math.floor(1000 + Math.random() * 9000).toString()
+    setGeneratedPin(pin)
+    setPinConfig({ ...pinConfig, pin })
+  }
+
+  const copyPinToClipboard = () => {
+    navigator.clipboard.writeText(generatedPin)
+    setPinCopied(true)
+    setTimeout(() => setPinCopied(false), 2000)
+  }
+
+  const handleSendPinEmail = async (presenterId) => {
+    if (!formData.email) {
+      setError('Email address is required to send PIN')
+      return
+    }
+
+    setSendingEmail(true)
+    try {
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-presenter-pin`
+      const { data: { session } } = await supabase.auth.getSession()
+
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session?.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          presenterId,
+          pin: generatedPin,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to send PIN email')
+      }
+
+      alert('PIN email sent successfully!')
+    } catch (error) {
+      console.error('Error sending PIN email:', error)
+      setError('Failed to send PIN email')
+    } finally {
+      setSendingEmail(false)
+    }
+  }
+
+  const handleResetPin = async () => {
+    if (!presenter?.id) return
+
+    if (!window.confirm('Reset PIN? This will generate a new PIN and lock out the old one.')) {
+      return
+    }
+
+    try {
+      const newPin = Math.floor(1000 + Math.random() * 9000).toString()
+
+      const { error } = await supabase
+        .from('organization_presenters')
+        .update({
+          access_pin: newPin,
+          pin_failed_attempts: 0,
+          pin_locked_until: null,
+          pin_created_at: new Date().toISOString(),
+          pin_reset_count: (presenter.pin_reset_count || 0) + 1
+        })
+        .eq('id', presenter.id)
+
+      if (error) throw error
+
+      setGeneratedPin(newPin)
+      setPinConfig({ ...pinConfig, pin: newPin })
+      alert('PIN reset successfully!')
+    } catch (error) {
+      console.error('Error resetting PIN:', error)
+      setError('Failed to reset PIN')
+    }
+  }
+
+  const handleUnlockAccount = async () => {
+    if (!presenter?.id) return
+
+    try {
+      const { error } = await supabase
+        .from('organization_presenters')
+        .update({
+          pin_failed_attempts: 0,
+          pin_locked_until: null
+        })
+        .eq('id', presenter.id)
+
+      if (error) throw error
+
+      alert('Account unlocked successfully!')
+      onSuccess()
+    } catch (error) {
+      console.error('Error unlocking account:', error)
+      setError('Failed to unlock account')
+    }
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -290,6 +416,8 @@ function PresenterModal({ presenter, organizationId, onClose, onSuccess }) {
 
     setSaving(true)
     try {
+      let presenterId = presenter?.id
+
       if (presenter) {
         const { error } = await supabase
           .from('organization_presenters')
@@ -303,7 +431,7 @@ function PresenterModal({ presenter, organizationId, onClose, onSuccess }) {
 
         if (error) throw error
       } else {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('organization_presenters')
           .insert({
             organization_id: organizationId,
@@ -312,8 +440,33 @@ function PresenterModal({ presenter, organizationId, onClose, onSuccess }) {
             phone: formData.phone.trim() || null,
             notes: formData.notes.trim() || null
           })
+          .select()
+          .single()
 
         if (error) throw error
+        presenterId = data.id
+      }
+
+      if (generatedPin && showPinSection) {
+        const pinUpdateData = {
+          access_pin: generatedPin,
+          pin_delivery_method: pinConfig.deliveryMethod,
+          pin_expiration_policy: pinConfig.expirationPolicy,
+          pin_created_at: new Date().toISOString(),
+          pin_failed_attempts: 0,
+          pin_locked_until: null
+        }
+
+        const { error: pinError } = await supabase
+          .from('organization_presenters')
+          .update(pinUpdateData)
+          .eq('id', presenterId)
+
+        if (pinError) throw pinError
+
+        if (pinConfig.deliveryMethod === 'email' || pinConfig.deliveryMethod === 'both') {
+          await handleSendPinEmail(presenterId)
+        }
       }
 
       onSuccess()
@@ -330,8 +483,8 @@ function PresenterModal({ presenter, organizationId, onClose, onSuccess }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <div className="bg-gray-800 border border-gray-700 rounded-xl max-w-md w-full p-6">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 overflow-y-auto">
+      <div className="bg-gray-800 border border-gray-700 rounded-xl max-w-md w-full p-6 my-8">
         <h2 className="text-2xl font-bold text-white mb-4">
           {presenter ? 'Edit Presenter' : 'Add Presenter'}
         </h2>
@@ -398,6 +551,160 @@ function PresenterModal({ presenter, organizationId, onClose, onSuccess }) {
               placeholder="Additional information..."
               rows={3}
             />
+          </div>
+
+          {presenter && presenter.pin_locked_until && new Date(presenter.pin_locked_until) > new Date() && (
+            <div className="bg-red-500/10 border border-red-500 rounded-lg p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <Lock className="w-4 h-4 text-red-500" />
+                <span className="text-sm font-medium text-red-400">Account Locked</span>
+              </div>
+              <p className="text-xs text-gray-400 mb-2">
+                Too many failed PIN attempts. Locked until {new Date(presenter.pin_locked_until).toLocaleString()}
+              </p>
+              <button
+                type="button"
+                onClick={handleUnlockAccount}
+                className="text-xs bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded transition-colors"
+              >
+                Unlock Account
+              </button>
+            </div>
+          )}
+
+          <div className="border-t border-gray-700 pt-4">
+            <button
+              type="button"
+              onClick={() => setShowPinSection(!showPinSection)}
+              className="flex items-center gap-2 text-sm font-medium text-blue-400 hover:text-blue-300 transition-colors"
+            >
+              <Shield className="w-4 h-4" />
+              {presenter?.access_pin ? 'Manage PIN Security' : 'Add PIN Security (Optional)'}
+            </button>
+
+            {showPinSection && (
+              <div className="mt-4 space-y-4 bg-gray-700/50 rounded-lg p-4">
+                {presenter?.access_pin && (
+                  <div className="bg-green-500/10 border border-green-500 rounded-lg p-3 mb-3">
+                    <div className="flex items-center gap-2 text-green-400 text-sm font-medium mb-1">
+                      <Shield className="w-4 h-4" />
+                      PIN Protection Active
+                    </div>
+                    <div className="text-xs text-gray-400">
+                      Created: {presenter.pin_created_at ? new Date(presenter.pin_created_at).toLocaleDateString() : 'Unknown'}
+                      {presenter.pin_last_used_at && ` • Last used: ${new Date(presenter.pin_last_used_at).toLocaleDateString()}`}
+                    </div>
+                    <div className="flex gap-2 mt-3">
+                      <button
+                        type="button"
+                        onClick={handleResetPin}
+                        className="text-xs bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-1 rounded transition-colors flex items-center gap-1"
+                      >
+                        <RefreshCw className="w-3 h-3" />
+                        Reset PIN
+                      </button>
+                      {presenter.email && (
+                        <button
+                          type="button"
+                          onClick={() => handleSendPinEmail(presenter.id)}
+                          disabled={sendingEmail}
+                          className="text-xs bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white px-3 py-1 rounded transition-colors flex items-center gap-1"
+                        >
+                          <Send className="w-3 h-3" />
+                          {sendingEmail ? 'Sending...' : 'Email PIN'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {!presenter?.access_pin && (
+                  <>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-300 mb-2">
+                        Generate PIN
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={generatedPin}
+                          onChange={(e) => setGeneratedPin(e.target.value)}
+                          className="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-center font-mono text-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="----"
+                          maxLength={6}
+                        />
+                        <button
+                          type="button"
+                          onClick={generatePin}
+                          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+                        >
+                          <Key className="w-4 h-4" />
+                          Generate
+                        </button>
+                      </div>
+                    </div>
+
+                    {generatedPin && (
+                      <>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={copyPinToClipboard}
+                            className="flex-1 bg-gray-600 hover:bg-gray-500 text-white px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-center gap-2"
+                          >
+                            {pinCopied ? (
+                              <>
+                                <Check className="w-4 h-4" />
+                                Copied!
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="w-4 h-4" />
+                                Copy PIN
+                              </>
+                            )}
+                          </button>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-medium text-gray-300 mb-2">
+                            PIN Delivery Method
+                          </label>
+                          <select
+                            value={pinConfig.deliveryMethod}
+                            onChange={(e) => setPinConfig({ ...pinConfig, deliveryMethod: e.target.value })}
+                            className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="manual">Manual (Copy & Share)</option>
+                            <option value="email">Email Only</option>
+                            <option value="both">Both (Email + Manual)</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-medium text-gray-300 mb-2">
+                            PIN Expiration Policy
+                          </label>
+                          <select
+                            value={pinConfig.expirationPolicy}
+                            onChange={(e) => setPinConfig({ ...pinConfig, expirationPolicy: e.target.value })}
+                            className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="never">Never Expire</option>
+                            <option value="on_first_use">Expire After First Use</option>
+                            <option value="on_event_end">Expire When Event Ends</option>
+                          </select>
+                        </div>
+
+                        <div className="text-xs text-gray-400 bg-blue-500/10 border border-blue-500/30 rounded p-2">
+                          <strong>Note:</strong> PIN will be saved when you click "{presenter ? 'Update' : 'Add'}" below.
+                        </div>
+                      </>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="flex gap-3 mt-6">

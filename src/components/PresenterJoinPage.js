@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Users, Clock, Calendar, Check, Loader as Loader2, CircleAlert as AlertCircle } from 'lucide-react'
+import { Users, Calendar, Check, Loader as Loader2, CircleAlert as AlertCircle, Shield, Lock, Eye, EyeOff } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
 export default function PresenterJoinPage({ token }) {
@@ -9,8 +9,15 @@ export default function PresenterJoinPage({ token }) {
   const [event, setEvent] = useState(null)
   const [assignments, setAssignments] = useState([])
   const [selectedPresenter, setSelectedPresenter] = useState('')
+  const [selectedPresenterId, setSelectedPresenterId] = useState('')
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
+  const [showPinInput, setShowPinInput] = useState(false)
+  const [pin, setPin] = useState('')
+  const [pinError, setPinError] = useState('')
+  const [showPin, setShowPin] = useState(false)
+  const [verifyingPin, setVerifyingPin] = useState(false)
+  const [remainingAttempts, setRemainingAttempts] = useState(5)
 
   useEffect(() => {
     if (token) {
@@ -52,7 +59,7 @@ export default function PresenterJoinPage({ token }) {
 
       setTokenData(tokenResult)
 
-      const [eventResult, assignmentsResult] = await Promise.all([
+      const [eventResult, assignmentsResult, presentersResult] = await Promise.all([
         supabase
           .from('events')
           .select('*')
@@ -62,7 +69,11 @@ export default function PresenterJoinPage({ token }) {
           .from('event_presenter_assignments')
           .select('*')
           .eq('event_id', tokenResult.event_id)
-          .order('presenter_name')
+          .order('presenter_name'),
+        supabase
+          .from('organization_presenters')
+          .select('id, presenter_name, access_pin, pin_locked_until')
+          .eq('organization_id', tokenResult.organization_id)
       ])
 
       if (eventResult.error) throw eventResult.error
@@ -70,6 +81,19 @@ export default function PresenterJoinPage({ token }) {
 
       setEvent(eventResult.data)
       setAssignments(assignmentsResult.data || [])
+
+      const presenterMap = {}
+      if (presentersResult.data) {
+        presentersResult.data.forEach(p => {
+          presenterMap[p.presenter_name] = p
+        })
+      }
+
+      const enhancedAssignments = (assignmentsResult.data || []).map(a => ({
+        ...a,
+        presenter_data: presenterMap[a.presenter_name] || null
+      }))
+      setAssignments(enhancedAssignments)
 
       await supabase
         .from('event_access_logs')
@@ -86,7 +110,83 @@ export default function PresenterJoinPage({ token }) {
     }
   }
 
-  const handleJoin = async () => {
+  const handlePresenterSelection = (presenterName, presenterId, presenterData) => {
+    setSelectedPresenter(presenterName)
+    setSelectedPresenterId(presenterId)
+    setError('')
+    setPinError('')
+    setPin('')
+
+    const securityLevel = event?.security_level || 'pin_optional'
+    const hasPin = presenterData?.access_pin
+
+    if (presenterData?.pin_locked_until && new Date(presenterData.pin_locked_until) > new Date()) {
+      setError('This account is temporarily locked due to too many failed PIN attempts.')
+      return
+    }
+
+    if (securityLevel === 'pin_required' && hasPin) {
+      setShowPinInput(true)
+    } else if (securityLevel === 'pin_optional' && hasPin) {
+      setShowPinInput(true)
+    } else {
+      setShowPinInput(false)
+    }
+  }
+
+  const handleVerifyPin = async () => {
+    if (!pin || pin.length < 4) {
+      setPinError('Please enter your PIN')
+      return
+    }
+
+    setVerifyingPin(true)
+    setPinError('')
+
+    try {
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/verify-presenter-pin`
+
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          presenterId: selectedPresenterId,
+          pin: pin,
+          eventId: event.id,
+        }),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        if (result.locked) {
+          setPinError(`Account locked. Try again in ${result.lockTimeRemaining} minutes.`)
+        } else if (result.expired) {
+          setPinError('Your PIN has expired. Please contact the event organizer.')
+        } else {
+          setPinError(result.error || 'Invalid PIN')
+          if (result.remainingAttempts !== undefined) {
+            setRemainingAttempts(result.remainingAttempts)
+            if (result.remainingAttempts > 0) {
+              setPinError(`Invalid PIN. ${result.remainingAttempts} attempts remaining.`)
+            }
+          }
+        }
+        setVerifyingPin(false)
+        return
+      }
+
+      await handleJoin(true)
+    } catch (error) {
+      console.error('Error verifying PIN:', error)
+      setPinError('Failed to verify PIN. Please try again.')
+      setVerifyingPin(false)
+    }
+  }
+
+  const handleJoin = async (pinVerified = false) => {
     if (!selectedPresenter) {
       setError('Please select your name')
       return
@@ -103,19 +203,34 @@ export default function PresenterJoinPage({ token }) {
       return
     }
 
+    const securityLevel = event?.security_level || 'pin_optional'
+    const presenterData = assignment.presenter_data
+    const hasPin = presenterData?.access_pin
+
+    if (securityLevel === 'pin_required' && hasPin && !pinVerified) {
+      setShowPinInput(true)
+      return
+    }
+
     setSubmitting(true)
     setError('')
 
     try {
       const sessionToken = crypto.randomUUID()
 
+      const updateData = {
+        assigned_at: new Date().toISOString(),
+        session_token: sessionToken,
+        device_info: navigator.userAgent
+      }
+
+      if (pinVerified) {
+        updateData.pin_verified_at = new Date().toISOString()
+      }
+
       const { error: updateError } = await supabase
         .from('event_presenter_assignments')
-        .update({
-          assigned_at: new Date().toISOString(),
-          session_token: sessionToken,
-          device_info: navigator.userAgent
-        })
+        .update(updateData)
         .eq('id', assignment.id)
         .is('assigned_at', null)
 
@@ -126,6 +241,7 @@ export default function PresenterJoinPage({ token }) {
           throw updateError
         }
         setSubmitting(false)
+        setVerifyingPin(false)
         return
       }
 
@@ -154,6 +270,7 @@ export default function PresenterJoinPage({ token }) {
       console.error('Error claiming presenter slot:', error)
       setError('Failed to claim presenter slot. Please try again.')
       setSubmitting(false)
+      setVerifyingPin(false)
     }
   }
 
@@ -250,53 +367,142 @@ export default function PresenterJoinPage({ token }) {
           ) : (
             <>
               <div className="space-y-2 mb-6">
-                {availableAssignments.map((assignment) => (
-                  <label
-                    key={assignment.id}
-                    className={`flex items-center p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                      selectedPresenter === assignment.presenter_name
-                        ? 'border-blue-500 bg-blue-500/10'
-                        : 'border-gray-600 hover:border-gray-500 bg-gray-700'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="presenter"
-                      value={assignment.presenter_name}
-                      checked={selectedPresenter === assignment.presenter_name}
-                      onChange={(e) => {
-                        setSelectedPresenter(e.target.value)
-                        setError('')
-                      }}
-                      className="sr-only"
-                    />
-                    <div className="flex-1">
-                      <div className="font-medium text-white">{assignment.presenter_name}</div>
-                      <div className="text-sm text-gray-400">Available</div>
-                    </div>
-                    {selectedPresenter === assignment.presenter_name && (
-                      <Check className="w-5 h-5 text-blue-500" />
-                    )}
-                  </label>
-                ))}
+                {availableAssignments.map((assignment) => {
+                  const hasPin = assignment.presenter_data?.access_pin
+                  const isLocked = assignment.presenter_data?.pin_locked_until &&
+                                   new Date(assignment.presenter_data.pin_locked_until) > new Date()
+
+                  return (
+                    <label
+                      key={assignment.id}
+                      className={`flex items-center p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                        selectedPresenter === assignment.presenter_name
+                          ? 'border-blue-500 bg-blue-500/10'
+                          : isLocked
+                          ? 'border-red-500 bg-red-500/10 cursor-not-allowed opacity-60'
+                          : 'border-gray-600 hover:border-gray-500 bg-gray-700'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="presenter"
+                        value={assignment.presenter_name}
+                        checked={selectedPresenter === assignment.presenter_name}
+                        onChange={(e) => handlePresenterSelection(
+                          e.target.value,
+                          assignment.presenter_data?.id,
+                          assignment.presenter_data
+                        )}
+                        disabled={isLocked}
+                        className="sr-only"
+                      />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <div className="font-medium text-white">{assignment.presenter_name}</div>
+                          {hasPin && !isLocked && (
+                            <Shield className="w-4 h-4 text-green-500" title="PIN Protected" />
+                          )}
+                          {isLocked && (
+                            <Lock className="w-4 h-4 text-red-500" title="Account Locked" />
+                          )}
+                        </div>
+                        <div className="text-sm text-gray-400">
+                          {isLocked ? 'Locked - Contact organizer' : 'Available'}
+                        </div>
+                      </div>
+                      {selectedPresenter === assignment.presenter_name && (
+                        <Check className="w-5 h-5 text-blue-500" />
+                      )}
+                    </label>
+                  )
+                })}
               </div>
 
-              <button
-                onClick={handleJoin}
-                disabled={!selectedPresenter || submitting}
-                className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
-              >
-                {submitting ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    Claiming slot...
-                  </>
-                ) : (
-                  <>
-                    Continue as {selectedPresenter || 'Presenter'}
-                  </>
-                )}
-              </button>
+              {showPinInput && selectedPresenter && (
+                <div className="bg-gray-700 rounded-lg p-4 mb-6">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Shield className="w-5 h-5 text-green-500" />
+                    <h3 className="font-medium text-white">Enter Your PIN</h3>
+                  </div>
+
+                  {pinError && (
+                    <div className="bg-red-500/10 border border-red-500 rounded p-2 mb-3 text-sm text-red-400">
+                      {pinError}
+                    </div>
+                  )}
+
+                  <div className="relative">
+                    <input
+                      type={showPin ? 'text' : 'password'}
+                      value={pin}
+                      onChange={(e) => setPin(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          handleVerifyPin()
+                        }
+                      }}
+                      maxLength={6}
+                      className="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 text-white text-center text-lg font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="••••"
+                      autoComplete="off"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPin(!showPin)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+                    >
+                      {showPin ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
+
+                  <button
+                    onClick={handleVerifyPin}
+                    disabled={verifyingPin || !pin}
+                    className="w-full mt-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                  >
+                    {verifyingPin ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        Verifying...
+                      </>
+                    ) : (
+                      <>
+                        <Shield className="w-5 h-5" />
+                        Verify PIN & Continue
+                      </>
+                    )}
+                  </button>
+
+                  {event?.security_level === 'pin_optional' && (
+                    <button
+                      onClick={() => handleJoin(false)}
+                      disabled={submitting}
+                      className="w-full mt-2 bg-gray-600 hover:bg-gray-500 disabled:bg-gray-700 text-white py-2 px-4 rounded-lg text-sm transition-colors"
+                    >
+                      Skip PIN (Not Recommended)
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {!showPinInput && (
+                <button
+                  onClick={() => handleJoin(false)}
+                  disabled={!selectedPresenter || submitting}
+                  className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                >
+                  {submitting ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Claiming slot...
+                    </>
+                  ) : (
+                    <>
+                      Continue as {selectedPresenter || 'Presenter'}
+                    </>
+                  )}
+                </button>
+              )}
             </>
           )}
         </div>

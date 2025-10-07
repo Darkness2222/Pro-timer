@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { X, Plus, Trash2, Users, Loader as Loader2, CircleAlert as AlertCircle, Search } from 'lucide-react'
+import { X, Plus, Trash2, Users, Loader as Loader2, CircleAlert as AlertCircle, Shield } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
 export default function CreateEventModal({ isOpen, onClose, session, onEventCreated }) {
@@ -12,6 +12,7 @@ export default function CreateEventModal({ isOpen, onClose, session, onEventCrea
   const [eventDate, setEventDate] = useState('')
   const [bufferDuration, setBufferDuration] = useState(0)
   const [autoStartNext, setAutoStartNext] = useState(false)
+  const [securityLevel, setSecurityLevel] = useState('pin_optional')
   const [presenters, setPresenters] = useState([
     { name: '', topic: '', duration: 5 }
   ])
@@ -169,6 +170,7 @@ export default function CreateEventModal({ isOpen, onClose, session, onEventCrea
           event_date: eventDate || null,
           buffer_duration: bufferDuration,
           auto_start_next: autoStartNext,
+          security_level: securityLevel,
           status: 'upcoming',
           created_by: session.user.id
         })
@@ -226,6 +228,7 @@ export default function CreateEventModal({ isOpen, onClose, session, onEventCrea
     setEventDate('')
     setBufferDuration(0)
     setAutoStartNext(false)
+    setSecurityLevel('pin_optional')
     setPresenters([{ name: '', topic: '', duration: 5 }])
   }
 
@@ -331,6 +334,37 @@ export default function CreateEventModal({ isOpen, onClose, session, onEventCrea
                 Auto-start next presenter
               </label>
               <p className="text-xs text-gray-400 mt-1">Automatically start the next presenter after buffer</p>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2 flex items-center gap-2">
+              <Shield className="w-4 h-4 text-green-500" />
+              Security Level
+            </label>
+            <select
+              value={securityLevel}
+              onChange={(e) => setSecurityLevel(e.target.value)}
+              className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="none">No Security - Anyone with link can access</option>
+              <option value="pin_optional">PIN Optional - Presenters can choose to skip PIN</option>
+              <option value="pin_required">PIN Required - All presenters must enter PIN</option>
+              <option value="email_verification">Email Verification - Send verification codes (Future)</option>
+            </select>
+            <div className="mt-2 text-xs text-gray-400 bg-gray-700/50 rounded p-2">
+              {securityLevel === 'none' && (
+                <p>⚠️ Not recommended for public events. Any person with the QR code can claim presenter slots.</p>
+              )}
+              {securityLevel === 'pin_optional' && (
+                <p>✓ Balanced security. Presenters with PINs verify identity. Others can skip for convenience.</p>
+              )}
+              {securityLevel === 'pin_required' && (
+                <p>🔒 Maximum security. All presenters must have PINs configured to access their timers.</p>
+              )}
+              {securityLevel === 'email_verification' && (
+                <p>📧 Coming soon. Email verification codes will be sent to presenters for highest security.</p>
+              )}
             </div>
           </div>
 
