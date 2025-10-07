@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
-import { X, Settings, Volume2, Vibrate, Clock, Monitor, RotateCcw, Crown, LogOut, Users } from 'lucide-react'
+import { X, Settings, Volume2, Vibrate, Clock, Monitor, RotateCcw, Crown, LogOut, Users, Sparkles } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import FeaturesModal from './FeaturesModal'
 
 export default function SettingsModal({ isOpen, onClose, onShowSubscriptionModal, onSignOut, onShowTeamManagement, session, onSettingsChange }) {
   // Settings state
@@ -22,6 +23,7 @@ export default function SettingsModal({ isOpen, onClose, onShowSubscriptionModal
   })
   const [loading, setLoading] = useState(false)
   const [saveMessage, setSaveMessage] = useState('')
+  const [showFeaturesModal, setShowFeaturesModal] = useState(false)
 
   useEffect(() => {
     if (isOpen && session?.user) {
@@ -380,6 +382,28 @@ export default function SettingsModal({ isOpen, onClose, onShowSubscriptionModal
               </div>
             </div>
 
+            {/* Features Section */}
+            <div className="bg-gradient-to-r from-blue-900/30 to-purple-900/30 rounded-lg p-4 border border-blue-500/30">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-white font-medium flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-blue-400" />
+                    All Features
+                  </h4>
+                  <p className="text-gray-400 text-sm">Discover everything SyncCue can do</p>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowFeaturesModal(true)
+                  }}
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  View Features
+                </button>
+              </div>
+            </div>
+
             {/* Team Management Section */}
             <div className="bg-gray-700 rounded-lg p-4 border border-gray-600">
               <div className="flex items-center justify-between">
@@ -465,6 +489,12 @@ export default function SettingsModal({ isOpen, onClose, onShowSubscriptionModal
           </div>
         </div>
       </div>
+
+      {/* Features Modal */}
+      <FeaturesModal
+        isOpen={showFeaturesModal}
+        onClose={() => setShowFeaturesModal(false)}
+      />
     </div>
   )
 }
