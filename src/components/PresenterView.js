@@ -128,7 +128,11 @@ export default function PresenterView({ sessionToken }) {
 
       await supabase
         .from('timer_sessions')
-        .update({ is_running: false, updated_at: new Date().toISOString() })
+        .update({
+          time_left: 0,
+          is_running: false,
+          updated_at: new Date().toISOString()
+        })
         .eq('timer_id', timer.id)
 
       await supabase.from('timer_logs').insert({
