@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, memo } from 'react'
 import { FileText, TrendingUp, Clock, Target, Award, TriangleAlert as AlertTriangle, Calendar, User, ChartBar as BarChart2, Activity } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import PresenterPerformanceReport from './PresenterPerformanceReport'
 import EventComparisonReport from './EventComparisonReport'
 
-export default function ReportsPage({
+function ReportsPage({
   timers = [],
   timerLogs = [],
   reportStartDate = '',
@@ -769,3 +769,5 @@ export default function ReportsPage({
     </div>
   )
 }
+
+export default memo(ReportsPage)

@@ -312,12 +312,17 @@ export default function ProTimerApp({ session }) {
     loadTimers()
     loadTimerSessions()
     loadAllTimerLogs()
-    // Update timer sessions and current time every second
+
+    return () => {}
+  }, [])
+
+  // Update timer sessions and current time every second (separated to avoid re-renders)
+  useEffect(() => {
     const sessionInterval = setInterval(() => {
       updateTimerSessions()
       setCurrentTime(Date.now())
     }, 1000)
-    
+
     return () => clearInterval(sessionInterval)
   }, [])
 

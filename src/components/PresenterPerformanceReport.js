@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, memo } from 'react'
 import { User, TrendingUp, TrendingDown, Award, Clock, Target, ChartBar as BarChart3, ArrowLeft } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
-export default function PresenterPerformanceReport({ session, onBack }) {
+function PresenterPerformanceReport({ session, onBack }) {
   const [loading, setLoading] = useState(true)
   const [presenters, setPresenters] = useState([])
   const [selectedPresenter, setSelectedPresenter] = useState(null)
@@ -440,3 +440,5 @@ export default function PresenterPerformanceReport({ session, onBack }) {
     </div>
   )
 }
+
+export default memo(PresenterPerformanceReport)
