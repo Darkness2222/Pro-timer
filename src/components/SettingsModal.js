@@ -5,27 +5,9 @@ import FeaturesModal from './FeaturesModal'
 import TimerPreferencesModal from './TimerPreferencesModal'
 import DisplayPreferencesModal from './DisplayPreferencesModal'
 import NotificationPreferencesModal from './NotificationPreferencesModal'
-import { ROLES, isOwner, isOwnerOrAdmin, getRoleDisplayName } from '../lib/roleUtils'
+import { ROLES, getRoleDisplayName } from '../lib/roleUtils'
 
 export default function SettingsModal({ isOpen, onClose, onShowSubscriptionModal, onSignOut, onShowTeamManagement, session, onSettingsChange }) {
-  // Settings state
-  const [settings, setSettings] = useState({
-    // Timer Preferences
-    soundNotifications: true,
-    vibrationFeedback: false,
-    autoStartNext: false,
-
-    // Display Preferences
-    showSeconds: true,
-    use24HourFormat: false,
-    fullscreenOnStart: false,
-
-    // Notification Preferences
-    overtimeWarning: true,
-    halfwayNotification: true,
-    finalMinuteAlert: true
-  })
-  const [loading, setLoading] = useState(false)
   const [showFeaturesModal, setShowFeaturesModal] = useState(false)
   const [showTimerModal, setShowTimerModal] = useState(false)
   const [showDisplayModal, setShowDisplayModal] = useState(false)
@@ -34,46 +16,10 @@ export default function SettingsModal({ isOpen, onClose, onShowSubscriptionModal
 
   useEffect(() => {
     if (isOpen && session?.user) {
-      loadSettings()
       loadUserRole()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, session?.user])
-
-  const loadSettings = async () => {
-    if (!session?.user) return
-
-    try {
-      setLoading(true)
-      const { data, error } = await supabase
-        .from('user_settings')
-        .select('*')
-        .eq('user_id', session.user.id)
-        .maybeSingle()
-
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error loading settings:', error)
-        return
-      }
-
-      if (data) {
-        setSettings({
-          soundNotifications: data.sound_notifications,
-          vibrationFeedback: data.vibration_feedback,
-          autoStartNext: data.auto_start_next,
-          showSeconds: data.show_seconds,
-          use24HourFormat: data.use_24_hour_format,
-          fullscreenOnStart: data.fullscreen_on_start,
-          overtimeWarning: data.overtime_warning,
-          halfwayNotification: data.halfway_notification,
-          finalMinuteAlert: data.final_minute_alert
-        })
-      }
-    } catch (error) {
-      console.error('Error loading settings:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const loadUserRole = async () => {
     if (!session?.user) return
@@ -96,15 +42,6 @@ export default function SettingsModal({ isOpen, onClose, onShowSubscriptionModal
     }
   }
 
-  const handleSettingsUpdate = (updatedSettings) => {
-    setSettings(prev => ({
-      ...prev,
-      ...updatedSettings
-    }))
-    if (onSettingsChange) {
-      onSettingsChange(updatedSettings)
-    }
-  }
 
   const handleModalClick = (e) => {
     // Prevent event bubbling that might cause page refresh
@@ -382,7 +319,7 @@ export default function SettingsModal({ isOpen, onClose, onShowSubscriptionModal
         isOpen={showTimerModal}
         onClose={() => setShowTimerModal(false)}
         session={session}
-        onSettingsChange={handleSettingsUpdate}
+        onSettingsChange={onSettingsChange}
       />
 
       {/* Display Preferences Modal */}
@@ -390,7 +327,7 @@ export default function SettingsModal({ isOpen, onClose, onShowSubscriptionModal
         isOpen={showDisplayModal}
         onClose={() => setShowDisplayModal(false)}
         session={session}
-        onSettingsChange={handleSettingsUpdate}
+        onSettingsChange={onSettingsChange}
       />
 
       {/* Notification Preferences Modal */}
@@ -398,7 +335,7 @@ export default function SettingsModal({ isOpen, onClose, onShowSubscriptionModal
         isOpen={showNotificationModal}
         onClose={() => setShowNotificationModal(false)}
         session={session}
-        onSettingsChange={handleSettingsUpdate}
+        onSettingsChange={onSettingsChange}
       />
     </div>
   )
