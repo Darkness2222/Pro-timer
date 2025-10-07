@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react'
 import { X, Plus, Trash2, Users, Loader as Loader2, CircleAlert as AlertCircle, Shield } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { ROLES, getPresentersForOrganization } from '../lib/roleUtils'
 
 export default function CreateEventModal({ isOpen, onClose, session, onEventCreated }) {
   const [loading, setLoading] = useState(false)
   const [organizationId, setOrganizationId] = useState(null)
   const [organizationPresenters, setOrganizationPresenters] = useState([])
-  const [maxPresenters, setMaxPresenters] = useState(3)
   const [eventName, setEventName] = useState('')
   const [eventDescription, setEventDescription] = useState('')
   const [eventDate, setEventDate] = useState('')
@@ -18,6 +18,7 @@ export default function CreateEventModal({ isOpen, onClose, session, onEventCrea
   ])
   const [showAddNewPresenter, setShowAddNewPresenter] = useState(false)
   const [newPresenterName, setNewPresenterName] = useState('')
+  const [newPresenterEmail, setNewPresenterEmail] = useState('')
 
   useEffect(() => {
     if (isOpen && session?.user) {
@@ -48,26 +49,8 @@ export default function CreateEventModal({ isOpen, onClose, session, onEventCrea
         console.log('Organization loaded:', data.organization_id)
         setOrganizationId(data.organization_id)
 
-        const [orgResult, presentersResult] = await Promise.all([
-          supabase
-            .from('organizations')
-            .select('max_event_presenters')
-            .eq('id', data.organization_id)
-            .single(),
-          supabase
-            .from('organization_presenters')
-            .select('*')
-            .eq('organization_id', data.organization_id)
-            .eq('is_archived', false)
-            .order('presenter_name')
-        ])
-
-        if (orgResult.data) {
-          setMaxPresenters(orgResult.data.max_event_presenters || 3)
-        }
-        if (presentersResult.data) {
-          setOrganizationPresenters(presentersResult.data)
-        }
+        const presentersResult = await getPresentersForOrganization(data.organization_id)
+        setOrganizationPresenters(presentersResult)
       } else {
         console.error('No organization found for user')
         alert('No organization found. Please contact support.')
@@ -79,43 +62,8 @@ export default function CreateEventModal({ isOpen, onClose, session, onEventCrea
   }
 
   const handleAddNewPresenterToOrg = async () => {
-    if (!newPresenterName.trim()) {
-      alert('Please enter a presenter name')
-      return
-    }
-
-    if (organizationPresenters.length >= maxPresenters) {
-      alert(`You have reached your limit of ${maxPresenters} presenters. Please upgrade your subscription.`)
-      return
-    }
-
-    try {
-      const { data, error } = await supabase
-        .from('organization_presenters')
-        .insert({
-          organization_id: organizationId,
-          presenter_name: newPresenterName.trim()
-        })
-        .select()
-        .single()
-
-      if (error) {
-        if (error.code === '23505') {
-          alert('A presenter with this name already exists')
-        } else {
-          throw error
-        }
-        return
-      }
-
-      setOrganizationPresenters([...organizationPresenters, data])
-      setNewPresenterName('')
-      setShowAddNewPresenter(false)
-      alert('Presenter added to your organization roster!')
-    } catch (error) {
-      console.error('Error adding presenter:', error)
-      alert('Failed to add presenter')
-    }
+    alert('Please add presenters through the Team Management page (Settings > Manage Team)')
+    setShowAddNewPresenter(false)
   }
 
   const handleAddPresenter = () => {
@@ -410,8 +358,8 @@ export default function CreateEventModal({ isOpen, onClose, session, onEventCrea
                       >
                         <option value="">Select presenter...</option>
                         {organizationPresenters.map((p) => (
-                          <option key={p.id} value={p.presenter_name}>
-                            {p.presenter_name}
+                          <option key={p.id} value={p.user?.email || 'Unknown'}>
+                            {p.user?.email || 'Unknown'}
                           </option>
                         ))}
                       </select>
@@ -476,7 +424,7 @@ export default function CreateEventModal({ isOpen, onClose, session, onEventCrea
                 <div className="flex items-center gap-2 mb-2">
                   <AlertCircle className="w-4 h-4 text-blue-400" />
                   <p className="text-sm text-gray-300">
-                    Adding to organization roster ({organizationPresenters.length}/{maxPresenters} used)
+                    Use Team Management to add new team members
                   </p>
                 </div>
                 <div className="flex gap-2">
