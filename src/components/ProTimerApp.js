@@ -1597,7 +1597,7 @@ export default function ProTimerApp({ session }) {
                 }`}
               >
                 <Settings className="w-4 h-4 mr-2" />
-                Admin Dashboard
+                Timer Control
               </button>
               <button
                 onClick={() => setCurrentView('presenter')}
@@ -1790,11 +1790,11 @@ export default function ProTimerApp({ session }) {
         </div>
       )}
 
-      {/* Admin Dashboard */}
+      {/* Timer Control */}
       {currentView === 'admin' && (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-white mb-2">Admin Dashboard</h1>
+            <h1 className="text-3xl font-bold text-white mb-2">Timer Control</h1>
             <p className="text-gray-300">Create and manage presentation timers</p>
           </div>
 
