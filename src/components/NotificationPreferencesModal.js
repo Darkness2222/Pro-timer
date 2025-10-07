@@ -15,6 +15,7 @@ export default function NotificationPreferencesModal({ isOpen, onClose, session,
     if (isOpen && session?.user) {
       loadSettings()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, session?.user])
 
   const loadSettings = async () => {
