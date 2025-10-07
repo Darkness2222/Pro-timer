@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import TimerOverview from './TimerOverview'
 import { getProductByPriceId } from '../stripe-config'
-import { calculateTimeLeft, formatTime as formatTimeUtil, getProgressPercentage as getProgressPercentageUtil } from '../lib/timerUtils'
+import { calculateTimeLeft, formatTime as formatTimeUtil, getProgressPercentage as getProgressPercentageUtil, shouldResetTimerSession, isTimerSessionValid } from '../lib/timerUtils'
 import { playSound, vibrate, requestFullscreen } from '../lib/notificationUtils'
 import { Play, Pause, Square, RotateCcw, Settings, MessageSquare, Plus, Minus, Clock, Users, Timer as TimerIcon, QrCode, ExternalLink, FileText, Crown, LogOut, CircleCheck as CheckCircle, X, Calendar, TriangleAlert as AlertTriangle, Trash2 } from 'lucide-react'
 import SubscriptionModal from './SubscriptionModal'
@@ -435,8 +435,53 @@ export default function ProTimerApp({ session }) {
 
       if (error) throw error
       setTimerSessions(data || [])
+
+      await fixInvalidTimerSessions(data || [])
     } catch (error) {
       console.error('Error loading timer sessions:', error)
+    }
+  }
+
+  const fixInvalidTimerSessions = async (sessions) => {
+    try {
+      const sessionsToFix = []
+
+      for (const session of sessions) {
+        const timer = timers.find(t => t.id === session.timer_id)
+        if (!timer) continue
+
+        if (shouldResetTimerSession(session, timer.duration)) {
+          sessionsToFix.push({
+            timer_id: session.timer_id,
+            time_left: timer.duration,
+            is_running: false,
+            updated_at: new Date().toISOString()
+          })
+          console.log(`Resetting invalid timer session for timer ${session.timer_id}`)
+        }
+      }
+
+      if (sessionsToFix.length > 0) {
+        for (const sessionUpdate of sessionsToFix) {
+          await supabase
+            .from('timer_sessions')
+            .upsert(sessionUpdate, { onConflict: 'timer_id' })
+
+          await supabase
+            .from('timer_logs')
+            .insert({
+              timer_id: sessionUpdate.timer_id,
+              action: 'auto_reset',
+              time_value: sessionUpdate.time_left,
+              notes: 'Automatically reset due to invalid timer state (extreme overtime or stale session)'
+            })
+        }
+
+        await updateTimerSessions()
+        console.log(`Fixed ${sessionsToFix.length} invalid timer sessions`)
+      }
+    } catch (error) {
+      console.error('Error fixing invalid timer sessions:', error)
     }
   }
 
@@ -1880,6 +1925,9 @@ export default function ProTimerApp({ session }) {
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
             {timers.map((timer, index) => {
               const session = timerSessions[timer.id];
+              const isInvalid = session && !isTimerSessionValid(session, timer.duration);
+              const timeLeft = calculateTimeLeft(session, timer.duration, currentTime);
+              const isExtremeOvertime = timeLeft <= -3000;
               // Get event timers sorted by creation time to determine presenter number
               const eventTimers = timers
                 .filter(t => t.timer_type === 'event')
@@ -1894,6 +1942,8 @@ export default function ProTimerApp({ session }) {
                 className={`bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 border cursor-pointer transition-all aspect-square flex flex-col relative group ${
                   selectedTimer?.id === timer.id
                     ? 'border-blue-500 bg-blue-900/20'
+                    : isInvalid || isExtremeOvertime
+                    ? 'border-yellow-500 bg-yellow-900/10'
                     : 'border-gray-700 hover:border-gray-600'
                 }`}
               >
@@ -1913,6 +1963,11 @@ export default function ProTimerApp({ session }) {
                   {/* Status Indicator */}
                   <div className="flex justify-between items-start mb-2">
                     <div className={`w-2 h-2 rounded-full ${session?.is_running ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                    {(isInvalid || isExtremeOvertime) && (
+                      <div className="bg-yellow-500 text-yellow-900 text-xs px-2 py-0.5 rounded-full font-bold">
+                        RESET
+                      </div>
+                    )}
                   </div>
 
                   <h3 className="text-sm font-semibold text-white mb-1 line-clamp-2 leading-tight">{timer.name}</h3>
@@ -1923,12 +1978,11 @@ export default function ProTimerApp({ session }) {
                   <div className="mt-auto">
                     <div className="flex items-center justify-center gap-1 mb-2">
                       {(() => {
-                        const timeLeft = calculateTimeLeft(session, timer.duration, currentTime)
                         return timeLeft < 0 && (
                           <AlertTriangle className="w-4 h-4 text-red-500 animate-pulse" />
                         )
                       })()}
-                      <div className="text-lg font-mono text-red-500">
+                      <div className={`text-lg font-mono ${isExtremeOvertime ? 'text-yellow-500' : 'text-red-500'}`}>
                         {formatTimeFromSession(session, timer.duration)}
                       </div>
                     </div>
@@ -1953,6 +2007,41 @@ export default function ProTimerApp({ session }) {
                 Control: {selectedTimer.name}
               </h2>
               
+              {/* Invalid Timer Warning */}
+              {(() => {
+                const session = timerSessions[selectedTimer.id]
+                const isInvalid = session && !isTimerSessionValid(session, selectedTimer.duration)
+                const currentTimeLeft = calculateTimeLeft(session, selectedTimer.duration, currentTime)
+                const isExtremeOvertime = currentTimeLeft <= -3000
+
+                if (isInvalid || isExtremeOvertime) {
+                  return (
+                    <div className="bg-yellow-900/30 border border-yellow-500 rounded-lg p-4 mb-6">
+                      <div className="flex items-start gap-3">
+                        <AlertTriangle className="w-6 h-6 text-yellow-500 flex-shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                          <h3 className="text-yellow-400 font-bold mb-1">Timer Requires Reset</h3>
+                          <p className="text-yellow-200 text-sm mb-3">
+                            This timer has an invalid state {isExtremeOvertime ? '(extreme overtime)' : '(stale or corrupted session)'}.
+                            Click below to reset it to its original duration.
+                          </p>
+                          <button
+                            onClick={async () => {
+                              await resetTimer()
+                              alert('Timer has been reset to its original duration')
+                            }}
+                            className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2"
+                          >
+                            <RotateCcw className="w-4 h-4" />
+                            Fix Timer Now
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                }
+              })()}
+
               {/* Timer Display */}
               <div className="text-center mb-6">
                 <div className={`text-6xl font-mono font-bold mb-4 ${
@@ -1960,13 +2049,22 @@ export default function ProTimerApp({ session }) {
                 }`}>
                   {formatTime(timeLeft)}
                 </div>
-                {timeLeft < 0 && (
+                {timeLeft < 0 && timeLeft > -3000 && (
                   <div className="flex items-center justify-center gap-3 mb-2 animate-pulse">
                     <AlertTriangle className="w-8 h-8 text-red-500" />
                     <div className="text-2xl font-bold text-red-500">
                       OVERTIME
                     </div>
                     <AlertTriangle className="w-8 h-8 text-red-500" />
+                  </div>
+                )}
+                {timeLeft <= -3000 && (
+                  <div className="flex items-center justify-center gap-3 mb-2 animate-pulse">
+                    <AlertTriangle className="w-8 h-8 text-yellow-500" />
+                    <div className="text-2xl font-bold text-yellow-500">
+                      EXTREME OVERTIME - RESET REQUIRED
+                    </div>
+                    <AlertTriangle className="w-8 h-8 text-yellow-500" />
                   </div>
                 )}
                 <div className="w-full bg-gray-700 rounded-full h-4 mb-4">
