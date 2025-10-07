@@ -1,12 +1,16 @@
 import React, { useState, useEffect, memo } from 'react'
-import { Calendar, ArrowLeft, TrendingUp, TrendingDown, Minus, ChartBar as BarChart2 } from 'lucide-react'
+import { Calendar, ArrowLeft, TrendingUp, TrendingDown, Minus, ChartBar as BarChart2, Filter } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import EventFilterModal from './EventFilterModal'
 
-function EventComparisonReport({ session, onBack }) {
+function EventComparisonReport({ session, onBack, preselectedEventIds = [], preselectedDateRange = { start: '', end: '' } }) {
   const [loading, setLoading] = useState(true)
   const [events, setEvents] = useState([])
-  const [selectedEvents, setSelectedEvents] = useState([])
+  const [selectedEvents, setSelectedEvents] = useState(preselectedEventIds)
+  const [dateRangeFilter, setDateRangeFilter] = useState(preselectedDateRange)
+  const [showEventFilterModal, setShowEventFilterModal] = useState(false)
   const [comparisonData, setComparisonData] = useState(null)
+  const [viewMode, setViewMode] = useState('comparison')
 
   useEffect(() => {
     if (session?.user) {
@@ -157,16 +161,34 @@ function EventComparisonReport({ session, onBack }) {
     }
   }
 
-  const toggleEventSelection = (eventId) => {
-    if (selectedEvents.includes(eventId)) {
-      setSelectedEvents(selectedEvents.filter(id => id !== eventId))
+  const handleApplyFilters = (eventIds, dateRange) => {
+    setSelectedEvents(eventIds)
+    setDateRangeFilter(dateRange)
+  }
+
+  const getFilterSummary = () => {
+    const parts = []
+
+    if (selectedEvents.length === 0) {
+      parts.push('No events selected')
+    } else if (selectedEvents.length === 1) {
+      const event = events.find(e => e.id === selectedEvents[0])
+      parts.push(event?.name || '1 Event')
     } else {
-      if (selectedEvents.length >= 4) {
-        alert('You can compare up to 4 events at a time')
-        return
-      }
-      setSelectedEvents([...selectedEvents, eventId])
+      parts.push(`${selectedEvents.length} Events`)
     }
+
+    if (dateRangeFilter.start && dateRangeFilter.end) {
+      const start = new Date(dateRangeFilter.start).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      const end = new Date(dateRangeFilter.end).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      parts.push(`${start} - ${end}`)
+    } else if (dateRangeFilter.start) {
+      parts.push(`From ${new Date(dateRangeFilter.start).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`)
+    } else if (dateRangeFilter.end) {
+      parts.push(`Until ${new Date(dateRangeFilter.end).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`)
+    }
+
+    return parts.join(' • ')
   }
 
   const formatDuration = (seconds) => {
@@ -222,46 +244,96 @@ function EventComparisonReport({ session, onBack }) {
         </div>
 
         <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700 mb-8">
-          <h2 className="text-xl font-semibold text-white mb-4">Select Events to Compare</h2>
-          <p className="text-gray-400 text-sm mb-4">Choose up to 4 events for comparison</p>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {events.map(event => (
-              <div
-                key={event.id}
-                onClick={() => toggleEventSelection(event.id)}
-                className={`p-4 rounded-lg border-2 transition-all cursor-pointer ${
-                  selectedEvents.includes(event.id)
-                    ? 'border-blue-500 bg-blue-500/10'
-                    : 'border-gray-700 bg-gray-800/50 hover:border-gray-600'
-                }`}
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-white">Event Selection & Filters</h2>
+            {(selectedEvents.length > 0 || dateRangeFilter.start || dateRangeFilter.end) && (
+              <button
+                onClick={() => {
+                  setSelectedEvents([])
+                  setDateRangeFilter({ start: '', end: '' })
+                }}
+                className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
               >
-                <div className="flex items-start justify-between mb-2">
-                  <h3 className="text-white font-semibold">{event.name}</h3>
-                  {selectedEvents.includes(event.id) && (
-                    <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
-                      <span className="text-white text-xs font-bold">
-                        {selectedEvents.indexOf(event.id) + 1}
-                      </span>
-                    </div>
-                  )}
-                </div>
-                <div className="flex items-center gap-2 text-sm text-gray-400">
-                  <Calendar className="w-3 h-3" />
-                  {event.event_date
-                    ? new Date(event.event_date).toLocaleDateString()
-                    : 'No date'}
-                </div>
-                <div className="mt-2 text-sm text-gray-400">
-                  {event.timers.length} presenter{event.timers.length === 1 ? '' : 's'}
+                Clear All
+              </button>
+            )}
+          </div>
+
+          <button
+            onClick={() => setShowEventFilterModal(true)}
+            className="w-full p-4 bg-gray-700 hover:bg-gray-600 border border-gray-600 hover:border-blue-500 rounded-lg text-left transition-colors group mb-4"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Filter className="w-5 h-5 text-gray-400 group-hover:text-blue-400 transition-colors" />
+                <div>
+                  <div className="text-white font-medium mb-1">{getFilterSummary()}</div>
+                  <div className="text-sm text-gray-400">
+                    Click to select events and date range for comparison
+                  </div>
                 </div>
               </div>
-            ))}
-          </div>
+              <div className="text-gray-400 group-hover:text-blue-400 transition-colors">
+                <Calendar className="w-5 h-5" />
+              </div>
+            </div>
+          </button>
+
+          {selectedEvents.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {selectedEvents.map((eventId, index) => {
+                const event = events.find(e => e.id === eventId)
+                if (!event) return null
+                return (
+                  <div
+                    key={eventId}
+                    className="px-3 py-2 bg-blue-500/20 border border-blue-500/30 rounded-lg flex items-center gap-2"
+                  >
+                    <span className="text-xs font-bold text-blue-400">#{index + 1}</span>
+                    <span className="text-sm text-white">{event.name}</span>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
 
         {comparisonData && comparisonData.length > 0 && (
           <>
+            <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700 mb-8">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold text-white">View Mode</h2>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setViewMode('comparison')}
+                    className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                      viewMode === 'comparison'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                    }`}
+                  >
+                    Side-by-Side
+                  </button>
+                  <button
+                    onClick={() => setViewMode('aggregate')}
+                    className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                      viewMode === 'aggregate'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                    }`}
+                  >
+                    Combined Totals
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {viewMode === 'aggregate' && (
+              <AggregateView comparisonData={comparisonData} formatDuration={formatDuration} />
+            )}
+
+            {viewMode === 'comparison' && (
+            <>
             <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700 mb-8">
               <h2 className="text-xl font-semibold text-white mb-6">Comparison Overview</h2>
 
@@ -513,8 +585,245 @@ function EventComparisonReport({ session, onBack }) {
                 </div>
               </div>
             </div>
+            </>
+            )}
           </>
         )}
+
+        <EventFilterModal
+          isOpen={showEventFilterModal}
+          onClose={() => setShowEventFilterModal(false)}
+          events={events}
+          selectedEventIds={selectedEvents}
+          dateRange={dateRangeFilter}
+          onApply={handleApplyFilters}
+        />
+      </div>
+    </div>
+  )
+}
+
+function AggregateView({ comparisonData, formatDuration }) {
+  const calculateAggregateTotals = () => {
+    const totals = {
+      totalEvents: comparisonData.length,
+      totalPresenters: 0,
+      totalCompleted: 0,
+      totalPlanned: 0,
+      totalActual: 0,
+      totalEarly: 0,
+      totalOnTime: 0,
+      totalOvertime: 0,
+      totalTimeSaved: 0,
+      totalTimeLost: 0,
+      avgCompletionRate: 0,
+      avgNetEfficiency: 0
+    }
+
+    comparisonData.forEach(data => {
+      totals.totalPresenters += data.stats.totalPresenters
+      totals.totalCompleted += data.stats.completedPresenters
+      totals.totalPlanned += data.stats.totalPlanned
+      totals.totalActual += data.stats.totalActual
+      totals.totalEarly += data.stats.earlyCount
+      totals.totalOnTime += data.stats.onTimeCount
+      totals.totalOvertime += data.stats.overtimeCount
+      totals.totalTimeSaved += data.stats.timeSaved
+      totals.totalTimeLost += data.stats.timeLost
+      totals.avgCompletionRate += data.stats.completionRate
+    })
+
+    totals.avgCompletionRate = totals.avgCompletionRate / comparisonData.length
+    totals.avgNetEfficiency = totals.totalTimeSaved - totals.totalTimeLost
+
+    return totals
+  }
+
+  const totals = calculateAggregateTotals()
+  const completionPercentage = totals.totalPresenters > 0
+    ? (totals.totalCompleted / totals.totalPresenters) * 100
+    : 0
+
+  return (
+    <div className="space-y-8">
+      <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700">
+        <h2 className="text-xl font-semibold text-white mb-6">Combined Event Totals</h2>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="bg-gray-700/30 rounded-lg p-4">
+            <div className="text-gray-400 text-sm mb-2">Total Events</div>
+            <div className="text-3xl font-bold text-white">{totals.totalEvents}</div>
+          </div>
+
+          <div className="bg-gray-700/30 rounded-lg p-4">
+            <div className="text-gray-400 text-sm mb-2">Total Presenters</div>
+            <div className="text-3xl font-bold text-blue-400">{totals.totalPresenters}</div>
+          </div>
+
+          <div className="bg-gray-700/30 rounded-lg p-4">
+            <div className="text-gray-400 text-sm mb-2">Completed</div>
+            <div className="text-3xl font-bold text-green-400">{totals.totalCompleted}</div>
+          </div>
+
+          <div className="bg-gray-700/30 rounded-lg p-4">
+            <div className="text-gray-400 text-sm mb-2">Completion Rate</div>
+            <div className="text-3xl font-bold text-purple-400">{completionPercentage.toFixed(0)}%</div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <div className="bg-gray-700/30 rounded-lg p-4">
+            <div className="text-gray-400 text-sm mb-2">Total Planned Time</div>
+            <div className="text-2xl font-bold text-blue-400">{formatDuration(totals.totalPlanned)}</div>
+          </div>
+
+          <div className="bg-gray-700/30 rounded-lg p-4">
+            <div className="text-gray-400 text-sm mb-2">Total Actual Time</div>
+            <div className="text-2xl font-bold text-green-400">{formatDuration(totals.totalActual)}</div>
+          </div>
+        </div>
+
+        <div className="border-t border-gray-700 pt-6">
+          <h3 className="text-lg font-semibold text-white mb-4">Performance Breakdown</h3>
+
+          <div className="grid grid-cols-3 gap-4 mb-6">
+            <div className="text-center">
+              <div className="text-3xl font-bold text-green-400 mb-2">{totals.totalEarly}</div>
+              <div className="text-sm text-gray-400">Early Finishes</div>
+              <div className="text-xs text-gray-500 mt-1">
+                {totals.totalCompleted > 0 ? ((totals.totalEarly / totals.totalCompleted) * 100).toFixed(0) : 0}%
+              </div>
+            </div>
+
+            <div className="text-center">
+              <div className="text-3xl font-bold text-blue-400 mb-2">{totals.totalOnTime}</div>
+              <div className="text-sm text-gray-400">On Time</div>
+              <div className="text-xs text-gray-500 mt-1">
+                {totals.totalCompleted > 0 ? ((totals.totalOnTime / totals.totalCompleted) * 100).toFixed(0) : 0}%
+              </div>
+            </div>
+
+            <div className="text-center">
+              <div className="text-3xl font-bold text-red-400 mb-2">{totals.totalOvertime}</div>
+              <div className="text-sm text-gray-400">Overtime</div>
+              <div className="text-xs text-gray-500 mt-1">
+                {totals.totalCompleted > 0 ? ((totals.totalOvertime / totals.totalCompleted) * 100).toFixed(0) : 0}%
+              </div>
+            </div>
+          </div>
+
+          <div className="relative h-48 flex items-end gap-4 bg-gray-900/50 rounded-lg p-6">
+            <div className="flex-1 flex flex-col items-center gap-2">
+              <div className="w-full flex flex-col justify-end" style={{ height: '160px' }}>
+                <div
+                  className="bg-gradient-to-t from-green-600 to-green-400 rounded-t-lg transition-all duration-1000 flex items-end justify-center pb-2"
+                  style={{ height: `${totals.totalCompleted > 0 ? (totals.totalEarly / totals.totalCompleted) * 100 : 0}%` }}
+                >
+                  <span className="text-white font-bold text-sm">{totals.totalEarly}</span>
+                </div>
+              </div>
+              <span className="text-gray-300 text-sm font-medium">Early</span>
+            </div>
+
+            <div className="flex-1 flex flex-col items-center gap-2">
+              <div className="w-full flex flex-col justify-end" style={{ height: '160px' }}>
+                <div
+                  className="bg-gradient-to-t from-blue-600 to-blue-400 rounded-t-lg transition-all duration-1000 flex items-end justify-center pb-2"
+                  style={{ height: `${totals.totalCompleted > 0 ? (totals.totalOnTime / totals.totalCompleted) * 100 : 0}%` }}
+                >
+                  <span className="text-white font-bold text-sm">{totals.totalOnTime}</span>
+                </div>
+              </div>
+              <span className="text-gray-300 text-sm font-medium">On Time</span>
+            </div>
+
+            <div className="flex-1 flex flex-col items-center gap-2">
+              <div className="w-full flex flex-col justify-end" style={{ height: '160px' }}>
+                <div
+                  className="bg-gradient-to-t from-red-600 to-red-400 rounded-t-lg transition-all duration-1000 flex items-end justify-center pb-2"
+                  style={{ height: `${totals.totalCompleted > 0 ? (totals.totalOvertime / totals.totalCompleted) * 100 : 0}%` }}
+                >
+                  <span className="text-white font-bold text-sm">{totals.totalOvertime}</span>
+                </div>
+              </div>
+              <span className="text-gray-300 text-sm font-medium">Overtime</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700">
+          <h3 className="text-lg font-semibold text-white mb-4">Time Saved</h3>
+          <div className="text-4xl font-bold text-green-400 mb-2">
+            {formatDuration(totals.totalTimeSaved)}
+          </div>
+          <p className="text-gray-400 text-sm mb-4">Total time saved from early finishes</p>
+          <div className="w-full bg-gray-700 rounded-full h-3">
+            <div
+              className="bg-green-500 h-3 rounded-full transition-all duration-1000"
+              style={{ width: `${Math.min(100, (totals.totalTimeSaved / (totals.totalTimeSaved + totals.totalTimeLost || 1)) * 100)}%` }}
+            ></div>
+          </div>
+        </div>
+
+        <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700">
+          <h3 className="text-lg font-semibold text-white mb-4">Time Lost</h3>
+          <div className="text-4xl font-bold text-red-400 mb-2">
+            {formatDuration(totals.totalTimeLost)}
+          </div>
+          <p className="text-gray-400 text-sm mb-4">Total time lost to overtime</p>
+          <div className="w-full bg-gray-700 rounded-full h-3">
+            <div
+              className="bg-red-500 h-3 rounded-full transition-all duration-1000"
+              style={{ width: `${Math.min(100, (totals.totalTimeLost / (totals.totalTimeSaved + totals.totalTimeLost || 1)) * 100)}%` }}
+            ></div>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700">
+        <h3 className="text-lg font-semibold text-white mb-4">Net Efficiency</h3>
+        <div className={`text-5xl font-bold mb-2 ${
+          totals.avgNetEfficiency > 0 ? 'text-green-400' :
+          totals.avgNetEfficiency < 0 ? 'text-red-400' : 'text-gray-400'
+        }`}>
+          {totals.avgNetEfficiency > 0 ? '+' : ''}{formatDuration(Math.abs(totals.avgNetEfficiency))}
+        </div>
+        <p className="text-gray-400">
+          {totals.avgNetEfficiency > 0 ? 'Net time saved across all events' :
+           totals.avgNetEfficiency < 0 ? 'Net time lost across all events' : 'Perfectly balanced'}
+        </p>
+      </div>
+
+      <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700">
+        <h3 className="text-lg font-semibold text-white mb-4">Individual Event Performance</h3>
+        <div className="space-y-3">
+          {comparisonData.map((data, index) => (
+            <div key={index} className="flex items-center justify-between p-4 bg-gray-700/30 rounded-lg">
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-bold text-blue-400 bg-blue-400/20 w-6 h-6 rounded-full flex items-center justify-center">
+                  {index + 1}
+                </span>
+                <div>
+                  <div className="text-white font-medium">{data.event.name}</div>
+                  <div className="text-sm text-gray-400">
+                    {data.stats.completedPresenters}/{data.stats.totalPresenters} presenters completed
+                  </div>
+                </div>
+              </div>
+              <div className="text-right">
+                <div className={`text-lg font-bold ${
+                  data.stats.netEfficiency > 0 ? 'text-green-400' :
+                  data.stats.netEfficiency < 0 ? 'text-red-400' : 'text-gray-400'
+                }`}>
+                  {data.stats.netEfficiency > 0 ? '+' : ''}{formatDuration(Math.abs(data.stats.netEfficiency))}
+                </div>
+                <div className="text-xs text-gray-500">net efficiency</div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   )

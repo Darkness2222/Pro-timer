@@ -1,8 +1,9 @@
 import React, { useState, useEffect, memo } from 'react'
-import { FileText, TrendingUp, Clock, Target, Award, TriangleAlert as AlertTriangle, Calendar, User, ChartBar as BarChart2, Activity } from 'lucide-react'
+import { FileText, TrendingUp, Clock, Target, Award, TriangleAlert as AlertTriangle, Calendar, User, ChartBar as BarChart2, Activity, Filter } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import PresenterPerformanceReport from './PresenterPerformanceReport'
 import EventComparisonReport from './EventComparisonReport'
+import EventFilterModal from './EventFilterModal'
 
 function ReportsPage({
   timers = [],
@@ -17,7 +18,9 @@ function ReportsPage({
   const [filteredLogs, setFilteredLogs] = useState([])
   const [allTimers, setAllTimers] = useState([])
   const [events, setEvents] = useState([])
-  const [selectedEventId, setSelectedEventId] = useState('all')
+  const [selectedEventIds, setSelectedEventIds] = useState([])
+  const [dateRangeFilter, setDateRangeFilter] = useState({ start: '', end: '' })
+  const [showEventFilterModal, setShowEventFilterModal] = useState(false)
   const [reportView, setReportView] = useState('overview')
 
   // Fetch events from database
@@ -84,45 +87,55 @@ function ReportsPage({
     fetchEvents()
   }, [session])
 
-  // Update allTimers based on selected event
+  // Update allTimers based on selected events
   useEffect(() => {
-    if (selectedEventId === 'all') {
+    if (selectedEventIds.length === 0) {
       setAllTimers(timers)
     } else {
-      const selectedEvent = events.find(e => e.id === selectedEventId)
-      if (selectedEvent) {
-        setAllTimers(selectedEvent.timers)
-      }
+      const selectedEvents = events.filter(e => selectedEventIds.includes(e.id))
+      const combinedTimers = selectedEvents.flatMap(e => e.timers || [])
+      setAllTimers(combinedTimers)
     }
-  }, [selectedEventId, events, timers])
+  }, [selectedEventIds, events, timers])
 
-  // Filter logs based on date range and selected event
+  // Filter logs based on date range and selected events
   useEffect(() => {
     let logs = timerLogs
 
-    // Filter by selected event
-    if (selectedEventId !== 'all') {
-      const selectedEvent = events.find(e => e.id === selectedEventId)
-      if (selectedEvent) {
-        logs = selectedEvent.logs
-      }
+    // Filter by selected events
+    if (selectedEventIds.length > 0) {
+      const selectedEvents = events.filter(e => selectedEventIds.includes(e.id))
+      logs = selectedEvents.flatMap(e => e.logs || [])
     }
 
-    // Filter by date range
-    if (reportStartDate) {
+    // Filter by modal date range if set
+    if (dateRangeFilter.start) {
+      logs = logs.filter(log =>
+        new Date(log.created_at) >= new Date(dateRangeFilter.start)
+      )
+    }
+
+    if (dateRangeFilter.end) {
+      logs = logs.filter(log =>
+        new Date(log.created_at) <= new Date(dateRangeFilter.end + 'T23:59:59')
+      )
+    }
+
+    // Also apply report date range if different from modal date range
+    if (reportStartDate && !dateRangeFilter.start) {
       logs = logs.filter(log =>
         new Date(log.created_at) >= new Date(reportStartDate)
       )
     }
 
-    if (reportEndDate) {
+    if (reportEndDate && !dateRangeFilter.end) {
       logs = logs.filter(log =>
         new Date(log.created_at) <= new Date(reportEndDate + 'T23:59:59')
       )
     }
 
     setFilteredLogs(logs)
-  }, [timerLogs, reportStartDate, reportEndDate, selectedEventId, events])
+  }, [timerLogs, reportStartDate, reportEndDate, selectedEventIds, dateRangeFilter, events])
 
   // Calculate efficiency metrics
   const calculateEfficiencyMetrics = () => {
@@ -319,7 +332,44 @@ function ReportsPage({
   }
 
   if (reportView === 'event-comparison') {
-    return <EventComparisonReport session={session} onBack={() => setReportView('overview')} />
+    return (
+      <EventComparisonReport
+        session={session}
+        onBack={() => setReportView('overview')}
+        preselectedEventIds={selectedEventIds}
+        preselectedDateRange={dateRangeFilter}
+      />
+    )
+  }
+
+  const handleApplyFilters = (eventIds, dateRange) => {
+    setSelectedEventIds(eventIds)
+    setDateRangeFilter(dateRange)
+  }
+
+  const getFilterSummary = () => {
+    const parts = []
+
+    if (selectedEventIds.length === 0) {
+      parts.push('All Events')
+    } else if (selectedEventIds.length === 1) {
+      const event = events.find(e => e.id === selectedEventIds[0])
+      parts.push(event?.name || '1 Event')
+    } else {
+      parts.push(`${selectedEventIds.length} Events`)
+    }
+
+    if (dateRangeFilter.start && dateRangeFilter.end) {
+      const start = new Date(dateRangeFilter.start).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      const end = new Date(dateRangeFilter.end).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      parts.push(`${start} - ${end}`)
+    } else if (dateRangeFilter.start) {
+      parts.push(`From ${new Date(dateRangeFilter.start).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`)
+    } else if (dateRangeFilter.end) {
+      parts.push(`Until ${new Date(dateRangeFilter.end).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`)
+    }
+
+    return parts.join(' • ')
   }
 
   return (
@@ -379,26 +429,45 @@ function ReportsPage({
         </div>
       </div>
 
-      {/* Event Selector */}
+      {/* Event Filter */}
       <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700 mb-8">
-        <h2 className="text-xl font-semibold text-white mb-4">Select Event</h2>
-        <select
-          value={selectedEventId}
-          onChange={(e) => setSelectedEventId(e.target.value)}
-          className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold text-white">Event Filter</h2>
+          {(selectedEventIds.length > 0 || dateRangeFilter.start || dateRangeFilter.end) && (
+            <button
+              onClick={() => {
+                setSelectedEventIds([])
+                setDateRangeFilter({ start: '', end: '' })
+              }}
+              className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
+            >
+              Clear Filters
+            </button>
+          )}
+        </div>
+        <button
+          onClick={() => setShowEventFilterModal(true)}
+          className="w-full p-4 bg-gray-700 hover:bg-gray-600 border border-gray-600 hover:border-blue-500 rounded-lg text-left transition-colors group"
         >
-          <option value="all">All Events</option>
-          {events.map(event => (
-            <option key={event.id} value={event.id}>
-              {event.name} - {event.event_date ? new Date(event.event_date).toLocaleDateString() : 'No date'}
-              {event.deleted_at ? ' (Deleted)' : ''}
-            </option>
-          ))}
-        </select>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Filter className="w-5 h-5 text-gray-400 group-hover:text-blue-400 transition-colors" />
+              <div>
+                <div className="text-white font-medium mb-1">{getFilterSummary()}</div>
+                <div className="text-sm text-gray-400">
+                  Click to select events and date range
+                </div>
+              </div>
+            </div>
+            <div className="text-gray-400 group-hover:text-blue-400 transition-colors">
+              <Calendar className="w-5 h-5" />
+            </div>
+          </div>
+        </button>
       </div>
 
       {/* Previous Events Summary */}
-      {selectedEventId === 'all' && events.length > 0 && (
+      {selectedEventIds.length === 0 && events.length > 0 && (
         <div className="mb-8">
           <h2 className="text-2xl font-bold text-white mb-4">Event History</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -410,7 +479,10 @@ function ReportsPage({
                 <div
                   key={event.id}
                   className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700 hover:border-gray-600 transition-colors cursor-pointer"
-                  onClick={() => setSelectedEventId(event.id)}
+                  onClick={() => {
+                    setSelectedEventIds([event.id])
+                    window.scrollTo({ top: 0, behavior: 'smooth' })
+                  }}
                 >
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex-1">
@@ -766,6 +838,15 @@ function ReportsPage({
           </p>
         </div>
       </div>
+
+      <EventFilterModal
+        isOpen={showEventFilterModal}
+        onClose={() => setShowEventFilterModal(false)}
+        events={events}
+        selectedEventIds={selectedEventIds}
+        dateRange={dateRangeFilter}
+        onApply={handleApplyFilters}
+      />
     </div>
   )
 }
