@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { X, BookOpen, Users, Calendar, QrCode, Settings, BarChart3, Shield, Clock, Search, ChevronRight, ChevronLeft, CheckCircle, AlertCircle, Info } from 'lucide-react'
+import { X, BookOpen, Users, Calendar, QrCode, Settings, BarChart3, Shield, Clock, Search, ChevronRight, ChevronLeft, CheckCircle, AlertCircle, Info, MessageSquare } from 'lucide-react'
 
 export default function HowToGuidesModal({ isOpen, onClose }) {
   const [selectedGuide, setSelectedGuide] = useState(null)
@@ -463,6 +463,144 @@ export default function HowToGuidesModal({ isOpen, onClose }) {
       }
     },
     {
+      id: 'feedback-system',
+      category: 'Feedback',
+      title: 'Giving and Managing Presenter Feedback',
+      icon: <MessageSquare className="w-6 h-6" />,
+      color: 'teal',
+      difficulty: 'Intermediate',
+      content: {
+        overview: 'Learn how to use the dual feedback system to provide both admin insights and collect attendee reactions. This comprehensive feedback system helps presenters improve by combining internal coaching with audience perspectives.',
+        steps: [
+          {
+            title: 'Understanding the Dual Feedback System',
+            description: 'SyncCue offers two types of feedback: Admin Feedback (detailed internal evaluations from event organizers) and Attendee Feedback (public reactions from event participants). Both types work together to give presenters a complete picture of their performance.',
+            tip: 'Admin feedback includes private notes and approval workflows, while attendee feedback is collected at the end of events and shared directly with presenters.'
+          },
+          {
+            title: 'Accessing Admin Feedback During Events',
+            description: 'When running an event, click "Finish" on a presenter timer to trigger the admin feedback modal. You can also access feedback later from completed presenter cards in the event progress section.',
+            tip: 'Feedback is always accessible from event history - there are no time restrictions for adding feedback to past presentations.'
+          },
+          {
+            title: 'Submitting Admin Feedback - Rating',
+            description: 'Rate the presenter on a 1-5 star scale (1=Poor, 2=Needs Improvement, 3=Good, 4=Very Good, 5=Outstanding). This overall rating provides a quick performance snapshot.',
+            tip: 'Be honest and consistent with ratings. Use 3 as baseline for meeting expectations, 4 for exceeding them, and 5 for truly exceptional performances.'
+          },
+          {
+            title: 'Submitting Admin Feedback - Quick Tags',
+            description: 'Select strengths (Clear Communication, Strong Content, Engaging Delivery) and areas for improvement (Pacing, Time Management, Clarity) using pre-defined tags. You can also use custom organization tags.',
+            tip: 'Tags provide structured, actionable feedback that presenters can track over multiple events to see improvement trends.'
+          },
+          {
+            title: 'Submitting Admin Feedback - Comments',
+            description: 'Write detailed comments (up to 1000 characters) with specific observations, suggestions, and constructive feedback. Focus on actionable insights the presenter can apply to future presentations.',
+            tip: 'Use the structure: What went well + What could improve + Specific suggestion. Example: "Great energy and audience engagement. Consider slowing pace in technical sections. Try adding 2-3 second pauses after key points."'
+          },
+          {
+            title: 'Using Private Notes',
+            description: 'Click the lock icon to reveal private notes section. These admin-only notes (up to 1000 characters) are never visible to presenters and are useful for internal coaching plans, sensitive observations, or follow-up reminders.',
+            tip: 'Use private notes for: development plans, concerns requiring additional coaching, or context for future event planning.'
+          },
+          {
+            title: 'Reviewing Time Performance',
+            description: 'The feedback modal automatically shows allocated time, actual time, and variance. Use this data to provide specific time management feedback if the presenter ran over or finished significantly early.',
+            tip: 'A variance of ±30 seconds is excellent. ±1-2 minutes is good. More than 2 minutes indicates time management coaching may be helpful.'
+          },
+          {
+            title: 'Skipping Feedback',
+            description: 'If you need to skip feedback during an event, click "Skip for Now". You can always add feedback later from the event history or reports section - feedback never expires.',
+            tip: 'Skip during busy events, then batch-add feedback after the event ends when you have more time for thoughtful evaluation.'
+          },
+          {
+            title: 'Configuring Feedback Approval Settings',
+            description: 'Go to Settings > Feedback Preferences to choose between auto-approve (feedback visible to presenters immediately) or manual approval (admin reviews before sharing). This applies to all admin feedback in your organization.',
+            tip: 'Use auto-approve for experienced teams with trusted reviewers. Use manual approval when multiple admins give feedback to ensure consistency before sharing.'
+          },
+          {
+            title: 'Managing Custom Feedback Tags',
+            description: 'In Settings > Feedback Preferences, admins can create organization-specific tags beyond the core set. Add tags relevant to your presentation style or industry (e.g., "Data Visualization", "Technical Accuracy", "Storytelling").',
+            tip: 'Limit custom tags to 5-10 organization-specific categories. Too many tags make feedback selection overwhelming.'
+          },
+          {
+            title: 'Enabling Attendee Feedback for Events',
+            description: 'When creating or editing an event, enable "Attendee Feedback" and configure settings: allow anonymous submissions, require name, require email. This determines how audience members can submit feedback.',
+            tip: 'Allow anonymous for honest feedback. Require email if you want to track response rates or send thank-you messages to participants.'
+          },
+          {
+            title: 'Generating Attendee Feedback Links',
+            description: 'After enabling attendee feedback, click "Share Feedback" in event controls to access the shareable link and QR code. Display the QR code at your venue or send the link to attendees.',
+            tip: 'Generate the link before your event starts and display the QR code prominently near the exit or on final presentation slides.'
+          },
+          {
+            title: 'Setting Attendee Feedback Custom Messages',
+            description: 'When configuring attendee feedback settings, add a custom intro message to provide context (e.g., "Thank you for attending Tech Summit 2025! Your feedback helps our speakers grow.").',
+            tip: 'Personalize the message to match your event tone and explain how feedback will be used to encourage thoughtful responses.'
+          },
+          {
+            title: 'How Attendees Submit Feedback',
+            description: 'Attendees scan the QR code or click the link at the end of the event. They see all presenters, rate each one (1-5 stars), add optional comments, and can provide overall event feedback. Submissions are collected in one simple form.',
+            tip: 'Attendees can only access feedback at the end of events, not during presentations, to prevent mid-event distractions.'
+          },
+          {
+            title: 'Monitoring Attendee Feedback Submissions',
+            description: 'Check the event detail page to see real-time statistics on how many attendees have submitted feedback. This helps gauge response rates and reminds you to promote the feedback link.',
+            tip: 'Aim for 20-30% response rate for most events. Offer incentives (raffle entries, certificates) to boost participation.'
+          },
+          {
+            title: 'Closing Attendee Feedback Collection',
+            description: 'In the Share Feedback modal, click "Close Feedback" to stop accepting new submissions. This is useful after events end or if you want to limit the feedback window.',
+            tip: 'Leave feedback open for 2-7 days after events to catch delayed responses, then close to finalize results.'
+          },
+          {
+            title: 'Viewing Feedback in Reports',
+            description: 'Go to Reports and select an event to view comprehensive feedback analytics. See admin feedback with ratings and tags, attendee feedback summaries, rating distributions, and side-by-side comparisons.',
+            tip: 'Use the comparison view to see how admin and attendee perspectives differ - this reveals blind spots and validates coaching insights.'
+          },
+          {
+            title: 'Presenters Viewing Their Feedback',
+            description: 'Presenters access feedback from their Presenter View or the Presenters page. They see approved admin feedback (never private notes) and all attendee feedback. Aggregate statistics show improvement trends over multiple events.',
+            tip: 'Presenters cannot see pending admin feedback or private notes - only approved internal feedback and all attendee comments.'
+          },
+          {
+            title: 'Interpreting Feedback Trends',
+            description: 'Look for patterns across multiple events. Consistent strengths indicate core competencies. Recurring improvement areas suggest focused coaching opportunities. Divergent admin and attendee feedback may indicate presentation vs content issues.',
+            tip: 'Three-event trend is meaningful: If same feedback appears 3+ times, it is a reliable pattern worth addressing.'
+          },
+          {
+            title: 'Moderating Attendee Feedback',
+            description: 'Admins can flag inappropriate attendee comments for moderation. Flagged feedback is hidden from presenters but visible to admins for review. Use this to filter spam or offensive content.',
+            tip: 'Flag sparingly - only for truly inappropriate content. Negative but constructive feedback should not be flagged.'
+          },
+          {
+            title: 'Best Practices for Giving Admin Feedback',
+            description: 'Be specific and actionable. Focus on observable behaviors, not personality. Balance positive and constructive feedback. Link feedback to presenter goals. Provide feedback within 24-48 hours while details are fresh.',
+            tip: 'Follow the "sandwich" method for difficult feedback: Start with strength, address improvement area with specific suggestion, end with encouragement and next steps.'
+          },
+          {
+            title: 'Best Practices for Collecting Attendee Feedback',
+            description: 'Promote the feedback link before, during, and after events. Keep forms short and simple. Explain how feedback is used. Send reminder emails 24 hours after events. Publicly thank participants (without sharing private responses).',
+            tip: 'The easier and faster you make feedback submission, the higher your response rate. Mobile-optimize everything.'
+          },
+          {
+            title: 'Exporting Feedback Data',
+            description: 'Use the export buttons in reports to download feedback as CSV or PDF. This allows deeper analysis in spreadsheet tools, sharing with stakeholders, or archiving for records.',
+            tip: 'Export regularly to maintain historical records. Compare year-over-year trends to measure presenter development program effectiveness.'
+          },
+          {
+            title: 'Troubleshooting - Feedback Not Appearing',
+            description: 'If feedback is not visible: Check approval settings (may need manual approval). Verify user role (presenters only see approved feedback). Confirm feedback is not flagged. Check filters in reports view.',
+            tip: 'Admin feedback requires approval in some configurations. Check Settings > Feedback Preferences to adjust approval workflows.'
+          },
+          {
+            title: 'Troubleshooting - Attendees Cannot Access Form',
+            description: 'If attendees report access issues: Verify feedback is enabled for the event. Check link expiration settings. Ensure feedback collection is not closed. Regenerate the link if needed.',
+            tip: 'Test the attendee link yourself before sharing. Open it in a private/incognito browser to simulate the attendee experience.'
+          }
+        ]
+      }
+    },
+    {
       id: 'messaging-presenters',
       category: 'Events',
       title: 'Sending Messages to Presenters',
@@ -507,7 +645,7 @@ export default function HowToGuidesModal({ isOpen, onClose }) {
     }
   ]
 
-  const categories = ['all', 'Getting Started', 'User Management', 'Events', 'QR Code Access', 'Settings', 'Reports', 'Security']
+  const categories = ['all', 'Getting Started', 'User Management', 'Events', 'QR Code Access', 'Settings', 'Reports', 'Security', 'Feedback']
 
   const filteredGuides = guides.filter(guide => {
     const matchesSearch = guide.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
