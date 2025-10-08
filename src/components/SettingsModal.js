@@ -23,6 +23,22 @@ export default function SettingsModal({ isOpen, onClose, onShowSubscriptionModal
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, session?.user])
 
+  useEffect(() => {
+    if (!isOpen) return
+
+    const handleKeyDown = (e) => {
+      // Prevent Enter key from triggering default actions
+      if (e.key === 'Enter' && e.target.tagName !== 'BUTTON' && !e.target.closest('button')) {
+        e.preventDefault()
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [isOpen])
+
   const loadUserRole = async () => {
     if (!session?.user) return
 
@@ -51,8 +67,10 @@ export default function SettingsModal({ isOpen, onClose, onShowSubscriptionModal
   }
 
   const handleContentClick = (e) => {
-    // Prevent any form submission or navigation
-    e.preventDefault()
+    // Only prevent default for non-button elements to avoid interfering with button clicks
+    if (e.target.tagName !== 'BUTTON' && !e.target.closest('button')) {
+      e.preventDefault()
+    }
     e.stopPropagation()
   }
 
@@ -78,6 +96,7 @@ export default function SettingsModal({ isOpen, onClose, onShowSubscriptionModal
             <h2 className="text-2xl font-bold text-white">App Settings</h2>
           </div>
           <button
+            type="button"
             onClick={onClose}
             className="text-gray-400 hover:text-white transition-colors"
           >
@@ -105,6 +124,7 @@ export default function SettingsModal({ isOpen, onClose, onShowSubscriptionModal
                     </div>
                   </div>
                   <button
+                    type="button"
                     onClick={() => setShowTimerModal(true)}
                     className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
                   >
@@ -125,6 +145,7 @@ export default function SettingsModal({ isOpen, onClose, onShowSubscriptionModal
                     </div>
                   </div>
                   <button
+                    type="button"
                     onClick={() => setShowDisplayModal(true)}
                     className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
                   >
@@ -145,6 +166,7 @@ export default function SettingsModal({ isOpen, onClose, onShowSubscriptionModal
                     </div>
                   </div>
                   <button
+                    type="button"
                     onClick={() => setShowNotificationModal(true)}
                     className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
                   >
@@ -214,6 +236,7 @@ export default function SettingsModal({ isOpen, onClose, onShowSubscriptionModal
                   <p className="text-gray-400 text-sm">Unlock advanced features for professional presentations</p>
                 </div>
                 <button
+                  type="button"
                   onClick={() => {
                     onShowSubscriptionModal()
                     onClose()
@@ -240,6 +263,7 @@ export default function SettingsModal({ isOpen, onClose, onShowSubscriptionModal
                   <p className="text-gray-400 text-sm">Discover everything SyncCue can do</p>
                 </div>
                 <button
+                  type="button"
                   onClick={() => {
                     setShowFeaturesModal(true)
                   }}
@@ -262,6 +286,7 @@ export default function SettingsModal({ isOpen, onClose, onShowSubscriptionModal
                   <p className="text-gray-400 text-sm">Step-by-step instructions for all features</p>
                 </div>
                 <button
+                  type="button"
                   onClick={() => {
                     setShowHowToGuidesModal(true)
                   }}
@@ -281,6 +306,7 @@ export default function SettingsModal({ isOpen, onClose, onShowSubscriptionModal
                   <p className="text-gray-400 text-sm">Invite team members and manage access</p>
                 </div>
                 <button
+                  type="button"
                   onClick={() => {
                     if (onShowTeamManagement) {
                       onShowTeamManagement()
@@ -303,6 +329,7 @@ export default function SettingsModal({ isOpen, onClose, onShowSubscriptionModal
                   <p className="text-gray-400 text-sm">Sign out of your account</p>
                 </div>
                 <button
+                  type="button"
                   onClick={() => {
                     if (window.confirm('Are you sure you want to sign out?')) {
                       onSignOut()
@@ -323,6 +350,7 @@ export default function SettingsModal({ isOpen, onClose, onShowSubscriptionModal
         <div className="p-6 border-t border-gray-700 bg-gray-900" onClick={handleContentClick}>
           <div className="flex justify-end">
             <button
+              type="button"
               onClick={onClose}
               className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
             >
