@@ -26,8 +26,8 @@ export default function HowToGuidesModal({ isOpen, onClose }) {
           },
           {
             title: 'Explore the Navigation',
-            description: 'Use the navigation bar to access different sections: Events (manage your events), Presenters (view your team), Reports (analytics), and Settings (preferences and team management).',
-            tip: 'Click on the SyncCue logo at any time to return to the main timer overview.'
+            description: 'Use the navigation bar to access different sections: Events (multi-presenter events), Single Timers (standalone timers), Presenters (view your team), Reports (analytics), and Settings (preferences and team management).',
+            tip: 'Single Timers are perfect for quick, standalone presentations, while Events are ideal for managing multiple presenters in sequence.'
           },
           {
             title: 'Try the Free Trial',
@@ -76,6 +76,49 @@ export default function HowToGuidesModal({ isOpen, onClose }) {
             title: 'Monitor Your User Limit',
             description: 'The top section shows your current plan and user count. Counted Users tracks users against your subscription limit.',
             tip: 'Upgrade your plan if you need to add more users beyond your current limit.'
+          }
+        ]
+      }
+    },
+    {
+      id: 'single-timers',
+      category: 'Single Timers',
+      title: 'Creating and Using Single Timers',
+      icon: <Clock className="w-6 h-6" />,
+      color: 'red',
+      difficulty: 'Beginner',
+      content: {
+        overview: 'Single timers are perfect for standalone presentations, quick timing needs, or individual speaker practice sessions.',
+        steps: [
+          {
+            title: 'Navigate to Single Timers',
+            description: 'Click "Single Timers" in the navigation bar at the top of the page to access your standalone timers.',
+            tip: 'Single Timers are separate from Events and are ideal for one-off presentations or individual practice.'
+          },
+          {
+            title: 'Create a New Timer',
+            description: 'Click the blue "Create Single Timer" button. Choose to create a single timer or a multi-timer event.',
+            tip: 'For a standalone timer, select "Single Timer" and fill in the timer name, presenter name, and duration.'
+          },
+          {
+            title: 'Set Timer Duration',
+            description: 'Enter the duration in minutes and seconds. This is the total time available for the presentation.',
+            tip: 'Common durations: 5 minutes for lightning talks, 15-20 minutes for conference presentations, 45-60 minutes for keynotes.'
+          },
+          {
+            title: 'Control Your Timer',
+            description: 'From the Single Timers page, click "Control" on any timer to access full timer controls including Start, Pause, Stop, and Reset.',
+            tip: 'You can also quickly start a timer directly from the timer card using the Play button.'
+          },
+          {
+            title: 'Monitor Progress',
+            description: 'Each timer card shows the current time remaining, progress bar, and status (Not Started, Running, Paused, or Finished).',
+            tip: 'The progress bar changes color from green to yellow to red as time progresses.'
+          },
+          {
+            title: 'Manage Your Timers',
+            description: 'Use the trash icon to delete timers you no longer need. All timer history and logs are preserved in the Reports section.',
+            tip: 'Timers can be reused multiple times - just reset them after each use.'
           }
         ]
       }

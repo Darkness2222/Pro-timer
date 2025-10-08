@@ -16,6 +16,7 @@ import EventsPage from './EventsPage'
 import EventDetail from './EventDetail'
 import CreateEventModal from './CreateEventModal'
 import PresentersPage from './PresentersPage'
+import SingleTimersPage from './SingleTimersPage'
 
 export default function ProTimerApp({ session }) {
   const [currentView, setCurrentView] = useState('events')
@@ -1625,15 +1626,15 @@ export default function ProTimerApp({ session }) {
                 Events
               </button>
               <button
-                onClick={() => setCurrentView('admin')}
+                onClick={() => setCurrentView('single-timers')}
                 className={`inline-flex items-center px-4 py-2 border-b-2 text-sm font-medium ${
-                  currentView === 'admin'
+                  currentView === 'single-timers'
                     ? 'border-red-500 text-red-400'
                     : 'border-transparent text-gray-300 hover:text-white hover:border-gray-300'
                 }`}
               >
-                <Settings className="w-4 h-4 mr-2" />
-                Timer Control
+                <Clock className="w-4 h-4 mr-2" />
+                Single Timers
               </button>
               <button
                 onClick={() => setCurrentView('presenter')}
@@ -1841,7 +1842,7 @@ export default function ProTimerApp({ session }) {
               className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium flex items-center gap-2"
             >
               <Plus className="w-5 h-5" />
-              Create New Timer
+              Create Single Timer
             </button>
             <button
               onClick={() => setShowEventInterface(true)}
@@ -2358,6 +2359,20 @@ export default function ProTimerApp({ session }) {
           onEndDateChange={(date) => setReportDateRange(prev => ({ ...prev, end: date }))}
           onExportCSV={exportTimersCSV}
           session={session}
+        />
+      )}
+
+      {/* Single Timers View */}
+      {currentView === 'single-timers' && (
+        <SingleTimersPage
+          timers={timers}
+          timerSessions={timerSessions}
+          currentTime={currentTime}
+          onCreateTimer={() => setShowCreateModal(true)}
+          onSelectTimer={selectTimer}
+          onDeleteTimer={deleteTimer}
+          onStartTimer={handleStartTimer}
+          selectedTimer={selectedTimer}
         />
       )}
 

@@ -7,8 +7,8 @@ export default function FeaturesModal({ isOpen, onClose }) {
   const features = [
     {
       icon: <Clock className="w-6 h-6" />,
-      title: 'Precision Timer Control',
-      description: 'Create and manage multiple presentation timers with second-by-second accuracy. Perfect for conferences, meetings, and events.',
+      title: 'Single & Event Timers',
+      description: 'Create standalone single timers for quick presentations or multi-presenter events with automatic transitions. Flexible organization for any timing need.',
       color: 'blue'
     },
     {
