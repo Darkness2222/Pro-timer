@@ -1,5 +1,5 @@
 import React from 'react'
-import { X, Clock, Users, BarChart3, Bell, MessageSquare, Calendar, Zap, Shield, Globe, Timer, CheckCircle } from 'lucide-react'
+import { X, Clock, Users, BarChart3, Bell, MessageSquare, Calendar, Zap, Shield, Globe, Timer, CheckCircle, Star, ThumbsUp } from 'lucide-react'
 
 export default function FeaturesModal({ isOpen, onClose }) {
   if (!isOpen) return null
@@ -94,6 +94,18 @@ export default function FeaturesModal({ isOpen, onClose }) {
       title: 'Team Collaboration',
       description: 'Invite team members, manage access levels, and collaborate on event management. Perfect for event organizers.',
       color: 'teal'
+    },
+    {
+      icon: <Star className="w-6 h-6" />,
+      title: 'Presenter Feedback Collection',
+      description: 'Gather valuable insights from presenters after their sessions. Track satisfaction, identify challenges, and improve future events with real-time feedback.',
+      color: 'amber'
+    },
+    {
+      icon: <ThumbsUp className="w-6 h-6" />,
+      title: 'Attendee Feedback System',
+      description: 'Collect audience feedback and satisfaction ratings for each presenter. Share feedback links via QR codes and measure event success with actionable data.',
+      color: 'rose'
     }
   ]
 
@@ -109,7 +121,9 @@ export default function FeaturesModal({ isOpen, onClose }) {
     pink: 'bg-pink-500/20 text-pink-400 border-pink-500',
     teal: 'bg-teal-500/20 text-teal-400 border-teal-500',
     violet: 'bg-violet-500/20 text-violet-400 border-violet-500',
-    emerald: 'bg-emerald-500/20 text-emerald-400 border-emerald-500'
+    emerald: 'bg-emerald-500/20 text-emerald-400 border-emerald-500',
+    amber: 'bg-amber-500/20 text-amber-400 border-amber-500',
+    rose: 'bg-rose-500/20 text-rose-400 border-rose-500'
   }
 
   return (
