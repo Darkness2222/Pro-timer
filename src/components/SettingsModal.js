@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react'
-import { X, Settings, Volume2, Clock, Monitor, Crown, LogOut, Users, Sparkles, Shield, Mic2, ChevronRight } from 'lucide-react'
+import { X, Settings, Volume2, Clock, Monitor, Crown, LogOut, Users, Sparkles, Shield, Mic2, ChevronRight, BookOpen } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import FeaturesModal from './FeaturesModal'
 import TimerPreferencesModal from './TimerPreferencesModal'
 import DisplayPreferencesModal from './DisplayPreferencesModal'
 import NotificationPreferencesModal from './NotificationPreferencesModal'
+import HowToGuidesModal from './HowToGuidesModal'
 import { ROLES, getRoleDisplayName } from '../lib/roleUtils'
 
 export default function SettingsModal({ isOpen, onClose, onShowSubscriptionModal, onSignOut, onShowTeamManagement, session, onSettingsChange }) {
@@ -12,6 +13,7 @@ export default function SettingsModal({ isOpen, onClose, onShowSubscriptionModal
   const [showTimerModal, setShowTimerModal] = useState(false)
   const [showDisplayModal, setShowDisplayModal] = useState(false)
   const [showNotificationModal, setShowNotificationModal] = useState(false)
+  const [showHowToGuidesModal, setShowHowToGuidesModal] = useState(false)
   const [userRole, setUserRole] = useState(null)
 
   useEffect(() => {
@@ -249,6 +251,28 @@ export default function SettingsModal({ isOpen, onClose, onShowSubscriptionModal
               </div>
             </div>
 
+            {/* How to Guides Section */}
+            <div className="bg-gradient-to-r from-green-900/30 to-teal-900/30 rounded-lg p-4 border border-green-500/30">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-white font-medium flex items-center gap-2">
+                    <BookOpen className="w-4 h-4 text-green-400" />
+                    How to Guides
+                  </h4>
+                  <p className="text-gray-400 text-sm">Step-by-step instructions for all features</p>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowHowToGuidesModal(true)
+                  }}
+                  className="bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2"
+                >
+                  <BookOpen className="w-4 h-4" />
+                  View Guides
+                </button>
+              </div>
+            </div>
+
             {/* Team Management Section */}
             <div className="bg-gray-700 rounded-lg p-4 border border-gray-600">
               <div className="flex items-center justify-between">
@@ -336,6 +360,12 @@ export default function SettingsModal({ isOpen, onClose, onShowSubscriptionModal
         onClose={() => setShowNotificationModal(false)}
         session={session}
         onSettingsChange={onSettingsChange}
+      />
+
+      {/* How to Guides Modal */}
+      <HowToGuidesModal
+        isOpen={showHowToGuidesModal}
+        onClose={() => setShowHowToGuidesModal(false)}
       />
     </div>
   )
