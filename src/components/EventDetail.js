@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { ArrowLeft, Users, Clock, Play, Pause, RotateCcw, Plus, Minus, MessageSquare, Loader as Loader2, QrCode, Trash2 } from 'lucide-react'
+import { ArrowLeft, Users, Clock, Play, Pause, RotateCcw, Plus, Minus, MessageSquare, Loader as Loader2, QrCode, Trash2, CheckCircle, XCircle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { calculateTimeLeft, formatTime as formatTimeUtil } from '../lib/timerUtils'
 import QRCodeModal from './QRCodeModal'
@@ -16,6 +16,7 @@ export default function EventDetail({ eventId, session, onBack }) {
   const [showQRModal, setShowQRModal] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [notification, setNotification] = useState(null)
 
   useEffect(() => {
     if (eventId && session?.user) {
@@ -185,10 +186,12 @@ export default function EventDetail({ eventId, session, onBack }) {
         notes: message
       })
 
-      alert('Message sent!')
+      setNotification({ type: 'success', message: 'Message sent successfully!' })
+      setTimeout(() => setNotification(null), 3000)
     } catch (error) {
       console.error('Error sending message:', error)
-      alert('Failed to send message')
+      setNotification({ type: 'error', message: 'Failed to send message' })
+      setTimeout(() => setNotification(null), 3000)
     }
   }
 
@@ -253,6 +256,23 @@ export default function EventDetail({ eventId, session, onBack }) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-6">
+      {notification && (
+        <div className="fixed top-4 right-4 z-50 animate-slideInRight">
+          <div className={`rounded-xl p-4 shadow-2xl border-2 flex items-center gap-3 min-w-[300px] ${
+            notification.type === 'success'
+              ? 'bg-gradient-to-r from-green-600 to-green-500 border-green-400'
+              : 'bg-gradient-to-r from-red-600 to-red-500 border-red-400'
+          }`}>
+            {notification.type === 'success' ? (
+              <CheckCircle className="w-6 h-6 text-white flex-shrink-0" />
+            ) : (
+              <XCircle className="w-6 h-6 text-white flex-shrink-0" />
+            )}
+            <p className="text-white font-medium">{notification.message}</p>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-7xl mx-auto">
         <button
           onClick={onBack}
