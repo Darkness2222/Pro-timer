@@ -21,17 +21,29 @@ export default function TeamManagement({ isOpen, onClose, session }) {
   const loadTeamData = async () => {
     setLoading(true)
     try {
-      const { data: memberData } = await supabase
+      console.log('[TeamManagement] Loading team data for user:', session.user.id)
+
+      const { data: memberData, error: memberError } = await supabase
         .from('organization_members')
-        .select('organization_id')
+        .select('organization_id, role, is_owner')
         .eq('user_id', session.user.id)
         .maybeSingle()
 
-      if (!memberData) {
+      if (memberError) {
+        console.error('[TeamManagement] Error loading user membership:', memberError)
+        alert('Failed to load your organization membership. Please try again.')
         setLoading(false)
         return
       }
 
+      if (!memberData) {
+        console.warn('[TeamManagement] User is not a member of any organization')
+        alert('You are not a member of any organization. Please contact support.')
+        setLoading(false)
+        return
+      }
+
+      console.log('[TeamManagement] User membership data:', memberData)
       const orgId = memberData.organization_id
 
       const [orgResult, membersResult, invitesResult, subResult] = await Promise.all([
@@ -45,7 +57,9 @@ export default function TeamManagement({ isOpen, onClose, session }) {
               email
             )
           `)
-          .eq('organization_id', orgId),
+          .eq('organization_id', orgId)
+          .order('is_owner', { ascending: false })
+          .order('role'),
         supabase
           .from('organization_invitations')
           .select('*')
@@ -58,12 +72,30 @@ export default function TeamManagement({ isOpen, onClose, session }) {
           .maybeSingle()
       ])
 
+      if (orgResult.error) {
+        console.error('[TeamManagement] Error loading organization:', orgResult.error)
+      }
+      if (membersResult.error) {
+        console.error('[TeamManagement] Error loading members:', membersResult.error)
+      }
+      if (invitesResult.error) {
+        console.error('[TeamManagement] Error loading invitations:', invitesResult.error)
+      }
+
       setOrganization(orgResult.data)
       setMembers(membersResult.data || [])
       setInvitations(invitesResult.data || [])
       setSubscriptionInfo(subResult.data)
+
+      console.log('[TeamManagement] Loaded data:', {
+        organization: orgResult.data,
+        memberCount: membersResult.data?.length || 0,
+        invitationCount: invitesResult.data?.length || 0,
+        hasSubscription: !!subResult.data
+      })
     } catch (error) {
-      console.error('Error loading team data:', error)
+      console.error('[TeamManagement] Error loading team data:', error)
+      alert('Failed to load team data. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -172,6 +204,14 @@ export default function TeamManagement({ isOpen, onClose, session }) {
   const currentMember = members.find(m => m.user_id === session?.user?.id)
   const canManage = isOwnerOrAdmin(currentMember)
 
+  console.log('[TeamManagement] Render state:', {
+    currentUserId: session?.user?.id,
+    currentMember: currentMember,
+    canManage: canManage,
+    memberCount: members.length,
+    planInfo: planInfo
+  })
+
   return (
     <>
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -218,7 +258,7 @@ export default function TeamManagement({ isOpen, onClose, session }) {
                   </div>
                 </div>
 
-                {canManage && (
+                {canManage ? (
                   <div className="mb-6">
                     <button
                       onClick={() => setShowInviteModal(true)}
@@ -228,6 +268,12 @@ export default function TeamManagement({ isOpen, onClose, session }) {
                       <UserPlus className="w-4 h-4" />
                       {planInfo.canAddUsers ? 'Invite Team Member' : 'Upgrade to add more users'}
                     </button>
+                  </div>
+                ) : (
+                  <div className="mb-6 bg-gray-700/50 border border-gray-600 rounded-lg p-4">
+                    <p className="text-gray-300 text-sm text-center">
+                      Only organization owners and admins can invite team members.
+                    </p>
                   </div>
                 )}
 
