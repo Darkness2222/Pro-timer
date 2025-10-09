@@ -8,16 +8,23 @@ export const calculateTimeLeft = (session, originalDuration, currentTime = Date.
   let calculatedTime
 
   if (session.is_running && session.updated_at) {
-    const now = new Date(currentTime)
-    const lastUpdate = new Date(session.updated_at)
-    const elapsedSinceUpdate = Math.floor((now - lastUpdate) / 1000)
+    const now = typeof currentTime === 'number' ? currentTime : Date.now()
+    const lastUpdateTimestamp = new Date(session.updated_at).getTime()
+    const elapsedSinceUpdate = Math.floor((now - lastUpdateTimestamp) / 1000)
 
     const MAX_REASONABLE_ELAPSED = 86400
     if (elapsedSinceUpdate > MAX_REASONABLE_ELAPSED) {
       console.warn('Timer session appears stale (>24h), using stored time_left')
       calculatedTime = session.time_left
+    } else if (elapsedSinceUpdate < 0) {
+      console.warn('Timer session has future timestamp, client/server time mismatch detected')
+      calculatedTime = session.time_left
     } else {
-      calculatedTime = session.time_left - elapsedSinceUpdate
+      if (session._clientCalculatedAt && Math.abs(now - session._clientCalculatedAt) < 100) {
+        calculatedTime = session.time_left
+      } else {
+        calculatedTime = session.time_left - elapsedSinceUpdate
+      }
     }
   } else {
     calculatedTime = session.time_left !== undefined ? session.time_left : (originalDuration || 0)

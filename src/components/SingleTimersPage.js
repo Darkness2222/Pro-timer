@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { Plus, Play, Trash2, Clock, Users } from 'lucide-react'
 import { formatTime as formatTimeUtil } from '../lib/timerUtils'
 
@@ -10,8 +10,15 @@ export default function SingleTimersPage({
   onSelectTimer,
   onDeleteTimer,
   onStartTimer,
-  selectedTimer
+  selectedTimer,
+  onRefreshSessions
 }) {
+  useEffect(() => {
+    if (onRefreshSessions) {
+      onRefreshSessions()
+    }
+  }, [])
+
   const singleTimers = timers.filter(timer => timer.timer_type === 'single')
 
   const getTimerStatus = (timer) => {

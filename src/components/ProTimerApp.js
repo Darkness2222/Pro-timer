@@ -320,12 +320,20 @@ export default function ProTimerApp({ session }) {
   // Update timer sessions and current time every second (separated to avoid re-renders)
   useEffect(() => {
     const sessionInterval = setInterval(() => {
-      updateTimerSessions()
+      updateTimerSessions(false)
       setCurrentTime(Date.now())
     }, 1000)
 
     return () => clearInterval(sessionInterval)
   }, [])
+
+  // Force refresh when view changes to single-timers
+  useEffect(() => {
+    if (currentView === 'single-timers') {
+      console.log('Single timers view activated - forcing session refresh')
+      updateTimerSessions(true)
+    }
+  }, [currentView])
 
   // Timer countdown effect with overtime tracking
   useEffect(() => {
@@ -385,7 +393,7 @@ export default function ProTimerApp({ session }) {
   }, [isRunning, timeLeft, selectedTimer, lastOvertimeLog, userSettings])
 
   // Update timer sessions for all timers
-  const updateTimerSessions = async () => {
+  const updateTimerSessions = async (forceRefresh = false) => {
     try {
       const { data, error } = await supabase
         .from('timer_sessions')
@@ -396,14 +404,25 @@ export default function ProTimerApp({ session }) {
       const sessionsMap = {}
       data?.forEach(session => {
         if (session.is_running && session.updated_at) {
-          const elapsedSeconds = Math.floor((now - new Date(session.updated_at).getTime()) / 1000)
+          const sessionUpdatedAt = new Date(session.updated_at).getTime()
+          const elapsedSeconds = Math.floor((now - sessionUpdatedAt) / 1000)
+
+          const sessionAge = now - sessionUpdatedAt
+          if (forceRefresh || sessionAge > 2000) {
+            console.log(`Refreshing stale session for timer ${session.timer_id}. Age: ${sessionAge}ms`)
+          }
+
           const calculatedTimeLeft = Math.max(session.time_left - elapsedSeconds, -999)
           sessionsMap[session.timer_id] = {
             ...session,
-            time_left: calculatedTimeLeft
+            time_left: calculatedTimeLeft,
+            _clientCalculatedAt: now
           }
         } else {
-          sessionsMap[session.timer_id] = session
+          sessionsMap[session.timer_id] = {
+            ...session,
+            _clientCalculatedAt: now
+          }
         }
       })
       setTimerSessions(sessionsMap)
@@ -724,7 +743,10 @@ export default function ProTimerApp({ session }) {
     setSelectedTimer(timer)
     setTimeLeft(timer.duration)
     setIsRunning(false)
-    
+
+    // Force refresh of timer sessions to get latest data
+    await updateTimerSessions(true)
+
     // Load existing session if any
     try {
       const { data } = await supabase
@@ -732,9 +754,18 @@ export default function ProTimerApp({ session }) {
         .select('*')
         .eq('timer_id', timer.id)
         .maybeSingle()
-      
+
       if (data) {
-        setTimeLeft(data.time_left)
+        const now = Date.now()
+        const sessionUpdatedAt = new Date(data.updated_at).getTime()
+        const elapsedSeconds = Math.floor((now - sessionUpdatedAt) / 1000)
+
+        if (data.is_running && elapsedSeconds > 0) {
+          const calculatedTimeLeft = data.time_left - elapsedSeconds
+          setTimeLeft(calculatedTimeLeft)
+        } else {
+          setTimeLeft(data.time_left)
+        }
         setIsRunning(data.is_running)
       }
     } catch (error) {
@@ -2376,6 +2407,7 @@ export default function ProTimerApp({ session }) {
           onDeleteTimer={deleteTimer}
           onStartTimer={handleStartTimer}
           selectedTimer={selectedTimer}
+          onRefreshSessions={() => updateTimerSessions(true)}
         />
       )}
 
