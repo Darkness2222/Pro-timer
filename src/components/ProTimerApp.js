@@ -2369,7 +2369,10 @@ export default function ProTimerApp({ session }) {
           timerSessions={timerSessions}
           currentTime={currentTime}
           onCreateTimer={() => setShowCreateModal(true)}
-          onSelectTimer={selectTimer}
+          onSelectTimer={(timer) => {
+            selectTimer(timer)
+            setCurrentView('admin')
+          }}
           onDeleteTimer={deleteTimer}
           onStartTimer={handleStartTimer}
           selectedTimer={selectedTimer}
