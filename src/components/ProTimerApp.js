@@ -2413,7 +2413,14 @@ export default function ProTimerApp({ session }) {
 
       {/* Presenters View */}
       {currentView === 'presenters' && (
-        <PresentersPage session={session} />
+        <PresentersPage
+          session={session}
+          onNavigate={(target) => {
+            if (target === 'settings') {
+              setShowTeamManagement(true)
+            }
+          }}
+        />
       )}
 
       {/* Create Timer Modal */}
