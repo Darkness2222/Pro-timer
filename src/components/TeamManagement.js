@@ -3,6 +3,7 @@ import { X, UserPlus, Mail, Crown, Users, Trash2, Loader as Loader2, Shield, Mic
 import { supabase } from '../lib/supabase'
 import { products } from '../stripe-config'
 import { ROLES, isOwner, isOwnerOrAdmin, getRoleDisplayName, updateUserRole, validateRoleChange } from '../lib/roleUtils'
+import DiagnoseTeamIssues from './DiagnoseTeamIssues'
 
 export default function TeamManagement({ isOpen, onClose, session }) {
   const [loading, setLoading] = useState(true)
@@ -238,6 +239,10 @@ export default function TeamManagement({ isOpen, onClose, session }) {
               </div>
             ) : (
               <>
+                {!canManage && (
+                  <DiagnoseTeamIssues session={session} />
+                )}
+
                 <div className="bg-gray-700 rounded-lg p-4 mb-6">
                   <div className="flex justify-between items-center">
                     <div>
