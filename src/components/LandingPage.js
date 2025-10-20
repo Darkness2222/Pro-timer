@@ -61,6 +61,10 @@ export default function LandingPage() {
             Sign Up
           </button>
         </div>
+
+        <div className="mt-8 text-sm text-gray-400">
+          <a href="/privacy" className="underline hover:text-gray-300">Privacy Policy</a>
+        </div>
       </div>
     </div>
   );

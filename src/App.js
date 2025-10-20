@@ -4,6 +4,7 @@ import Auth from './components/Auth'
 import ProTimerApp from './components/ProTimerApp'
 import PresenterJoinPage from './components/PresenterJoinPage'
 import PresenterView from './components/PresenterView'
+import PrivacyPolicy from './components/PrivacyPolicy'
 
 function App() {
   const [session, setSession] = useState(null)
@@ -71,6 +72,10 @@ function App() {
   }
 
   const pathname = window.location.pathname
+
+  if (pathname === '/privacy' || pathname === '/privacy-policy') {
+    return <PrivacyPolicy />
+  }
 
   if (pathname.startsWith('/event/join/')) {
     const token = pathname.split('/event/join/')[1]

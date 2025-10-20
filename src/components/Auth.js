@@ -212,6 +212,12 @@ export default function Auth() {
             {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
           </button>
         </div>
+
+        <div className="text-center mt-6 pt-6 border-t border-gray-700">
+          <a href="/privacy" className="text-gray-400 hover:text-gray-300 text-sm underline">
+            Privacy Policy
+          </a>
+        </div>
       </div>
     </div>
   )
