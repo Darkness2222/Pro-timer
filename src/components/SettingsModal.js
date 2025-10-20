@@ -465,18 +465,10 @@ export default function SettingsModal({ isOpen, onClose, onShowSubscriptionModal
       />
 
       {/* Privacy Policy Modal */}
-      {showPrivacyPolicy && (
-        <div className="fixed inset-0 z-[60]">
-          <PrivacyPolicy />
-          <button
-            onClick={() => setShowPrivacyPolicy(false)}
-            className="fixed top-4 right-4 bg-gray-800 hover:bg-gray-700 text-white p-3 rounded-lg shadow-lg transition-colors z-[70] flex items-center gap-2 border border-gray-600"
-          >
-            <X className="w-5 h-5" />
-            Close
-          </button>
-        </div>
-      )}
+      <PrivacyPolicy
+        isOpen={showPrivacyPolicy}
+        onClose={() => setShowPrivacyPolicy(false)}
+      />
     </div>
   )
 }

@@ -1,15 +1,34 @@
 import React from 'react';
+import { X } from 'lucide-react';
 
-export default function PrivacyPolicy() {
+export default function PrivacyPolicy({ isOpen, onClose }) {
+  if (!isOpen) return null;
+
   return (
-    <div className="min-h-screen bg-gray-900 text-gray-100">
-      <div className="max-w-4xl mx-auto px-6 py-12">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-white mb-4">Privacy Policy</h1>
-          <p className="text-gray-400">Last Updated: October 20, 2025</p>
+    <div
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+    >
+      <div className="bg-gray-800 rounded-xl max-w-4xl w-full max-h-[90vh] overflow-hidden border border-gray-700">
+        <div className="flex justify-between items-center p-6 border-b border-gray-700">
+          <div>
+            <h1 className="text-3xl font-bold text-white">Privacy Policy</h1>
+            <p className="text-gray-400 text-sm mt-1">Last Updated: October 20, 2025</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-white transition-colors"
+          >
+            <X className="w-6 h-6" />
+          </button>
         </div>
 
-        <div className="space-y-8 text-gray-300 leading-relaxed">
+        <div className="p-6 overflow-y-auto max-h-[calc(90vh-180px)]">
+          <div className="space-y-8 text-gray-300 leading-relaxed">
           <section>
             <h2 className="text-2xl font-semibold text-white mb-4">Introduction</h2>
             <p>
@@ -212,15 +231,18 @@ export default function PrivacyPolicy() {
               <li>Right to non-discrimination for exercising your CCPA rights</li>
             </ul>
           </section>
+          </div>
         </div>
 
-        <div className="mt-12 pt-8 border-t border-gray-700">
-          <a
-            href="/"
-            className="inline-block bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
-          >
-            Back to Home
-          </a>
+        <div className="p-6 border-t border-gray-700 bg-gray-900">
+          <div className="flex justify-end">
+            <button
+              onClick={onClose}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+            >
+              Close
+            </button>
+          </div>
         </div>
       </div>
     </div>
