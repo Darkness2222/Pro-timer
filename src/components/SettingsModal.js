@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react'
-import { X, Settings, Volume2, Clock, Monitor, Crown, LogOut, Users, Sparkles, Shield, Mic2, ChevronRight, BookOpen } from 'lucide-react'
+import { X, Settings, Volume2, Clock, Monitor, Crown, LogOut, Users, Sparkles, Shield, Mic2, ChevronRight, BookOpen, FileText } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import FeaturesModal from './FeaturesModal'
 import TimerPreferencesModal from './TimerPreferencesModal'
 import DisplayPreferencesModal from './DisplayPreferencesModal'
 import NotificationPreferencesModal from './NotificationPreferencesModal'
 import HowToGuidesModal from './HowToGuidesModal'
+import PrivacyPolicy from './PrivacyPolicy'
 import { ROLES, getRoleDisplayName } from '../lib/roleUtils'
 
 export default function SettingsModal({ isOpen, onClose, onShowSubscriptionModal, onSignOut, onShowTeamManagement, session, onSettingsChange }) {
@@ -14,6 +15,7 @@ export default function SettingsModal({ isOpen, onClose, onShowSubscriptionModal
   const [showDisplayModal, setShowDisplayModal] = useState(false)
   const [showNotificationModal, setShowNotificationModal] = useState(false)
   const [showHowToGuidesModal, setShowHowToGuidesModal] = useState(false)
+  const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false)
   const [userRole, setUserRole] = useState(null)
 
   useEffect(() => {
@@ -233,6 +235,29 @@ export default function SettingsModal({ isOpen, onClose, onShowSubscriptionModal
                   </button>
                 </div>
               </div>
+
+              {/* Privacy Policy Section */}
+              <div className="bg-gradient-to-r from-gray-800/40 to-gray-900/40 rounded-lg p-4 border border-gray-600/40">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-white font-medium flex items-center gap-2">
+                      <Shield className="w-4 h-4 text-gray-400" />
+                      Privacy Policy
+                    </h4>
+                    <p className="text-gray-400 text-sm">Learn how we protect your data</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowPrivacyPolicy(true)
+                    }}
+                    className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2"
+                  >
+                    <FileText className="w-4 h-4" />
+                    View Policy
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -438,6 +463,20 @@ export default function SettingsModal({ isOpen, onClose, onShowSubscriptionModal
         isOpen={showHowToGuidesModal}
         onClose={() => setShowHowToGuidesModal(false)}
       />
+
+      {/* Privacy Policy Modal */}
+      {showPrivacyPolicy && (
+        <div className="fixed inset-0 z-[60]">
+          <PrivacyPolicy />
+          <button
+            onClick={() => setShowPrivacyPolicy(false)}
+            className="fixed top-4 right-4 bg-gray-800 hover:bg-gray-700 text-white p-3 rounded-lg shadow-lg transition-colors z-[70] flex items-center gap-2 border border-gray-600"
+          >
+            <X className="w-5 h-5" />
+            Close
+          </button>
+        </div>
+      )}
     </div>
   )
 }
