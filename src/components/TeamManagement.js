@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react'
-import { X, UserPlus, Mail, Crown, Users, Trash2, Loader as Loader2, Shield, Mic2 } from 'lucide-react'
+import { X, UserPlus, Mail, Crown, Users, Trash2, Loader as Loader2, Shield, Mic2, Link2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { products } from '../stripe-config'
 import { ROLES, isOwner, isOwnerOrAdmin, getRoleDisplayName, updateUserRole, validateRoleChange } from '../lib/roleUtils'
 import DiagnoseTeamIssues from './DiagnoseTeamIssues'
+import EnhancedInviteModal from './EnhancedInviteModal'
+import InviteLinksManagement from './InviteLinksManagement'
 
 export default function TeamManagement({ isOpen, onClose, session }) {
   const [loading, setLoading] = useState(true)
@@ -309,6 +311,19 @@ export default function TeamManagement({ isOpen, onClose, session }) {
                   </div>
                 )}
 
+                {canManage && organization && (
+                  <div className="mb-6">
+                    <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
+                      <Link2 className="w-5 h-5" />
+                      Active Invite Links
+                    </h3>
+                    <InviteLinksManagement
+                      organizationId={organization.id}
+                      organizationName={organization.name}
+                    />
+                  </div>
+                )}
+
                 <div>
                   <h3 className="text-lg font-semibold text-white mb-3">Team Members</h3>
                   <div className="space-y-2">
@@ -372,7 +387,7 @@ export default function TeamManagement({ isOpen, onClose, session }) {
       </div>
 
       {showInviteModal && (
-        <InviteModal
+        <EnhancedInviteModal
           organization={organization}
           onClose={() => setShowInviteModal(false)}
           onInviteSent={loadTeamData}
@@ -381,111 +396,5 @@ export default function TeamManagement({ isOpen, onClose, session }) {
         />
       )}
     </>
-  )
-}
-
-function InviteModal({ organization, onClose, onInviteSent, session, planInfo }) {
-  const [email, setEmail] = useState('')
-  const [role, setRole] = useState(ROLES.ADMIN)
-  const [loading, setLoading] = useState(false)
-
-  const handleInvite = async (e) => {
-    e.preventDefault()
-    setLoading(true)
-
-    try {
-      const { error } = await supabase
-        .from('organization_invitations')
-        .insert({
-          organization_id: organization.id,
-          email: email.toLowerCase().trim(),
-          role: role,
-          invited_by: session.user.id
-        })
-
-      if (error) throw error
-
-      alert('Invitation sent successfully!')
-      onInviteSent()
-      onClose()
-    } catch (error) {
-      console.error('Error sending invitation:', error)
-      alert('Failed to send invitation. The email may already be invited.')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[60] p-4">
-      <div className="bg-gray-800 rounded-xl max-w-md w-full p-6 border border-gray-700">
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="text-xl font-bold text-white">Invite Team Member</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-white">
-            <X className="w-6 h-6" />
-          </button>
-        </div>
-
-        <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 mb-4">
-          <p className="text-sm text-blue-300">
-            <strong>Note:</strong> The organization owner does not count toward your user limit.
-            Current usage: {planInfo.currentUsers} of {planInfo.maxUsers === -1 ? 'unlimited' : planInfo.maxUsers} users
-          </p>
-        </div>
-
-        <form onSubmit={handleInvite} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Email Address
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="colleague@example.com"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Role
-            </label>
-            <select
-              value={role}
-              onChange={(e) => setRole(e.target.value)}
-              className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value={ROLES.ADMIN}>Admin - Manage events and team</option>
-              <option value={ROLES.PRESENTER}>Presenter - Present in events only</option>
-            </select>
-            <p className="text-xs text-gray-400 mt-2">
-              {role === ROLES.ADMIN
-                ? 'Admins can create events, manage the team, but cannot present.'
-                : 'Presenters can only present in events and cannot access admin features.'}
-            </p>
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Sending...
-              </>
-            ) : (
-              <>
-                <Mail className="w-4 h-4" />
-                Send Invitation
-              </>
-            )}
-          </button>
-        </form>
-      </div>
-    </div>
   )
 }

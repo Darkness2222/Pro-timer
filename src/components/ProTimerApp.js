@@ -4,7 +4,7 @@ import TimerOverview from './TimerOverview'
 import { getProductByPriceId } from '../stripe-config'
 import { calculateTimeLeft, formatTime as formatTimeUtil, getProgressPercentage as getProgressPercentageUtil, shouldResetTimerSession, isTimerSessionValid } from '../lib/timerUtils'
 import { playSound, vibrate, requestFullscreen } from '../lib/notificationUtils'
-import { Play, Pause, Square, RotateCcw, Settings, MessageSquare, Plus, Minus, Clock, Users, Timer as TimerIcon, QrCode, ExternalLink, FileText, Crown, LogOut, CircleCheck as CheckCircle, X, Calendar, TriangleAlert as AlertTriangle, Trash2 } from 'lucide-react'
+import { Play, Pause, Square, RotateCcw, Settings, MessageSquare, Plus, Minus, Clock, Users, Timer as TimerIcon, QrCode, ExternalLink, FileText, Crown, LogOut, CircleCheck as CheckCircle, X, Calendar, TriangleAlert as AlertTriangle, Trash2, UserPlus } from 'lucide-react'
 import SubscriptionModal from './SubscriptionModal'
 import ReportsPage from './ReportsPage'
 import SuccessPage from './SuccessPage'
@@ -1699,6 +1699,13 @@ export default function ProTimerApp({ session }) {
               >
                 <Users className="w-4 h-4 mr-2" />
                 Presenters
+              </button>
+              <button
+                onClick={() => setShowTeamManagement(true)}
+                className="px-4 py-2 rounded-lg transition-colors bg-blue-600 text-white hover:bg-blue-700 flex items-center gap-2"
+              >
+                <UserPlus className="w-4 h-4" />
+                Invite Team
               </button>
               <button
                 onClick={() => setShowSettings(true)}
